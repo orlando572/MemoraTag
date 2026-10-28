@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "name": "MemoraTag",
+    "slug": "memoratag",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "memoratag",
+    "userInterfaceStyle": "light",
+    "android": { "package": "com.memora.memoratag" },
+    "plugins": [
+      "expo-router",
+      ["expo-camera", { "cameraPermission": "Permite a MemoraTag usar tu cámara para escanear códigos QR." }]
+      , ["expo-image-picker", { "photosPermission": "Permite a MemoraTag acceder a tus fotos para guardarlas en la memoria de un objeto.", "cameraPermission": "Permite a MemoraTag usar tu cámara para registrar fotos." }]
+    ],
+    "experiments": { "typedRoutes": true }
+  }
+}
