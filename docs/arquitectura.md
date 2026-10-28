@@ -73,16 +73,17 @@ Cada módulo separa dominio, casos de uso y puertos, adaptadores de entrada —c
 
 La integración NFC utiliza código nativo y requiere una compilación de desarrollo compatible; no se asume que funcione en Expo Go. La elección de estas tecnologías no implica que todas estén integradas todavía.
 
-## Organización prevista del repositorio
+## Organización del repositorio
 
 ```text
-apps/
-├── mobile/       # Aplicación Expo
-├── web/          # Plataforma Next.js
-└── backend/      # Backend NestJS
-packages/
-└── shared/       # Contratos o validaciones compartidos cuando sean necesarios
-docs/
+proyecto/                  # Workspace independiente del prototipo
+├── apps/
+│   ├── mobile/            # Nueva aplicación Expo
+│   ├── web/               # Plataforma Next.js
+│   └── backend/           # Backend NestJS
+├── packages/              # Compartidos cuando sean necesarios
+├── package.json
+└── pnpm-workspace.yaml
 ```
 
-Esta es la estructura objetivo para el desarrollo nuevo. El prototipo existente permanece intacto en la raíz: no se trasladará, modificará ni sobrescribirá. La configuración de pnpm workspaces debe resolverse sin modificar su `package.json` ni alterar su ejecución. La implementación debe priorizar el flujo principal y una web sencilla para conservar tiempo para la evaluación del artículo.
+El workspace y las carpetas están preparados, pero las aplicaciones aún no están inicializadas. El prototipo existente permanece intacto en la raíz y conserva su propio `package.json` y lockfile. El móvil y la web se organizarán por funcionalidades, separando interfaz, lógica y acceso a datos sin imponerles todas las capas del backend. La implementación debe priorizar el flujo principal y una web sencilla para conservar tiempo para la evaluación del artículo.

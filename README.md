@@ -71,11 +71,11 @@ El prototipo existente permanece intacto en la raíz. El desarrollo nuevo se rea
 app/                 Pantallas y rutas de Expo Router
 components/          Componentes visuales compartidos
 features/memories/   Modelos y estado de objetos y eventos
-apps/                Ubicación prevista para las nuevas apps y el backend
+proyecto/            Workspace separado para las nuevas apps y el backend
 docs/                Documentación del proyecto
 ```
 
-`apps/` es una estructura prevista y todavía no existe. La configuración del futuro monorepositorio debe preservar el `package.json` y la ejecución actuales del prototipo.
+El workspace en `proyecto/` contiene carpetas reservadas para móvil, web y backend; las aplicaciones nuevas aún no están inicializadas. Mantiene su configuración separada del `package.json` y la ejecución del prototipo.
 
 ## Estado y limitaciones
 
