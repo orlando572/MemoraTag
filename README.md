@@ -16,7 +16,7 @@ La gestión empresarial avanzada queda fuera de la primera versión. Consulta [v
 
 ## Estado actual: prototipo
 
-Actualmente solo existe un prototipo frontend móvil con datos en memoria. Las funcionalidades anteriores son objetivos del proyecto, no capacidades ya implementadas. En el prototipo se puede:
+Existe un prototipo frontend móvil con datos en memoria y una nueva aplicación móvil inicial en `proyecto/apps/mobile`, con creación y consulta de objetos y eventos en SQLite local. Las demás funcionalidades anteriores son objetivos del proyecto, no capacidades ya implementadas en la nueva aplicación. En el prototipo se puede:
 
 - Crear, editar y eliminar objetos.
 - Registrar acontecimientos en la historia de cada objeto.
@@ -33,7 +33,7 @@ Actualmente solo existe un prototipo frontend móvil con datos en memoria. Las f
 - Expo Camera, Expo Image Picker y react-native-qrcode-svg para cámara, imágenes y códigos QR.
 - pnpm y ESLint para la gestión de dependencias y el análisis de código.
 
-La arquitectura prevista incorpora un monorepositorio con app móvil Expo, web Next.js con shadcn/ui y backend NestJS como monolito modular hexagonal, además de SQLite local y Supabase para PostgreSQL, autenticación y archivos. Estos componentes aún no están integrados; ver [arquitectura](docs/arquitectura.md).
+La arquitectura prevista incorpora un monorepositorio con app móvil Expo, web Next.js con shadcn/ui y backend NestJS como monolito modular hexagonal, además de SQLite local y Supabase para PostgreSQL, autenticación y archivos. La nueva app móvil ya utiliza SQLite; los demás componentes previstos aún no están integrados. Ver [arquitectura](docs/arquitectura.md).
 
 ## Requisitos
 
@@ -75,7 +75,7 @@ proyecto/            Workspace separado para las nuevas apps y el backend
 docs/                Documentación del proyecto
 ```
 
-El workspace en `proyecto/` contiene carpetas reservadas para móvil, web y backend; las aplicaciones nuevas aún no están inicializadas. Mantiene su configuración separada del `package.json` y la ejecución del prototipo.
+El workspace en `proyecto/` contiene la nueva app móvil inicializada y carpetas reservadas para web y backend. Mantiene su configuración separada del `package.json` y la ejecución del prototipo. Consulta [la guía móvil](proyecto/apps/mobile/README.md) para ejecutarla.
 
 ## Estado y limitaciones
 
@@ -83,7 +83,7 @@ El workspace en `proyecto/` contiene carpetas reservadas para móvil, web y back
 - La pantalla de acceso es una maqueta: no autentica usuarios.
 - Los QR se buscan entre los objetos disponibles en el estado local; no se sincronizan entre dispositivos o sesiones.
 - El botón de impresión muestra una confirmación simulada y no imprime el código.
-- Todavía no hay backend, base local persistente ni servicios de Supabase conectados. El NFC, los archivos adjuntos, la sincronización y la plataforma web prevista aún no están implementados.
+- El prototipo no tiene persistencia; la nueva app móvil guarda objetos y eventos en SQLite local. Todavía no hay backend ni servicios de Supabase conectados. El NFC, los archivos adjuntos, la sincronización y la plataforma web prevista aún no están implementados.
 
 ## Documentación
 
