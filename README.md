@@ -16,7 +16,7 @@ La gestión empresarial avanzada queda fuera de la primera versión. Consulta [v
 
 ## Estado actual: prototipo
 
-Existe un prototipo frontend móvil con datos en memoria y una nueva aplicación móvil inicial en `proyecto/apps/mobile`, con creación y consulta de objetos y eventos en SQLite local. Las demás funcionalidades anteriores son objetivos del proyecto, no capacidades ya implementadas en la nueva aplicación. En el prototipo se puede:
+Existe un prototipo frontend móvil con datos en memoria y una nueva aplicación móvil inicial en `proyecto/apps/mobile`, con objetos, eventos, archivos locales y QR local. La integración NFC para Android está implementada, pero aún no se ha probado con hardware; requiere una compilación de desarrollo. La nube, sincronización y web siguen pendientes. Consulta [la guía móvil](proyecto/apps/mobile/README.md) para el estado detallado. En el prototipo se puede:
 
 - Crear, editar y eliminar objetos.
 - Registrar acontecimientos en la historia de cada objeto.
@@ -83,7 +83,7 @@ El workspace en `proyecto/` contiene la nueva app móvil inicializada y carpetas
 - La pantalla de acceso es una maqueta: no autentica usuarios.
 - Los QR se buscan entre los objetos disponibles en el estado local; no se sincronizan entre dispositivos o sesiones.
 - El botón de impresión muestra una confirmación simulada y no imprime el código.
-- El prototipo no tiene persistencia; la nueva app móvil guarda objetos y eventos en SQLite local. Todavía no hay backend ni servicios de Supabase conectados. El NFC, los archivos adjuntos, la sincronización y la plataforma web prevista aún no están implementados.
+- El prototipo no tiene persistencia; la nueva app móvil guarda objetos, eventos y adjuntos localmente. NFC está implementado para Android, pero aún no se ha validado con etiquetas físicas. Todavía no hay backend, sincronización, servicios de Supabase conectados ni plataforma web.
 
 ## Documentación
 

@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { objectIdFromQr } from './qr';
 import { findActiveObject, type MemoryObject } from './storage';
 
-export function Scanner({ onBack, onFound }: { onBack: () => void; onFound: (object: MemoryObject) => void }) {
+export function Scanner({ onBack, onFound, onReadNfc }: { onBack: () => void; onFound: (object: MemoryObject) => void; onReadNfc: () => void }) {
   const [permission, requestPermission] = useCameraPermissions();
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
@@ -15,7 +15,7 @@ export function Scanner({ onBack, onFound }: { onBack: () => void; onFound: (obj
 
   async function resolveQr(data: string) {
     const id = objectIdFromQr(data);
-    if (!id) { setMessage('Este código no es un QR local de MemoraTag.'); return; }
+    if (!id) { setMessage('Este código no pertenece a MemoraTag.'); return; }
     try {
       const object = await findActiveObject(id);
       if (!object) { setMessage('Este objeto no está disponible en este dispositivo o está archivado.'); return; }
@@ -55,10 +55,11 @@ export function Scanner({ onBack, onFound }: { onBack: () => void; onFound: (obj
       </View>
       {message ? <View style={styles.message}><Text style={styles.messageText}>{message}</Text><Pressable accessibilityRole="button" style={styles.action} onPress={() => { locked.current = false; setMessage(''); }}><Text style={styles.actionText}>Escanear de nuevo</Text></Pressable></View> : !permission?.granted ? <Pressable accessibilityRole="button" style={styles.action} onPress={() => { if (permission && !permission.canAskAgain) void Linking.openSettings(); else void requestPermission(); }}><Text style={styles.actionText}>{permission && !permission.canAskAgain ? 'Abrir ajustes' : 'Activar cámara'}</Text></Pressable> : <Text style={styles.hint}>Apunta al QR de un objeto guardado en este dispositivo.</Text>}
       {!message && <Pressable accessibilityRole="button" disabled={busy} style={[styles.galleryAction, busy && { opacity: 0.6 }]} onPress={() => void chooseImage()}><Ionicons name="images-outline" size={20} color="#fff" /><Text style={styles.galleryText}>{busy ? 'Leyendo imagen…' : 'Elegir imagen de la galería'}</Text></Pressable>}
+      {!message && <Pressable accessibilityRole="button" disabled={busy} style={[styles.galleryAction, busy && { opacity: 0.6 }]} onPress={onReadNfc}><Ionicons name="radio-outline" size={20} color="#fff" /><Text style={styles.galleryText}>Leer etiqueta NFC</Text></Pressable>}
     </View>
   </SafeAreaView>;
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: '#1C211D' }, header: { height: 68, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20 }, back: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#334237', alignItems: 'center', justifyContent: 'center' }, spacer: { width: 44 }, title: { color: '#fff', fontWeight: '800', fontSize: 16 }, content: { flex: 1, paddingHorizontal: 20, paddingTop: 28 }, camera: { height: '60%', maxHeight: 480, minHeight: 260, borderRadius: 18, overflow: 'hidden', backgroundColor: '#334237', justifyContent: 'center', alignItems: 'center' }, frame: { width: '70%', aspectRatio: 1, borderWidth: 3, borderColor: '#fff', borderRadius: 18 }, permissionPlaceholder: { alignItems: 'center', padding: 30, gap: 15 }, cameraText: { color: '#fff', textAlign: 'center', fontSize: 16, lineHeight: 23 }, hint: { color: '#BFC5BC', textAlign: 'center', fontSize: 14, lineHeight: 21, marginTop: 25 }, action: { backgroundColor: '#fff', height: 54, borderRadius: 15, justifyContent: 'center', alignItems: 'center', marginTop: 20 }, actionText: { color: '#147A63', fontWeight: '800', fontSize: 15 }, message: { paddingTop: 20 }, messageText: { color: '#fff', textAlign: 'center', fontSize: 15, lineHeight: 22 }, galleryAction: { minHeight: 50, marginTop: 16, borderRadius: 14, borderWidth: 1, borderColor: '#75877A', flexDirection: 'row', gap: 9, justifyContent: 'center', alignItems: 'center' }, galleryText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  page: { flex: 1, backgroundColor: '#172D27' }, header: { height: 68, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20 }, back: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#304B40', alignItems: 'center', justifyContent: 'center' }, spacer: { width: 44 }, title: { color: '#fff', fontWeight: '700', fontSize: 16 }, content: { flex: 1, paddingHorizontal: 20, paddingTop: 28 }, camera: { height: '60%', maxHeight: 480, minHeight: 260, borderRadius: 22, overflow: 'hidden', backgroundColor: '#304B40', justifyContent: 'center', alignItems: 'center' }, frame: { width: '70%', aspectRatio: 1, borderWidth: 2, borderColor: '#E1EEE7', borderRadius: 22 }, permissionPlaceholder: { alignItems: 'center', padding: 30, gap: 15 }, cameraText: { color: '#fff', textAlign: 'center', fontSize: 16, lineHeight: 23 }, hint: { color: '#C7D8CC', textAlign: 'center', fontSize: 14, lineHeight: 21, marginTop: 25 }, action: { backgroundColor: '#fff', height: 54, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginTop: 20 }, actionText: { color: '#176B57', fontWeight: '700', fontSize: 15 }, message: { paddingTop: 20 }, messageText: { color: '#fff', textAlign: 'center', fontSize: 15, lineHeight: 22 }, galleryAction: { minHeight: 50, marginTop: 16, borderRadius: 16, borderWidth: 1, borderColor: '#89A59A', flexDirection: 'row', gap: 9, justifyContent: 'center', alignItems: 'center' }, galleryText: { color: '#fff', fontSize: 14, fontWeight: '700' },
 });

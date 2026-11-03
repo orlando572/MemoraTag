@@ -1,7 +1,7 @@
 import * as SQLite from 'expo-sqlite';
 import * as Crypto from 'expo-crypto';
 
-export type MemoryObject = { id: string; name: string; description: string; created_at: string; cover_image: string | null };
+export type MemoryObject = { id: string; name: string; description: string; created_at: string; cover_image: string | null; color: string; latest_event_title?: string | null; latest_event_date?: string | null; latest_event_type?: EventType | null };
 export type EventType = 'note' | 'issue' | 'maintenance';
 export type MemoryEvent = { id: string; object_id: string; title: string; description: string; created_at: string; type: EventType; event_date: string; photo: string | null; document_file: string | null; document_name: string | null };
 
@@ -13,12 +13,15 @@ export function openDatabase() {
       await db.execAsync(`PRAGMA foreign_keys = ON;
         CREATE TABLE IF NOT EXISTS objects (
           id TEXT PRIMARY KEY NOT NULL, name TEXT NOT NULL,
-          description TEXT NOT NULL, created_at TEXT NOT NULL, archived_at TEXT, cover_image TEXT
+          description TEXT NOT NULL, created_at TEXT NOT NULL, archived_at TEXT, cover_image TEXT, color TEXT NOT NULL DEFAULT '#DCEBE2'
         );
         CREATE TABLE IF NOT EXISTS events (
           id TEXT PRIMARY KEY NOT NULL, object_id TEXT NOT NULL REFERENCES objects(id),
           title TEXT NOT NULL, description TEXT NOT NULL, created_at TEXT NOT NULL,
           type TEXT NOT NULL DEFAULT 'note', event_date TEXT, photo TEXT, document_file TEXT, document_name TEXT
+        );
+        CREATE TABLE IF NOT EXISTS local_profile (
+          id INTEGER PRIMARY KEY CHECK (id = 1), name TEXT NOT NULL
         );`);
       // Preserve databases created before objects could be archived.
       const columns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(objects)');
@@ -27,6 +30,9 @@ export function openDatabase() {
       }
       if (!columns.some((column) => column.name === 'cover_image')) {
         await db.execAsync('ALTER TABLE objects ADD COLUMN cover_image TEXT');
+      }
+      if (!columns.some((column) => column.name === 'color')) {
+        await db.execAsync("ALTER TABLE objects ADD COLUMN color TEXT NOT NULL DEFAULT '#DCEBE2'");
       }
       const eventColumns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(events)');
       if (!eventColumns.some((column) => column.name === 'type')) {
@@ -54,33 +60,50 @@ export function openDatabase() {
   return database;
 }
 
+export async function getLocalName() {
+  const profile = await (await openDatabase()).getFirstAsync<{ name: string }>('SELECT name FROM local_profile WHERE id = 1');
+  return profile?.name ?? null;
+}
+
+export async function saveLocalName(name: string) {
+  await (await openDatabase()).runAsync('INSERT INTO local_profile (id, name) VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET name = excluded.name', name);
+}
+
 // UUIDs are created on the device and remain unchanged if data is synced later.
 function newId() {
   return Crypto.randomUUID();
 }
 
 export async function listObjects() {
-  return (await openDatabase()).getAllAsync<MemoryObject>('SELECT * FROM objects WHERE archived_at IS NULL ORDER BY created_at DESC');
+  return (await openDatabase()).getAllAsync<MemoryObject>(`SELECT objects.*,
+    (SELECT title FROM events WHERE events.object_id = objects.id ORDER BY event_date DESC, created_at DESC, id DESC LIMIT 1) AS latest_event_title,
+    (SELECT event_date FROM events WHERE events.object_id = objects.id ORDER BY event_date DESC, created_at DESC, id DESC LIMIT 1) AS latest_event_date,
+    (SELECT type FROM events WHERE events.object_id = objects.id ORDER BY event_date DESC, created_at DESC, id DESC LIMIT 1) AS latest_event_type
+    FROM objects WHERE archived_at IS NULL ORDER BY created_at DESC`);
 }
 
 export async function listArchivedObjects() {
-  return (await openDatabase()).getAllAsync<MemoryObject>('SELECT * FROM objects WHERE archived_at IS NOT NULL ORDER BY archived_at DESC');
+  return (await openDatabase()).getAllAsync<MemoryObject>(`SELECT objects.*,
+    (SELECT title FROM events WHERE events.object_id = objects.id ORDER BY event_date DESC, created_at DESC, id DESC LIMIT 1) AS latest_event_title,
+    (SELECT event_date FROM events WHERE events.object_id = objects.id ORDER BY event_date DESC, created_at DESC, id DESC LIMIT 1) AS latest_event_date,
+    (SELECT type FROM events WHERE events.object_id = objects.id ORDER BY event_date DESC, created_at DESC, id DESC LIMIT 1) AS latest_event_type
+    FROM objects WHERE archived_at IS NOT NULL ORDER BY archived_at DESC`);
 }
 
 export async function findActiveObject(id: string) {
-  return (await openDatabase()).getFirstAsync<MemoryObject>('SELECT id, name, description, created_at, cover_image FROM objects WHERE id = ? AND archived_at IS NULL', id);
+  return (await openDatabase()).getFirstAsync<MemoryObject>('SELECT id, name, description, created_at, cover_image, color FROM objects WHERE id = ? AND archived_at IS NULL', id);
 }
 
 export async function listEvents(objectId: string) {
-  return (await openDatabase()).getAllAsync<MemoryEvent>('SELECT * FROM events WHERE object_id = ? ORDER BY event_date DESC, created_at DESC', objectId);
+  return (await openDatabase()).getAllAsync<MemoryEvent>('SELECT * FROM events WHERE object_id = ? ORDER BY event_date DESC, created_at DESC, id DESC', objectId);
 }
 
-export async function createObject(name: string, description: string, coverImage: string | null) {
-  await (await openDatabase()).runAsync('INSERT INTO objects (id, name, description, created_at, cover_image) VALUES (?, ?, ?, ?, ?)', newId(), name, description, new Date().toISOString(), coverImage);
+export async function createObject(name: string, description: string, coverImage: string | null, color: string) {
+  await (await openDatabase()).runAsync('INSERT INTO objects (id, name, description, created_at, cover_image, color) VALUES (?, ?, ?, ?, ?, ?)', newId(), name, description, new Date().toISOString(), coverImage, color);
 }
 
-export async function updateObject(id: string, name: string, description: string, coverImage: string | null) {
-  const result = await (await openDatabase()).runAsync('UPDATE objects SET name = ?, description = ?, cover_image = ? WHERE id = ? AND archived_at IS NULL', name, description, coverImage, id);
+export async function updateObject(id: string, name: string, description: string, coverImage: string | null, color: string) {
+  const result = await (await openDatabase()).runAsync('UPDATE objects SET name = ?, description = ?, cover_image = ?, color = ? WHERE id = ? AND archived_at IS NULL', name, description, coverImage, color, id);
   if (result.changes !== 1) throw new Error('Object not found or archived');
 }
 
