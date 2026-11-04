@@ -16,7 +16,7 @@ La gestión empresarial avanzada queda fuera de la primera versión. Consulta [v
 
 ## Estado actual: prototipo
 
-Existe un prototipo frontend móvil con datos en memoria y una nueva aplicación móvil inicial en `proyecto/apps/mobile`, con objetos, eventos, archivos locales y QR local. La integración NFC para Android está implementada, pero aún no se ha probado con hardware; requiere una compilación de desarrollo. La nube, sincronización y web siguen pendientes. Consulta [la guía móvil](proyecto/apps/mobile/README.md) para el estado detallado. En el prototipo se puede:
+Existe un prototipo frontend móvil con datos en memoria y una nueva aplicación móvil inicial en `proyecto/apps/mobile`, con objetos, eventos, archivos locales y QR local. QR y NFC abren el objeto mediante el enlace `memoratag://objeto/<id>`, también con la app cerrada en Android. La app incluye retroalimentación con vibración, mejoras de accesibilidad y un tutorial inicial. NFC aún no se ha probado con hardware y requiere una compilación de desarrollo. La nube, sincronización y web siguen pendientes. Consulta [la guía móvil](proyecto/apps/mobile/README.md) para el estado detallado. En el prototipo se puede:
 
 - Crear, editar y eliminar objetos.
 - Registrar acontecimientos en la historia de cada objeto.
