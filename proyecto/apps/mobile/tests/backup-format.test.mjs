@@ -72,7 +72,7 @@ test('detecta cambios de archivo, nombre y estado archivado', async () => {
 function database() {
   const db = new DatabaseSync(':memory:');
   db.exec(`PRAGMA foreign_keys = ON;
-    CREATE TABLE objects (id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT NOT NULL, created_at TEXT NOT NULL, archived_at TEXT, cover_image TEXT, color TEXT NOT NULL);
+    CREATE TABLE objects (id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT NOT NULL, created_at TEXT NOT NULL, archived_at TEXT, cover_image TEXT, color TEXT NOT NULL, nfc_written_at TEXT);
     CREATE TABLE events (id TEXT PRIMARY KEY, object_id TEXT NOT NULL REFERENCES objects(id), title TEXT NOT NULL, description TEXT NOT NULL, created_at TEXT NOT NULL, type TEXT NOT NULL, event_date TEXT, photo TEXT, document_file TEXT, document_name TEXT);
     CREATE TABLE local_profile (id INTEGER PRIMARY KEY CHECK (id = 1), name TEXT NOT NULL);`);
   return db;
@@ -109,5 +109,19 @@ test('fallo de integridad revierte objetos, eventos y perfil', async () => {
     assert.equal(db.prepare('SELECT name FROM objects').get().name, 'Bici');
     assert.equal(db.prepare('SELECT object_id FROM events').get().object_id, objectId);
     assert.equal(db.prepare('SELECT name FROM local_profile').get().name, 'Nombre original');
+  } finally { db.close(); }
+});
+
+test('el vínculo NFC es opcional, se valida y no se pierde al restaurar un respaldo anterior', async () => {
+  const linked = await sample(); linked.objects[0].nfc_written_at = '2026-02-01T10:00:00.000Z';
+  assert.deepEqual(await validateBackup(linked, digest), linked);
+  const invalid = await sample(); invalid.objects[0].nfc_written_at = 'ayer';
+  await assert.rejects(validateBackup(invalid, digest), /INVALID_BACKUP/);
+  const db = database();
+  try {
+    await transact(db, linked.objects, linked.events, null);
+    const older = await sample();
+    await transact(db, older.objects, older.events, null);
+    assert.equal(db.prepare('SELECT nfc_written_at FROM objects').get().nfc_written_at, '2026-02-01T10:00:00.000Z');
   } finally { db.close(); }
 });

@@ -1,4 +1,5 @@
 import { decodeNfcIdentifier, encodeNfcIdentifier, type NfcRecord } from './nfc-protocol.ts';
+import { objectIdFromQr } from './qr.ts';
 
 export interface NfcAdapter {
   isSupported(): Promise<boolean>;
@@ -29,6 +30,7 @@ export class NfcSession {
     return true;
   }
 
+  /** Reads or writes a tag and returns the object id it contains. */
   async run(mode: 'read' | 'write', value?: string) {
     if (this.busy) throw new Error('BUSY');
     const bytes = mode === 'write' ? encodeNfcIdentifier(value ?? '') : null;
@@ -67,7 +69,7 @@ export class NfcSession {
         await this.adapter.write(bytes);
         this.onPhase?.('verifying');
         const decoded = decodeNfcIdentifier(await this.adapter.read());
-        if (!decoded || decoded !== value?.toLowerCase()) throw new Error('VERIFY_FAILED');
+        if (!decoded || decoded !== objectIdFromQr(value ?? '')) throw new Error('VERIFY_FAILED');
         return decoded;
       } catch { throw new Error('WRITE_UNCONFIRMED'); }
       finally { this.inFlightWrite = false; }

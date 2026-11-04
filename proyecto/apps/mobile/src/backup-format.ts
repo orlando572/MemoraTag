@@ -3,7 +3,7 @@
 export const BACKUP_LIMITS = { jsonBytes: 32 * 1024 * 1024, totalBytes: 20 * 1024 * 1024, fileBytes: 5 * 1024 * 1024, objects: 5000, events: 20000, files: 10000 } as const;
 
 export type BackupFile = { key: string; size: number; sha256: string; base64: string };
-export type BackupObject = { id: string; name: string; description: string; created_at: string; archived_at: string | null; cover_image: string | null; color: string };
+export type BackupObject = { id: string; name: string; description: string; created_at: string; archived_at: string | null; cover_image: string | null; color: string; nfc_written_at?: string | null };
 export type BackupEvent = { id: string; object_id: string; title: string; description: string; created_at: string; type: 'note' | 'issue' | 'maintenance'; event_date: string; photo: string | null; document_file: string | null; document_name: string | null };
 export type Backup = { format: 'memoratag-backup'; version: 1; appVersion: string; exportedAt: string; profile: { name: string } | null; objects: BackupObject[]; events: BackupEvent[]; files: BackupFile[] };
 
@@ -32,7 +32,7 @@ export async function validateBackup(input: unknown, sha256: (base64: string) =>
   const references = new Set<string>();
 
   for (const object of input.objects) {
-    if (!isObject(object) || !text(object.id, 36) || !uuid.test(object.id) || object.id !== object.id.toLowerCase() || objectIds.has(object.id) || !text(object.name, 120) || !object.name.trim() || !text(object.description, 100000) || !timestamp(object.created_at) || (object.archived_at !== null && !timestamp(object.archived_at)) || !text(object.color, 7) || !/^#[0-9a-f]{6}$/i.test(object.color) || (object.cover_image !== null && (!text(object.cover_image, 50) || !imageName.test(object.cover_image)))) fail();
+    if (!isObject(object) || !text(object.id, 36) || !uuid.test(object.id) || object.id !== object.id.toLowerCase() || objectIds.has(object.id) || !text(object.name, 120) || !object.name.trim() || !text(object.description, 100000) || !timestamp(object.created_at) || (object.archived_at !== null && !timestamp(object.archived_at)) || !text(object.color, 7) || !/^#[0-9a-f]{6}$/i.test(object.color) || (object.cover_image !== null && (!text(object.cover_image, 50) || !imageName.test(object.cover_image))) || (object.nfc_written_at != null && !timestamp(object.nfc_written_at))) fail();
     objectIds.add(object.id.toLowerCase());
     if (object.cover_image) references.add(`photos/${object.cover_image}`);
   }
