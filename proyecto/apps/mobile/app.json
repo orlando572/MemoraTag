@@ -29,12 +29,32 @@
           "nfcPermission": "Permite leer y escribir etiquetas NFC de tus objetos."
         }
       ],
-      "./plugins/with-nfc-intent"
+      "./plugins/with-nfc-intent",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 180,
+          "resizeMode": "contain",
+          "backgroundColor": "#F7F6F2",
+          "dark": {
+            "image": "./assets/logo-dark.png",
+            "backgroundColor": "#0F1A1D"
+          }
+        }
+      ]
     ],
     "android": {
       "package": "com.memoratag.mobile",
-      "softwareKeyboardLayoutMode": "resize"
+      "softwareKeyboardLayoutMode": "resize",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "monochromeImage": "./assets/monochrome-icon.png",
+        "backgroundColor": "#0E5A6B"
+      }
     },
-    "orientation": "portrait"
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic"
   }
 }
