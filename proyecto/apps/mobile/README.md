@@ -23,6 +23,7 @@ Abre la aplicación en un dispositivo o emulador compatible con Expo. Para compr
 - Añadir, cambiar o quitar la foto de portada de un objeto desde la cámara o la galería. Se guarda una copia local de hasta 5 MB; se admiten JPEG, PNG, WebP, HEIC y HEIF cuando el dispositivo los soporta.
 - Registrar eventos de tipo nota, incidencia o mantenimiento, eligiendo su fecha; la historia se ordena por fecha del evento. Los eventos anteriores se conservan como notas con su fecha de creación.
 - Editar el título, descripción, tipo y fecha de eventos, y cambiar o quitar su foto y documento.
+- Eliminar eventos tras una confirmación. El borrado es definitivo en el dispositivo (no se archiva ni se puede deshacer) y elimina su foto y documento locales cuando ningún otro registro los utiliza. Cómo se reflejará este borrado al sincronizar con la eliminación lógica de la base central todavía está pendiente de definir.
 - Añadir una foto opcional a un evento desde la cámara o la galería. Se conserva una copia local de hasta 5 MB y se muestra en la historia. Las fotos del objeto y de los eventos pueden abrirse a pantalla completa.
 - Adjuntar un documento PDF, XLS o XLSX por evento, de hasta 5 MB. Se guarda una copia local y se puede abrir con una aplicación compatible (en iOS se utiliza el menú del sistema para abrir o compartir).
 - Mostrar un QR de prueba y leerlo con la cámara o desde una imagen de la galería para abrir un objeto activo guardado en el mismo dispositivo. El QR contiene únicamente el identificador local, no la historia.
