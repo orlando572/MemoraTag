@@ -29,7 +29,7 @@ export function Welcome({ onContinue }: { onContinue: (name: string) => void }) 
     savingRef.current = true;
     setSaving(true);
     try { await saveLocalName(cleanName); onContinue(cleanName); }
-    catch { Alert.alert('No se pudo guardar tu nombre', 'Vuelve a intentarlo.'); }
+    catch { Alert.error('No se pudo guardar tu nombre', 'Vuelve a intentarlo.'); }
     finally { savingRef.current = false; setSaving(false); }
   }
 

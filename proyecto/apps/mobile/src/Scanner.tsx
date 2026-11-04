@@ -6,6 +6,7 @@ import { Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { objectIdFromQr } from './qr';
 import { findActiveObject, objectState, type MemoryObject } from './storage';
+import { haptic } from './ui/feedback/haptics';
 
 export function Scanner({ onBack, onFound, onReadNfc, onShowArchived }: { onBack: () => void; onFound: (object: MemoryObject) => void; onReadNfc: () => void; onShowArchived: () => void }) {
   const [permission, requestPermission] = useCameraPermissions();
@@ -16,17 +17,19 @@ export function Scanner({ onBack, onFound, onReadNfc, onShowArchived }: { onBack
 
   async function resolveQr(data: string) {
     const id = objectIdFromQr(data);
-    if (!id) { setMessage('Este código no pertenece a MemoraTag.'); return; }
+    if (!id) { haptic.error(); setMessage('Este código no pertenece a MemoraTag.'); return; }
     try {
       const object = await findActiveObject(id);
       if (!object) {
+        haptic.warning();
         const state = await objectState(id).catch(() => 'missing' as const);
         setArchived(state === 'archived');
         setMessage(state === 'archived' ? 'Este objeto está archivado. Restáuralo para ver su historia.' : 'Este objeto no está guardado en este teléfono. Puede haberse creado en otro dispositivo.');
         return;
       }
+      haptic.success();
       onFound(object);
-    } catch { setMessage('No se pudo consultar el almacenamiento. Vuelve a intentarlo.'); }
+    } catch { haptic.error(); setMessage('No se pudo consultar el almacenamiento. Vuelve a intentarlo.'); }
   }
 
   async function scan(data: string) {
@@ -43,7 +46,7 @@ export function Scanner({ onBack, onFound, onReadNfc, onShowArchived }: { onBack
       const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1 });
       if (result.canceled) { locked.current = false; return; }
       const codes = await scanFromURLAsync(result.assets[0].uri, ['qr']);
-      if (codes.length === 0) { setMessage('No se encontró un código QR en esta imagen.'); return; }
+      if (codes.length === 0) { haptic.error(); setMessage('No se encontró un código QR en esta imagen.'); return; }
       // Prefer a MemoraTag QR when an image contains several codes.
       const code = codes.find((item) => objectIdFromQr(item.data)) ?? codes[0];
       await resolveQr(code.data);

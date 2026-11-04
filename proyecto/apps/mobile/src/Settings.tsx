@@ -84,7 +84,7 @@ export function Settings({ name, onNameChange, onImported, onBack }: { name: str
     nameSavingRef.current = true;
     setSaving(true);
     try { await saveLocalName(clean); onNameChange(clean); setDraft(clean); nameInput.current?.blur(); Alert.toast('Nombre actualizado'); }
-    catch { Alert.alert('No se pudo guardar el nombre', 'Vuelve a intentarlo.'); }
+    catch { Alert.error('No se pudo guardar el nombre', 'Vuelve a intentarlo.'); }
     finally { nameSavingRef.current = false; if (mounted.current) setSaving(false); }
   }
 
@@ -110,7 +110,7 @@ export function Settings({ name, onNameChange, onImported, onBack }: { name: str
         } catch (error) {
           const code = error instanceof Error ? error.message : '';
           const message = code === 'BACKUP_FILE_MISSING' ? 'Falta un archivo asociado. No se creó un respaldo incompleto.' : code === 'BACKUP_LIMIT' ? 'La información supera el límite del respaldo: 20 MiB en archivos y 32 MiB en total.' : code === 'SHARE_UNAVAILABLE' ? 'Este dispositivo no permite compartir el archivo.' : 'No se pudo crear la copia. Comprueba el almacenamiento e inténtalo de nuevo.';
-          Alert.alert('No se pudo crear el respaldo', message);
+          Alert.error('No se pudo crear el respaldo', message);
         } finally {
           if (temporary) await FileSystem.deleteAsync(temporary, { idempotent: true }).catch(() => {});
           if (mounted.current) setOperation(false); else busyRef.current = false;
@@ -132,7 +132,7 @@ export function Settings({ name, onNameChange, onImported, onBack }: { name: str
     } catch (error) {
       const code = error instanceof Error ? error.message : '';
       const message = code === 'BACKUP_SIZE' || code === 'BACKUP_LIMIT' ? 'El archivo o los datos actuales superan los límites admitidos, o no se pudo comprobar el tamaño.' : code === 'BACKUP_FILE_MISSING' ? 'Falta un archivo de tus datos actuales. No se modificó nada.' : code === 'BACKUP_SPACE' ? 'No hay espacio suficiente para preparar los archivos.' : code === 'BACKUP_SPACE_UNKNOWN' ? 'No se pudo comprobar el espacio libre. No se modificó nada.' : 'El archivo no es un respaldo válido o no se pudo leer. No se modificó nada.';
-      Alert.alert('No se pudo preparar la importación', message);
+      Alert.error('No se pudo preparar la importación', message);
     } finally { if (mounted.current) setOperation(false); else busyRef.current = false; }
   }
 
@@ -157,7 +157,7 @@ export function Settings({ name, onNameChange, onImported, onBack }: { name: str
         } catch (error) {
           const code = error instanceof Error ? error.message : '';
           const message = code === 'BACKUP_STALE' ? 'Los datos cambiaron desde la revisión. Selecciona el respaldo de nuevo.' : code === 'BACKUP_SPACE' ? 'No hay espacio suficiente para preparar los archivos.' : code === 'BACKUP_SPACE_UNKNOWN' ? 'No se pudo comprobar el espacio libre.' : 'No se pudo completar la importación. Vuelve a intentarlo.';
-          Alert.alert('No se pudo importar', message);
+          Alert.error('No se pudo importar', message);
           setPrepared(null);
         } finally { if (mounted.current) setOperation(false); else busyRef.current = false; }
       })(); } },
@@ -171,7 +171,7 @@ export function Settings({ name, onNameChange, onImported, onBack }: { name: str
         if (await manager.goToNfcSetting()) return;
       }
       await Linking.openSettings();
-    } catch { Alert.alert('No se pudieron abrir los ajustes', 'Abre los ajustes de NFC desde la configuración del teléfono.'); }
+    } catch { Alert.error('No se pudieron abrir los ajustes', 'Abre los ajustes de NFC desde la configuración del teléfono.'); }
   }
 
   return <SafeAreaView style={styles.page} edges={['top']}><KeyboardAvoidingView style={styles.fill} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>

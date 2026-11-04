@@ -2,10 +2,19 @@ import { Ionicons } from '@expo/vector-icons';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { AccessibilityInfo, Animated, BackHandler, findNodeHandle, Keyboard, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { haptic } from './haptics';
 
 type Action = { text?: string; style?: 'default' | 'cancel' | 'destructive'; onPress?: () => void };
 type Request = { kind: 'dialog' | 'sheet'; title: string; message?: string; actions: Action[] };
-type Feedback = { alert: (title: string, message?: string, actions?: Action[]) => void; sheet: (title: string, message?: string, actions?: Action[]) => void; toast: (message: string) => void };
+type Feedback = {
+  /** Neutral dialog; vibrates as a warning when it confirms a destructive action. */
+  alert: (title: string, message?: string, actions?: Action[]) => void;
+  /** Dialog for a failed operation; adds an error vibration. */
+  error: (title: string, message?: string, actions?: Action[]) => void;
+  sheet: (title: string, message?: string, actions?: Action[]) => void;
+  /** Brief confirmation of a completed operation; adds a success vibration. */
+  toast: (message: string) => void;
+};
 const Context = createContext<Feedback | null>(null);
 
 export function useFeedback() {
@@ -100,7 +109,12 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
     return () => { cancelled = true; if (toastTimer.current) clearTimeout(toastTimer.current); toastProgress.stopAnimation(); };
   }, [toast, current, keyboardVisible, reduceMotion, toastProgress]);
 
-  const feedback: Feedback = { alert: (title, message, actions) => enqueue('dialog', title, message, actions), sheet: (title, message, actions) => enqueue('sheet', title, message, actions), toast: showToast };
+  const feedback: Feedback = {
+    alert: (title, message, actions) => { if (actions?.some((action) => action.style === 'destructive')) haptic.warning(); enqueue('dialog', title, message, actions); },
+    error: (title, message, actions) => { haptic.error(); enqueue('dialog', title, message, actions); },
+    sheet: (title, message, actions) => enqueue('sheet', title, message, actions),
+    toast: (message) => { haptic.success(); showToast(message); },
+  };
   return <Context.Provider value={feedback}>
     <View style={styles.fill} accessibilityElementsHidden={!!current} importantForAccessibility={current ? 'no-hide-descendants' : 'auto'}>{children}</View>
     <Modal visible={!!current} transparent animationType="none" onRequestClose={cancel} statusBarTranslucent>

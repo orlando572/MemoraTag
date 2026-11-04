@@ -5,7 +5,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, BackHandler, Image, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { AccessibilityInfo, ActivityIndicator, BackHandler, Image, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
 import { Scanner } from '../src/Scanner';
@@ -14,6 +14,7 @@ import { Settings } from '../src/Settings';
 import { Welcome } from '../src/Welcome';
 import { useKeyboardScroll } from '../src/useKeyboardScroll';
 import { useFeedback } from '../src/ui/feedback/FeedbackProvider';
+import { haptic } from '../src/ui/feedback/haptics';
 import { objectLink } from '../src/qr';
 import { shareQrImage } from '../src/qr-share';
 import { documentFormat, openDocument, removeDocument, saveDocument } from '../src/event-document';
@@ -147,14 +148,15 @@ export default function Home() {
         setScanning(false); setReadingNfc(false); setShowQr(false); setShowNfc(false); setShowSettings(false); setShowArchived(false);
         if (!savingRef.current) setForm(null);
         setError('');
+        haptic.success();
         setSelected(found);
       } else {
         const state = await objectState(openParam).catch(() => 'missing' as const);
         if (!active) return;
         if (state === 'archived') Alert.alert('Objeto archivado', 'Restáuralo para ver su historia.', [{ text: 'Cancelar', style: 'cancel' }, { text: 'Ver archivados', onPress: () => { setSelected(null); setShowArchived(true); void loadArchived(); } }]);
-        else Alert.alert('Objeto no disponible', 'Este objeto no está guardado en este teléfono. Puede haberse creado en otro dispositivo.');
+        else Alert.error('Objeto no disponible', 'Este objeto no está guardado en este teléfono. Puede haberse creado en otro dispositivo.');
       }
-    }).catch(() => { if (active) Alert.alert('No se pudo abrir el objeto', 'Vuelve a intentarlo.'); })
+    }).catch(() => { if (active) Alert.error('No se pudo abrir el objeto', 'Vuelve a intentarlo.'); })
       .finally(() => { if (active) router.setParams({ open: undefined, at: undefined }); });
     return () => { active = false; };
   }, [openParam, openAt, profileLoading, localName]);
@@ -208,7 +210,7 @@ export default function Home() {
             setError('El evento se eliminó, pero no se pudo actualizar la historia.');
           }
         } catch {
-          Alert.alert('No se pudo eliminar el evento', 'Vuelve a intentarlo.');
+          Alert.error('No se pudo eliminar el evento', 'Vuelve a intentarlo.');
         } finally {
           deletingRef.current = false;
           setDeletingEvent(null);
@@ -233,7 +235,7 @@ export default function Home() {
       setArchivedObjects((items) => items.filter((object) => object.id !== item.id));
       setObjects((items) => [item, ...items].sort((a, b) => b.created_at.localeCompare(a.created_at)));
       Alert.toast('Objeto restaurado');
-    } catch { Alert.alert('No se pudo restaurar', 'Vuelve a intentarlo.'); }
+    } catch { Alert.error('No se pudo restaurar', 'Vuelve a intentarlo.'); }
     finally { restoringRef.current = false; setRestoring(null); }
   }
 
@@ -243,7 +245,7 @@ export default function Home() {
     try { await shareQrImage(qrRef.current, selected.name); }
     catch (error) {
       const code = error instanceof Error ? error.message : '';
-      Alert.alert('No se pudo compartir el QR', code === 'SHARE_UNAVAILABLE' ? 'Este dispositivo no permite compartir archivos.' : 'Vuelve a intentarlo.');
+      Alert.error('No se pudo compartir el QR', code === 'SHARE_UNAVAILABLE' ? 'Este dispositivo no permite compartir archivos.' : 'Vuelve a intentarlo.');
     } finally { setSharingQr(false); }
   }
   function openForm(kind: 'object' | 'edit' | 'event') {
@@ -283,15 +285,15 @@ export default function Home() {
       const result = await DocumentPicker.getDocumentAsync({ type: ['application/pdf', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'], copyToCacheDirectory: Platform.OS !== 'android', multiple: false });
       if (result.canceled) return;
       const asset = result.assets[0];
-      if (!documentFormat(asset.name)) { Alert.alert('Formato no admitido', 'Elige un archivo PDF, XLS o XLSX.', [{ text: 'Cancelar', style: 'cancel' }, { text: 'Elegir otro archivo', onPress: () => void chooseDocument() }]); return; }
-      if (asset.size != null && asset.size > 5 * 1024 * 1024) { Alert.alert('Archivo demasiado grande', 'Elige un documento de hasta 5 MB.', [{ text: 'Cancelar', style: 'cancel' }, { text: 'Elegir otro archivo', onPress: () => void chooseDocument() }]); return; }
+      if (!documentFormat(asset.name)) { Alert.error('Formato no admitido', 'Elige un archivo PDF, XLS o XLSX.', [{ text: 'Cancelar', style: 'cancel' }, { text: 'Elegir otro archivo', onPress: () => void chooseDocument() }]); return; }
+      if (asset.size != null && asset.size > 5 * 1024 * 1024) { Alert.error('Archivo demasiado grande', 'Elige un documento de hasta 5 MB.', [{ text: 'Cancelar', style: 'cancel' }, { text: 'Elegir otro archivo', onPress: () => void chooseDocument() }]); return; }
       setDocument(asset);
       setDocumentRemoved(false);
-    } catch { Alert.alert('No se pudo seleccionar el archivo', 'Vuelve a intentarlo.'); }
+    } catch { Alert.error('No se pudo seleccionar el archivo', 'Vuelve a intentarlo.'); }
   }
   async function showDocument(file: string) {
     try { await openDocument(file); }
-    catch { Alert.alert('No se pudo abrir el documento', 'Comprueba que el archivo siga disponible y tengas una aplicación compatible instalada.'); }
+    catch { Alert.error('No se pudo abrir el documento', 'Comprueba que el archivo siga disponible y tengas una aplicación compatible instalada.'); }
   }
   async function choosePhoto(source: 'camera' | 'gallery') {
     try {
@@ -306,11 +308,11 @@ export default function Home() {
       const result = source === 'camera' ? await ImagePicker.launchCameraAsync(options) : await ImagePicker.launchImageLibraryAsync(options);
       if (!result.canceled) {
         const asset = result.assets[0];
-        if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) { Alert.alert('Imagen demasiado grande', 'Elige una imagen de hasta 5 MB.', [{ text: 'Cancelar', style: 'cancel' }, { text: 'Elegir otra imagen', onPress: () => void choosePhoto(source) }]); return; }
+        if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) { Alert.error('Imagen demasiado grande', 'Elige una imagen de hasta 5 MB.', [{ text: 'Cancelar', style: 'cancel' }, { text: 'Elegir otra imagen', onPress: () => void choosePhoto(source) }]); return; }
         setPhoto(asset);
         setPhotoRemoved(false);
       }
-    } catch { Alert.alert('No se pudo abrir la imagen', 'Vuelve a intentarlo.'); }
+    } catch { Alert.error('No se pudo abrir la imagen', 'Vuelve a intentarlo.'); }
   }
   function showPhotoOptions() {
     Alert.sheet(isEventForm ? 'Foto del evento' : 'Foto del objeto', 'Elige una opción.', [
@@ -328,13 +330,13 @@ export default function Home() {
         savingRef.current = true;
         setSaving(true);
         try { await archiveObject(selected.id); setSelected(null); if (await loadObjects()) Alert.toast('Objeto archivado'); else setError('El objeto se archivó, pero no se pudo actualizar la lista.'); }
-        catch { Alert.alert('No se pudo archivar', 'Vuelve a intentarlo.'); }
+        catch { Alert.error('No se pudo archivar', 'Vuelve a intentarlo.'); }
         finally { savingRef.current = false; setSaving(false); }
       })(); } },
     ]);
   }
   async function save() {
-    if (!title.trim()) { setTitleError(true); titleInput.current?.focus(); return; }
+    if (!title.trim()) { haptic.error(); setTitleError(true); titleInput.current?.focus(); AccessibilityInfo.announceForAccessibility(!isEventForm ? 'Falta el nombre del objeto.' : 'Falta el título del evento.'); return; }
     if (savingRef.current) return;
     savingRef.current = true;
     setSaving(true);
@@ -394,7 +396,7 @@ export default function Home() {
       const fallback = stage === 'DATABASE' ? 'No se pudo registrar el evento en la base de datos local.' : stage === 'DOCUMENT' ? 'No se pudo preparar el documento seleccionado.' : 'No se pudo guardar la imagen seleccionada.';
       const canChooseDocument = stage === 'DOCUMENT' && !!document;
       const canChoosePhoto = stage === 'PHOTO' && !!photo;
-      Alert.alert('No se pudo guardar', messages[reason] ?? fallback, canChooseDocument ? [{ text: 'Cancelar', style: 'cancel' }, { text: 'Elegir otro archivo', onPress: () => void chooseDocument() }] : canChoosePhoto ? [{ text: 'Cancelar', style: 'cancel' }, { text: 'Elegir otra imagen', onPress: showPhotoOptions }] : undefined);
+      Alert.error('No se pudo guardar', messages[reason] ?? fallback, canChooseDocument ? [{ text: 'Cancelar', style: 'cancel' }, { text: 'Elegir otro archivo', onPress: () => void chooseDocument() }] : canChoosePhoto ? [{ text: 'Cancelar', style: 'cancel' }, { text: 'Elegir otra imagen', onPress: showPhotoOptions }] : undefined);
     }
     finally { savingRef.current = false; setSaving(false); }
   }
