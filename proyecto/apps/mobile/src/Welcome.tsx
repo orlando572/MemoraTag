@@ -1,11 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, BackHandler, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, BackHandler, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { saveLocalName } from './storage';
 import { useKeyboardScroll } from './useKeyboardScroll';
+import { useFeedback } from './ui/feedback/FeedbackProvider';
 
 export function Welcome({ onContinue }: { onContinue: (name: string) => void }) {
+  const Alert = useFeedback();
   const insets = useSafeAreaInsets();
   const keyboardScroll = useKeyboardScroll();
   const nameInput = useRef<TextInput>(null);

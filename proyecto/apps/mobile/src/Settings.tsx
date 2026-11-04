@@ -5,13 +5,14 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, AppState, BackHandler, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, AppState, BackHandler, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { saveLocalName } from './storage';
 import { createBackupDocument } from './backup-export';
 import { applyBackupImport, prepareBackupImport, type PreparedImport } from './backup-import';
 import { getStorageUsage } from './storage-usage';
 import { useKeyboardScroll } from './useKeyboardScroll';
+import { useFeedback } from './ui/feedback/FeedbackProvider';
 
 type Usage = Awaited<ReturnType<typeof getStorageUsage>>;
 type NfcState = 'checking' | 'enabled' | 'disabled' | 'unsupported' | 'expo' | 'platform' | 'error';
@@ -28,6 +29,7 @@ const nfcMessages: Record<NfcState, string> = {
 };
 
 export function Settings({ name, onNameChange, onImported, onBack }: { name: string; onNameChange: (name: string) => void; onImported: (name: string | null) => void; onBack: () => void }) {
+  const Alert = useFeedback();
   const insets = useSafeAreaInsets();
   const scroll = useKeyboardScroll();
   const nameInput = useRef<TextInput>(null);
@@ -77,7 +79,7 @@ export function Settings({ name, onNameChange, onImported, onBack }: { name: str
     if (!clean) { Alert.alert('Escribe tu nombre', 'Añade tu nombre para continuar.'); return; }
     if (saving) return;
     setSaving(true);
-    try { await saveLocalName(clean); onNameChange(clean); setDraft(clean); nameInput.current?.blur(); Alert.alert('Nombre actualizado'); }
+    try { await saveLocalName(clean); onNameChange(clean); setDraft(clean); nameInput.current?.blur(); Alert.toast('Nombre actualizado'); }
     catch { Alert.alert('No se pudo guardar el nombre', 'Vuelve a intentarlo.'); }
     finally { if (mounted.current) setSaving(false); }
   }
@@ -134,7 +136,7 @@ export function Settings({ name, onNameChange, onImported, onBack }: { name: str
     const warning = conflictChoice === 'incoming' && conflicts ? `Se reemplazarán ${conflicts} registros existentes; ${prepared.plan.archiveChanges} objetos cambiarán su estado de archivo. ` : 'Los registros existentes se conservarán. ';
     Alert.alert('¿Importar respaldo?', `${warning}Se añadirán ${prepared.plan.newObjects.length} objetos y ${prepared.plan.newEvents.length} eventos nuevos.`, [
       { text: 'Cancelar', style: 'cancel' },
-      { text: 'Importar', onPress: () => { void (async () => {
+      { text: 'Importar', style: conflictChoice === 'incoming' && conflicts ? 'destructive' : 'default', onPress: () => { void (async () => {
         if (busyRef.current) return;
         setOperation(true);
         try {
@@ -142,7 +144,7 @@ export function Settings({ name, onNameChange, onImported, onBack }: { name: str
           onImported(result.name);
           setPrepared(null);
           void refreshUsage();
-          Alert.alert('Importación completada', `Se guardaron ${result.objects} objetos y ${result.events} eventos.`);
+          Alert.toast(`Importación completada: ${result.objects} objetos y ${result.events} eventos.`);
         } catch (error) {
           const code = error instanceof Error ? error.message : '';
           const message = code === 'BACKUP_STALE' ? 'Los datos cambiaron desde la revisión. Selecciona el respaldo de nuevo.' : code === 'BACKUP_SPACE' ? 'No hay espacio suficiente para preparar los archivos.' : code === 'BACKUP_SPACE_UNKNOWN' ? 'No se pudo comprobar el espacio libre.' : 'No se pudo completar la importación. Vuelve a intentarlo.';
