@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
+import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, BackHandler, Image, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -13,10 +14,11 @@ import { Settings } from '../src/Settings';
 import { Welcome } from '../src/Welcome';
 import { useKeyboardScroll } from '../src/useKeyboardScroll';
 import { useFeedback } from '../src/ui/feedback/FeedbackProvider';
-import { objectQrValue } from '../src/qr';
+import { objectLink } from '../src/qr';
+import { shareQrImage } from '../src/qr-share';
 import { documentFormat, openDocument, removeDocument, saveDocument } from '../src/event-document';
 import { photoUri, removePhoto, savePhoto } from '../src/object-photos';
-import { archiveObject, createEvent, createObject, deleteEvent, getLocalName, listArchivedObjects, listEvents, listObjects, restoreObject, updateEvent, updateObject, type EventType, type MemoryEvent, type MemoryObject } from '../src/storage';
+import { archiveObject, createEvent, createObject, deleteEvent, findActiveObject, getLocalName, objectState, listArchivedObjects, listEvents, listObjects, restoreObject, updateEvent, updateObject, type EventType, type MemoryEvent, type MemoryObject } from '../src/storage';
 
 const colors = { ink: '#203934', muted: '#526C65', soft: '#647B74', canvas: '#F5F8F6', line: '#DBE7E1', green: '#176B57', darkGreen: '#124A3C', pale: '#E1EEE7' };
 const objectColors = [
@@ -60,7 +62,7 @@ function BackButton({ onPress, disabled }: { onPress: () => void; disabled?: boo
   return <Pressable accessibilityRole="button" accessibilityLabel="Volver" disabled={disabled} onPress={onPress} style={[styles.back, disabled && styles.pressed]}><Ionicons name="arrow-back" size={22} color={colors.ink} /></Pressable>;
 }
 
-function PrimaryButton({ label, icon, onPress, disabled, loading }: { label: string; icon: 'add' | 'checkmark' | 'arrow-forward'; onPress: () => void; disabled?: boolean; loading?: boolean }) {
+function PrimaryButton({ label, icon, onPress, disabled, loading }: { label: string; icon: 'add' | 'checkmark' | 'arrow-forward' | 'share-outline'; onPress: () => void; disabled?: boolean; loading?: boolean }) {
   return <Pressable accessibilityRole="button" disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.button, (pressed || disabled) && styles.pressed]}>{loading ? <ActivityIndicator color="#fff" /> : <Ionicons name={icon} size={21} color="#fff" />}<Text accessibilityLiveRegion="polite" style={styles.buttonText}>{label}</Text></Pressable>;
 }
 
@@ -84,6 +86,8 @@ export default function Home() {
   const [selected, setSelected] = useState<MemoryObject | null>(null);
   const [scanning, setScanning] = useState(false);
   const [showQr, setShowQr] = useState(false);
+  const qrRef = useRef<any>(null);
+  const [sharingQr, setSharingQr] = useState(false);
   const [showNfc, setShowNfc] = useState(false);
   const [readingNfc, setReadingNfc] = useState(false);
   const [fullPhoto, setFullPhoto] = useState<string | null>(null);
@@ -132,6 +136,28 @@ export default function Home() {
     catch { setError('No se pudo cargar la historia. Vuelve a intentarlo.'); }
     finally { setEventsLoading(false); }
   }
+  // Objects opened from outside the app: QR read by the system camera or an NFC tag tap.
+  const { open: openParam, at: openAt } = useLocalSearchParams<{ open?: string; at?: string }>();
+  useEffect(() => {
+    if (!openParam || profileLoading || !localName) return;
+    let active = true;
+    findActiveObject(openParam).then(async (found) => {
+      if (!active) return;
+      if (found) {
+        setScanning(false); setReadingNfc(false); setShowQr(false); setShowNfc(false); setShowSettings(false); setShowArchived(false);
+        if (!savingRef.current) setForm(null);
+        setError('');
+        setSelected(found);
+      } else {
+        const state = await objectState(openParam).catch(() => 'missing' as const);
+        if (!active) return;
+        if (state === 'archived') Alert.alert('Objeto archivado', 'Restáuralo para ver su historia.', [{ text: 'Cancelar', style: 'cancel' }, { text: 'Ver archivados', onPress: () => { setSelected(null); setShowArchived(true); void loadArchived(); } }]);
+        else Alert.alert('Objeto no disponible', 'Este objeto no está guardado en este teléfono. Puede haberse creado en otro dispositivo.');
+      }
+    }).catch(() => { if (active) Alert.alert('No se pudo abrir el objeto', 'Vuelve a intentarlo.'); })
+      .finally(() => { if (active) router.setParams({ open: undefined, at: undefined }); });
+    return () => { active = false; };
+  }, [openParam, openAt, profileLoading, localName]);
   useEffect(() => { void loadObjects(); }, []);
   useEffect(() => { void loadProfile(); }, []);
   useEffect(() => {
@@ -211,6 +237,15 @@ export default function Home() {
     finally { restoringRef.current = false; setRestoring(null); }
   }
 
+  async function shareQr() {
+    if (!selected || sharingQr) return;
+    setSharingQr(true);
+    try { await shareQrImage(qrRef.current, selected.name); }
+    catch (error) {
+      const code = error instanceof Error ? error.message : '';
+      Alert.alert('No se pudo compartir el QR', code === 'SHARE_UNAVAILABLE' ? 'Este dispositivo no permite compartir archivos.' : 'Vuelve a intentarlo.');
+    } finally { setSharingQr(false); }
+  }
   function openForm(kind: 'object' | 'edit' | 'event') {
     keyboardScroll.reset();
     setTitleError(false);
@@ -369,8 +404,8 @@ export default function Home() {
   if (!localName) return <Welcome onContinue={setLocalName} />;
   if (showSettings) return <Settings name={localName} onNameChange={setLocalName} onImported={async (name) => { if (name) setLocalName(name); return loadObjects(); }} onBack={() => setShowSettings(false)} />;
   if (readingNfc) return <NfcScreen onBack={() => setReadingNfc(false)} onFound={(object) => { setError(''); setSelected(object); setReadingNfc(false); }} />;
-  if (showNfc && selected) return <NfcScreen object={selected} onBack={() => setShowNfc(false)} onFound={() => {}} />;
-  if (scanning) return <Scanner onBack={() => setScanning(false)} onFound={(object) => { setError(''); setSelected(object); setScanning(false); }} onReadNfc={() => { setScanning(false); setReadingNfc(true); }} />;
+  if (showNfc && selected) return <NfcScreen object={selected} onBack={() => setShowNfc(false)} onFound={() => {}} onWritten={(at) => { setSelected((item) => item && { ...item, nfc_written_at: at }); setObjects((items) => items.map((item) => item.id === selected.id ? { ...item, nfc_written_at: at } : item)); }} />;
+  if (scanning) return <Scanner onBack={() => setScanning(false)} onFound={(object) => { setError(''); setSelected(object); setScanning(false); }} onReadNfc={() => { setScanning(false); setReadingNfc(true); }} onShowArchived={() => { setScanning(false); setShowArchived(true); void loadArchived(); }} />;
 
   const eventAccent = objectColors.find((option) => option.hex === selected?.color)?.accent ?? colors.green;
 
@@ -391,7 +426,9 @@ export default function Home() {
         </ScrollView>
       </> : showQr && selected ? <>
         <View style={styles.nav}><BackButton onPress={() => setShowQr(false)} /><Text style={styles.navTitle}>Código QR</Text><View style={styles.navSpacer} /></View>
-        <ScrollView contentContainerStyle={styles.qrContent}><View style={styles.qrIcon}><Ionicons name="qr-code-outline" size={25} color={colors.green} /></View><Text style={styles.qrTitle}>El código de {selected.name}</Text><Text style={styles.qrDescription}>Escanea este código con MemoraTag para abrir su historia en este dispositivo.</Text><View style={styles.qrBox}><QRCode value={objectQrValue(selected.id)} size={220} /></View><Text style={styles.qrNotice}>No permite compartir el objeto con otros dispositivos.</Text></ScrollView>
+        <ScrollView contentContainerStyle={styles.qrContent}><View style={styles.qrIcon}><Ionicons name="qr-code-outline" size={25} color={colors.green} /></View><Text style={styles.qrTitle}>El código de {selected.name}</Text><Text style={styles.qrDescription}>Escanéalo con la cámara del teléfono o desde MemoraTag para abrir su historia. Imprímelo y pégalo en el objeto.</Text><View accessible accessibilityRole="image" accessibilityLabel={`Código QR de ${selected.name}`} style={styles.qrBox}><QRCode value={objectLink(selected.id)} size={220} quietZone={16} backgroundColor="#FFFFFF" getRef={(ref) => { qrRef.current = ref; }} /></View>
+          <View style={styles.qrShare}><PrimaryButton label={sharingQr ? 'Preparando imagen…' : 'Compartir o imprimir QR'} icon="share-outline" disabled={sharingQr} loading={sharingQr} onPress={() => void shareQr()} /></View>
+          <Text style={styles.qrNotice}>El código solo contiene un identificador. La historia sigue guardada en este teléfono: en otro dispositivo no se podrá abrir.</Text></ScrollView>
       </> : form ? <>
         <View style={styles.nav}><BackButton disabled={saving || !!deletingEvent} onPress={() => setForm(null)} /><Text style={styles.navTitle}>{form === 'object' ? 'Nuevo objeto' : form === 'edit' ? 'Editar objeto' : form === 'editEvent' ? 'Editar evento' : 'Registrar evento'}</Text>{form === 'editEvent' && editingEvent ? <Pressable accessibilityRole="button" accessibilityLabel="Eliminar evento" disabled={saving || !!deletingEvent} onPress={() => confirmDeleteEvent(editingEvent)} style={styles.back}><Ionicons name="trash-outline" size={20} color="#A33F43" /></Pressable> : <View style={styles.navSpacer} />}</View>
         <ScrollView pointerEvents={saving || deletingEvent ? 'none' : 'auto'} accessibilityElementsHidden={saving || !!deletingEvent} importantForAccessibility={saving || deletingEvent ? 'no-hide-descendants' : 'auto'} ref={keyboardScroll.scrollRef} onLayout={keyboardScroll.onLayout} onScroll={keyboardScroll.onScroll} onContentSizeChange={keyboardScroll.onContentSizeChange} scrollEventThrottle={16} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.formContent, { paddingBottom: 30 + keyboardScroll.extraSpace }]}>
@@ -424,14 +461,16 @@ export default function Home() {
             <View style={styles.heroTop}><BackButton onPress={() => { setSelected(null); setError(''); }} /><View style={styles.heroActions}>
               <Pressable accessibilityRole="button" accessibilityLabel="Editar objeto" style={styles.back} onPress={() => openForm('edit')}><Ionicons name="pencil-outline" size={20} color={colors.ink} /></Pressable>
               <Pressable accessibilityRole="button" accessibilityLabel="Archivar objeto" disabled={saving} style={styles.back} onPress={confirmArchive}><Ionicons name="archive-outline" size={20} color={colors.ink} /></Pressable>
-              <Pressable accessibilityRole="button" accessibilityLabel="Ver código QR" style={styles.back} onPress={() => setShowQr(true)}><Ionicons name="qr-code-outline" size={20} color={colors.ink} /></Pressable>
-              <Pressable accessibilityRole="button" accessibilityLabel="Etiqueta NFC" style={styles.back} onPress={() => setShowNfc(true)}><Ionicons name="radio-outline" size={20} color={colors.ink} /></Pressable>
             </View></View>
             {!photoUri(selected.cover_image) && <View style={styles.heroCover}><Artwork name={selected.name} /></View>}
             <View pointerEvents="none" style={photoUri(selected.cover_image) ? styles.heroTextOnPhoto : undefined}><Text style={[styles.objectHeading, !!photoUri(selected.cover_image) && styles.heroTextLight]}>{selected.name}</Text>
             {selected.description ? <Text style={[styles.heroDescription, !!photoUri(selected.cover_image) && styles.heroTextLight]}>{selected.description}</Text> : null}</View>
           </View>
           <View style={styles.history}>
+            <View style={styles.links}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Ver, compartir o imprimir su código QR" onPress={() => setShowQr(true)} style={({ pressed }) => [styles.linkChip, pressed && styles.pressed]}><Ionicons name="qr-code-outline" size={18} color={colors.green} /><Text style={styles.linkText}>Código QR</Text></Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel={selected.nfc_written_at ? `Etiqueta NFC vinculada el ${formatDate(localDate(new Date(selected.nfc_written_at)))}. Toca para volver a escribirla` : 'Sin etiqueta NFC. Toca para vincular una'} onPress={() => setShowNfc(true)} style={({ pressed }) => [styles.linkChip, selected.nfc_written_at ? styles.linkChipDone : styles.linkChipPending, pressed && styles.pressed]}><Ionicons name={selected.nfc_written_at ? 'checkmark-circle' : 'radio-outline'} size={18} color={colors.green} /><Text style={styles.linkText} numberOfLines={2}>{selected.nfc_written_at ? `NFC vinculada · ${formatDate(localDate(new Date(selected.nfc_written_at)))}` : 'Vincular NFC'}</Text></Pressable>
+            </View>
             <View style={styles.sectionHead}><Text style={styles.sectionTitle}>Su historia</Text><Text style={styles.count}>{events.length} {events.length === 1 ? 'evento' : 'eventos'}</Text></View>
             {eventsLoading ? <ActivityIndicator color={colors.green} /> : error ? <><Text style={styles.error}>{error}</Text><Pressable accessibilityRole="button" onPress={() => void reloadSelectedEvents()}><Text style={styles.retry}>Actualizar</Text></Pressable></> : events.length === 0 ? <View style={styles.emptyHistory}><Ionicons name="time-outline" size={25} color={colors.green} /><Text style={styles.emptyTitle}>Aquí empieza su historia</Text><Text style={styles.emptyText}>Registra un primer evento para guardar un recuerdo o detalle importante.</Text></View> : events.map((event, index) => <View key={event.id} style={styles.event}>
               <View style={styles.timeline}><View style={[styles.eventIcon, { backgroundColor: selected.color }]}><Ionicons name={(eventTypes[event.type] ?? eventTypes.note).icon} size={19} color={eventAccent} /></View>{index < events.length - 1 && <View style={[styles.timelineLine, { backgroundColor: selected.color }]} />}</View>
@@ -446,7 +485,7 @@ export default function Home() {
           <View style={styles.sectionHead}><Text style={styles.listLabel}>Objetos que cuidas</Text><Text style={styles.count}>{objects.length} {objects.length === 1 ? 'objeto' : 'objetos'}</Text></View>
           {loading ? <ActivityIndicator color={colors.green} /> : error ? <><Text style={styles.error}>{error}</Text><Pressable accessibilityRole="button" onPress={() => void loadObjects()}><Text style={styles.retry}>Reintentar</Text></Pressable></> : objects.length === 0 ? <View style={styles.emptyHome}><View style={styles.emptyIcon}><Ionicons name="cube-outline" size={30} color={colors.green} /></View><Text style={styles.emptyTitle}>Cada objeto tiene una historia</Text><Text style={styles.emptyText}>Crea tu primer objeto y guarda aquí todo lo que quieras recordar.</Text></View> : objects.map((item) => <Pressable accessibilityRole="button" key={item.id} style={({ pressed }) => [styles.card, { backgroundColor: paleColor(item.color) }, pressed && styles.pressed]} onPress={() => setSelected(item)}><View style={[styles.cover, { backgroundColor: item.color }]}>{photoUri(item.cover_image) ? <Image source={{ uri: photoUri(item.cover_image)! }} style={styles.coverImage} /> : <Artwork name={item.name} />}</View><View style={styles.cardCopy}><Text style={styles.cardTitle}>{item.name}</Text><View style={styles.cardEvent}>{item.latest_event_title && <Ionicons name={(item.latest_event_type && eventTypes[item.latest_event_type] || eventTypes.note).icon} size={15} color={(item.latest_event_type && eventTypes[item.latest_event_type] || eventTypes.note).color} />}<Text numberOfLines={1} style={[styles.cardDescription, styles.cardEventText]}>{item.latest_event_title || 'Aún no tiene eventos'}</Text></View>{item.latest_event_date && <Text style={styles.cardDate}>{formatDate(item.latest_event_date)}</Text>}</View><Ionicons name="chevron-forward" size={18} color="#60786D" /></Pressable>)}
         </ScrollView>
-        <View style={[styles.footer, styles.homeFooter, { paddingBottom: Math.max(insets.bottom, 16) }]}><Pressable accessibilityRole="button" onPress={() => setScanning(true)} style={styles.scanButton}><Ionicons name="scan-outline" size={20} color={colors.green} /><Text style={styles.scanText}>Escanear QR</Text></Pressable><View style={styles.createButton}><PrimaryButton label="Nuevo objeto" icon="add" onPress={() => openForm('object')} /></View></View>
+        <View style={[styles.footer, styles.homeFooter, { paddingBottom: Math.max(insets.bottom, 16) }]}><Pressable accessibilityRole="button" accessibilityLabel="Escanear código QR o etiqueta NFC" onPress={() => setScanning(true)} style={styles.scanButton}><Ionicons name="scan-outline" size={20} color={colors.green} /><Text style={styles.scanText}>Escanear</Text></Pressable><View style={styles.createButton}><PrimaryButton label="Nuevo objeto" icon="add" onPress={() => openForm('object')} /></View></View>
       </>}
     </KeyboardAvoidingView>
   </SafeAreaView>;
@@ -465,7 +504,7 @@ const styles = StyleSheet.create({
   footer: { paddingHorizontal: 20, paddingTop: 14, borderTopWidth: 1, borderTopColor: colors.line, backgroundColor: colors.canvas }, button: { minHeight: 56, borderRadius: 16, backgroundColor: colors.green, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 }, buttonText: { color: '#fff', fontSize: 16, fontWeight: '700' }, pressed: { opacity: 0.7 },
   homeFooter: { flexDirection: 'row', gap: 10 }, createButton: { flex: 1 }, scanButton: { flex: 1, minHeight: 56, borderRadius: 16, borderWidth: 1, borderColor: '#C6DCD0', backgroundColor: '#FFFFFF', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 }, scanText: { color: colors.green, fontWeight: '700', fontSize: 14 },
   archivedList: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 32 }, archivedIntro: { color: colors.muted, fontSize: 15, lineHeight: 22, marginBottom: 20 }, archivedCard: { padding: 12, backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: '#E4EAE7', marginBottom: 12 }, archivedRow: { flexDirection: 'row', alignItems: 'center', gap: 13 }, restoreButton: { minHeight: 44, marginTop: 12, borderWidth: 1, borderColor: '#BBDCCD', borderRadius: 12, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 }, restoreText: { color: colors.green, fontWeight: '700', fontSize: 14 },
-  qrContent: { alignItems: 'center', paddingHorizontal: 24, paddingTop: 24, paddingBottom: 40 }, qrIcon: { width: 56, height: 56, borderRadius: 18, backgroundColor: colors.pale, justifyContent: 'center', alignItems: 'center' }, qrTitle: { color: colors.ink, fontSize: 27, fontWeight: '800', textAlign: 'center', marginTop: 20 }, qrDescription: { color: colors.muted, fontSize: 15, lineHeight: 22, textAlign: 'center', marginTop: 12, maxWidth: 320 }, qrBox: { backgroundColor: '#fff', padding: 24, borderRadius: 24, marginTop: 30 }, qrNotice: { color: colors.soft, fontSize: 13, lineHeight: 20, textAlign: 'center', marginTop: 24, maxWidth: 320 },
+  qrContent: { alignItems: 'center', paddingHorizontal: 24, paddingTop: 24, paddingBottom: 40 }, qrIcon: { width: 56, height: 56, borderRadius: 18, backgroundColor: colors.pale, justifyContent: 'center', alignItems: 'center' }, qrTitle: { color: colors.ink, fontSize: 27, fontWeight: '800', textAlign: 'center', marginTop: 20 }, qrDescription: { color: colors.muted, fontSize: 15, lineHeight: 22, textAlign: 'center', marginTop: 12, maxWidth: 320 }, qrBox: { backgroundColor: '#fff', padding: 24, borderRadius: 24, marginTop: 30 }, qrShare: { width: '100%', marginTop: 28 }, links: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 22 }, linkChip: { minHeight: 48, flexGrow: 1, flexBasis: 140, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 14, borderWidth: 1, borderColor: colors.line, backgroundColor: '#fff' }, linkChipDone: { backgroundColor: colors.pale, borderColor: colors.pale }, linkChipPending: { borderStyle: 'dashed', borderColor: '#9DB8AC' }, linkText: { flex: 1, color: colors.ink, fontSize: 14, fontWeight: '700' }, qrNotice: { color: colors.soft, fontSize: 13, lineHeight: 20, textAlign: 'center', marginTop: 24, maxWidth: 320 },
   nfcContent: { alignItems: 'center', paddingHorizontal: 24, paddingTop: 44, paddingBottom: 40 }, nfcIllustration: { width: 150, height: 150, borderRadius: 48, backgroundColor: colors.pale, alignItems: 'center', justifyContent: 'center' }, nfcInner: { width: 86, height: 86, borderRadius: 28, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' }, nfcTitle: { color: colors.ink, fontSize: 26, fontWeight: '700', textAlign: 'center', marginTop: 28 }, nfcDescription: { color: colors.muted, fontSize: 15, lineHeight: 23, textAlign: 'center', marginTop: 12, maxWidth: 300 }, nfcNotice: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: '#E1EEE7', padding: 16, borderRadius: 15, marginTop: 28, width: '100%' }, nfcNoticeText: { flex: 1, color: colors.ink, fontSize: 14, lineHeight: 20 }, nfcDisabled: { width: '100%', marginTop: 20, opacity: 0.5 },
   nav: { height: 74, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, navTitle: { color: colors.ink, fontWeight: '800', fontSize: 16 }, navSpacer: { width: 44 }, back: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#fff', borderWidth: 1, borderColor: colors.line, alignItems: 'center', justifyContent: 'center' },
   formContent: { paddingHorizontal: 24, paddingTop: 18, paddingBottom: 30 }, formHeading: { color: colors.ink, fontSize: 30, lineHeight: 36, fontWeight: '800', letterSpacing: -0.5 }, formIntro: { color: colors.muted, fontSize: 15, lineHeight: 22, marginTop: 10, marginBottom: 22 }, formArtwork: { height: 116, borderRadius: 16, backgroundColor: '#D7E5D2', justifyContent: 'center', alignItems: 'center', gap: 7, marginBottom: 25 }, artCaption: { color: colors.green, fontWeight: '700', fontSize: 13 }, label: { color: colors.ink, fontSize: 14, fontWeight: '800', marginBottom: 9 }, optional: { color: colors.muted, fontWeight: '500' }, input: { minHeight: 55, backgroundColor: '#fff', borderWidth: 1, borderColor: colors.line, borderRadius: 15, paddingHorizontal: 16, color: colors.ink, fontSize: 16, marginBottom: 23 }, textarea: { minHeight: 106, paddingTop: 15 },

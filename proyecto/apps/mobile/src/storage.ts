@@ -3,7 +3,7 @@ import * as Crypto from 'expo-crypto';
 import { removePhoto } from './object-photos';
 import { removeDocument } from './event-document';
 
-export type MemoryObject = { id: string; name: string; description: string; created_at: string; cover_image: string | null; color: string; latest_event_title?: string | null; latest_event_date?: string | null; latest_event_type?: EventType | null };
+export type MemoryObject = { id: string; name: string; description: string; created_at: string; cover_image: string | null; color: string; nfc_written_at?: string | null; latest_event_title?: string | null; latest_event_date?: string | null; latest_event_type?: EventType | null };
 export type EventType = 'note' | 'issue' | 'maintenance';
 export type MemoryEvent = { id: string; object_id: string; title: string; description: string; created_at: string; type: EventType; event_date: string; photo: string | null; document_file: string | null; document_name: string | null };
 
@@ -35,6 +35,9 @@ export function openDatabase() {
       }
       if (!columns.some((column) => column.name === 'color')) {
         await db.execAsync("ALTER TABLE objects ADD COLUMN color TEXT NOT NULL DEFAULT '#DCEBE2'");
+      }
+      if (!columns.some((column) => column.name === 'nfc_written_at')) {
+        await db.execAsync('ALTER TABLE objects ADD COLUMN nfc_written_at TEXT');
       }
       const eventColumns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(events)');
       if (!eventColumns.some((column) => column.name === 'type')) {
@@ -93,7 +96,13 @@ export async function listArchivedObjects() {
 }
 
 export async function findActiveObject(id: string) {
-  return (await openDatabase()).getFirstAsync<MemoryObject>('SELECT id, name, description, created_at, cover_image, color FROM objects WHERE id = ? AND archived_at IS NULL', id);
+  return (await openDatabase()).getFirstAsync<MemoryObject>('SELECT id, name, description, created_at, cover_image, color, nfc_written_at FROM objects WHERE id = ? AND archived_at IS NULL', id);
+}
+
+/** Distinguishes an archived object from one that does not exist on this device. */
+export async function objectState(id: string): Promise<'archived' | 'missing'> {
+  const row = await (await openDatabase()).getFirstAsync<{ archived_at: string | null }>('SELECT archived_at FROM objects WHERE id = ?', id);
+  return row ? 'archived' : 'missing';
 }
 
 export async function listEvents(objectId: string) {
@@ -107,6 +116,13 @@ export async function createObject(name: string, description: string, coverImage
 export async function updateObject(id: string, name: string, description: string, coverImage: string | null, color: string) {
   const result = await (await openDatabase()).runAsync('UPDATE objects SET name = ?, description = ?, cover_image = ?, color = ? WHERE id = ? AND archived_at IS NULL', name, description, coverImage, color, id);
   if (result.changes !== 1) throw new Error('Object not found or archived');
+}
+
+/** Records that a tag was written and verified for this object. Returns the timestamp. */
+export async function markNfcWritten(id: string) {
+  const at = new Date().toISOString();
+  await (await openDatabase()).runAsync('UPDATE objects SET nfc_written_at = ? WHERE id = ?', at, id);
+  return at;
 }
 
 export async function archiveObject(id: string) {

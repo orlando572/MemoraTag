@@ -2,14 +2,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { CameraView, scanFromURLAsync, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { useRef, useState } from 'react';
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { objectIdFromQr } from './qr';
-import { findActiveObject, type MemoryObject } from './storage';
+import { findActiveObject, objectState, type MemoryObject } from './storage';
 
-export function Scanner({ onBack, onFound, onReadNfc }: { onBack: () => void; onFound: (object: MemoryObject) => void; onReadNfc: () => void }) {
+export function Scanner({ onBack, onFound, onReadNfc, onShowArchived }: { onBack: () => void; onFound: (object: MemoryObject) => void; onReadNfc: () => void; onShowArchived: () => void }) {
   const [permission, requestPermission] = useCameraPermissions();
   const [message, setMessage] = useState('');
+  const [archived, setArchived] = useState(false);
   const [busy, setBusy] = useState(false);
   const locked = useRef(false);
 
@@ -18,7 +19,12 @@ export function Scanner({ onBack, onFound, onReadNfc }: { onBack: () => void; on
     if (!id) { setMessage('Este código no pertenece a MemoraTag.'); return; }
     try {
       const object = await findActiveObject(id);
-      if (!object) { setMessage('Este objeto no está disponible en este dispositivo o está archivado.'); return; }
+      if (!object) {
+        const state = await objectState(id).catch(() => 'missing' as const);
+        setArchived(state === 'archived');
+        setMessage(state === 'archived' ? 'Este objeto está archivado. Restáuralo para ver su historia.' : 'Este objeto no está guardado en este teléfono. Puede haberse creado en otro dispositivo.');
+        return;
+      }
       onFound(object);
     } catch { setMessage('No se pudo consultar el almacenamiento. Vuelve a intentarlo.'); }
   }
@@ -46,14 +52,14 @@ export function Scanner({ onBack, onFound, onReadNfc }: { onBack: () => void; on
   }
 
   return <SafeAreaView style={styles.page}>
-    <View style={styles.header}><Pressable accessibilityRole="button" accessibilityLabel="Volver" style={styles.back} onPress={onBack}><Ionicons name="arrow-back" size={23} color="#fff" /></Pressable><Text style={styles.title}>Escanear código</Text><View style={styles.spacer} /></View>
+    <View style={styles.header}><Pressable accessibilityRole="button" accessibilityLabel="Volver" style={styles.back} onPress={onBack}><Ionicons name="arrow-back" size={23} color="#fff" /></Pressable><Text style={styles.title}>Escanear objeto</Text><View style={styles.spacer} /></View>
     <View style={styles.content}>
       <View style={styles.camera}>
         {permission?.granted && <CameraView style={StyleSheet.absoluteFill} facing="back" barcodeScannerSettings={{ barcodeTypes: ['qr'] }} onBarcodeScanned={message || busy ? undefined : ({ data }) => void scan(data)} />}
         {!permission?.granted && <View style={styles.permissionPlaceholder}><Ionicons name="camera-outline" color="#fff" size={36} /><Text style={styles.cameraText}>Permite el acceso a la cámara para escanear el QR.</Text></View>}
         {permission?.granted && !message && <View pointerEvents="none" style={styles.frame} />}
       </View>
-      {message ? <View style={styles.message}><Text style={styles.messageText}>{message}</Text><Pressable accessibilityRole="button" style={styles.action} onPress={() => { locked.current = false; setMessage(''); }}><Text style={styles.actionText}>Escanear de nuevo</Text></Pressable></View> : !permission?.granted ? <Pressable accessibilityRole="button" style={styles.action} onPress={() => { if (permission && !permission.canAskAgain) void Linking.openSettings(); else void requestPermission(); }}><Text style={styles.actionText}>{permission && !permission.canAskAgain ? 'Abrir ajustes' : 'Activar cámara'}</Text></Pressable> : <Text style={styles.hint}>Apunta al QR de un objeto guardado en este dispositivo.</Text>}
+      {message ? <View style={styles.message}><Text accessibilityLiveRegion="assertive" style={styles.messageText}>{message}</Text>{archived && <Pressable accessibilityRole="button" style={styles.action} onPress={onShowArchived}><Text style={styles.actionText}>Ver objetos archivados</Text></Pressable>}<Pressable accessibilityRole="button" style={archived ? styles.galleryAction : styles.action} onPress={() => { locked.current = false; setArchived(false); setMessage(''); }}><Text style={archived ? styles.galleryText : styles.actionText}>Escanear de nuevo</Text></Pressable></View> : !permission?.granted ? <Pressable accessibilityRole="button" style={styles.action} onPress={() => { if (permission && !permission.canAskAgain) void Linking.openSettings(); else void requestPermission(); }}><Text style={styles.actionText}>{permission && !permission.canAskAgain ? 'Abrir ajustes' : 'Activar cámara'}</Text></Pressable> : <Text style={styles.hint}>Apunta al QR del objeto.{Platform.OS === 'android' ? ' También puedes acercar su etiqueta NFC a la parte trasera del teléfono.' : ''}</Text>}
       {!message && <Pressable accessibilityRole="button" disabled={busy} style={[styles.galleryAction, busy && { opacity: 0.6 }]} onPress={() => void chooseImage()}><Ionicons name="images-outline" size={20} color="#fff" /><Text style={styles.galleryText}>{busy ? 'Leyendo imagen…' : 'Elegir imagen de la galería'}</Text></Pressable>}
       {!message && <Pressable accessibilityRole="button" disabled={busy} style={[styles.galleryAction, busy && { opacity: 0.6 }]} onPress={onReadNfc}><Ionicons name="radio-outline" size={20} color="#fff" /><Text style={styles.galleryText}>Leer etiqueta NFC</Text></Pressable>}
     </View>

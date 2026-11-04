@@ -4,8 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, BackHandler, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NfcSession, type NfcAdapter, type NfcPhase } from './nfc-session';
-import { objectIdFromQr, objectQrValue } from './qr';
-import { findActiveObject, type MemoryObject } from './storage';
+import { objectLink } from './qr';
+import { findActiveObject, markNfcWritten, objectState, type MemoryObject } from './storage';
 import { useFeedback } from './ui/feedback/FeedbackProvider';
 
 async function createAdapter(): Promise<NfcAdapter> {
@@ -38,7 +38,7 @@ const messages: Record<string, string> = {
   BUSY: 'Ya hay una operación NFC en curso.',
 };
 
-export function NfcScreen({ object, onBack, onFound }: { object?: MemoryObject; onBack: () => void; onFound: (object: MemoryObject) => void }) {
+export function NfcScreen({ object, onBack, onFound, onWritten }: { object?: MemoryObject; onBack: () => void; onFound: (object: MemoryObject) => void; onWritten?: (at: string) => void }) {
   const Alert = useFeedback();
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState('');
@@ -74,15 +74,22 @@ export function NfcScreen({ object, onBack, onFound }: { object?: MemoryObject; 
       const phaseMessages: Record<NfcPhase, string> = { checking: 'Comprobando NFC…', waiting: 'Esperando etiqueta. Acércala al teléfono.', reading: 'Leyendo etiqueta…', checkingTag: 'Comprobando etiqueta…', writing: 'Escribiendo… Mantén la etiqueta cerca.', verifying: 'Verificando… Mantén la etiqueta cerca.' };
       const current = new NfcSession(adapter, (value) => { if (alive.current) { setPhase(value); setStatus(phaseMessages[value]); } });
       session.current = current;
-      const value = await current.run(object ? 'write' : 'read', object ? objectQrValue(object.id) : undefined);
+      const id = await current.run(object ? 'write' : 'read', object ? objectLink(object.id) : undefined);
       if (!alive.current) return;
-      if (object) setStatus('Etiqueta escrita y verificada en este dispositivo.');
+      if (object) {
+        const at = await markNfcWritten(object.id).catch(() => null);
+        if (!alive.current) return;
+        if (at) onWritten?.(at);
+        setStatus('Etiqueta escrita y verificada. Acércala al teléfono, incluso con la app cerrada, para abrir este objeto.');
+      }
       else {
-        const id = objectIdFromQr(value);
-        const found = id ? await findActiveObject(id) : null;
+        const found = await findActiveObject(id);
         if (!alive.current) return;
         if (found) onFound(found);
-        else setStatus('El objeto no está disponible en este dispositivo o está archivado.');
+        else {
+          const state = await objectState(id).catch(() => 'missing' as const);
+          if (alive.current) setStatus(state === 'archived' ? 'Este objeto está archivado. Restáuralo desde «Objetos archivados» para ver su historia.' : 'Este objeto no está guardado en este teléfono. Puede haberse creado en otro dispositivo.');
+        }
       }
     } catch (error) {
       if (alive.current) {
@@ -110,7 +117,7 @@ export function NfcScreen({ object, onBack, onFound }: { object?: MemoryObject; 
       <View style={styles.illustration}><Ionicons name="radio-outline" size={42} color="#176B57" /></View>
       <Text style={styles.title}>{object ? `Etiqueta para ${object.name}` : 'Leer etiqueta NFC'}</Text>
       <Text style={styles.description}>{object ? 'Guarda el identificador de este objeto en una etiqueta NFC.' : 'Abre un objeto guardado en este dispositivo acercando su etiqueta.'}</Text>
-      <View style={styles.notice}><Ionicons name="information-circle-outline" size={20} color="#176B57" /><Text style={styles.noticeText}>La etiqueta usa un identificador local provisional; no es un enlace web y no permite abrir el objeto en otro dispositivo.</Text></View>
+      <View style={styles.notice}><Ionicons name="information-circle-outline" size={20} color="#176B57" /><Text style={styles.noticeText}>La etiqueta guarda solo un enlace al objeto, no su historia. Abre el objeto en este teléfono; en otro dispositivo no estará disponible.</Text></View>
       {!!status && <View accessibilityLiveRegion="polite" style={styles.status}>{busy && <ActivityIndicator color="#176B57" />}<Text style={styles.statusText}>{status}</Text></View>}
       {!busy && <Pressable accessibilityRole="button" style={styles.primary} onPress={start}><Ionicons name="radio-outline" size={20} color="#fff" /><Text style={styles.primaryText}>{object ? 'Escribir etiqueta' : 'Leer etiqueta'}</Text></Pressable>}
       {busy && phase !== 'writing' && phase !== 'verifying' && <Pressable accessibilityRole="button" style={styles.secondary} onPress={() => { cancelRequested.current = true; void session.current?.cancel().then((cancelled) => { if (!cancelled && alive.current) setStatus('Escritura en curso. Mantén la etiqueta cerca hasta terminar.'); }).catch(() => {}); }}><Text style={styles.secondaryText}>Cancelar</Text></Pressable>}

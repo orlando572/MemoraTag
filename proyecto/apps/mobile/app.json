@@ -23,9 +23,18 @@
         }
       ],
       "expo-sharing",
-      ["react-native-nfc-manager", { "nfcPermission": "Permite leer y escribir etiquetas NFC de tus objetos." }]
+      [
+        "react-native-nfc-manager",
+        {
+          "nfcPermission": "Permite leer y escribir etiquetas NFC de tus objetos."
+        }
+      ],
+      "./plugins/with-nfc-intent"
     ],
-    "android": { "package": "com.memoratag.mobile", "softwareKeyboardLayoutMode": "resize" },
+    "android": {
+      "package": "com.memoratag.mobile",
+      "softwareKeyboardLayoutMode": "resize"
+    },
     "orientation": "portrait"
   }
 }
