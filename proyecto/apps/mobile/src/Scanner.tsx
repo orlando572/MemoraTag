@@ -1,35 +1,40 @@
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, scanFromURLAsync, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
+import { router } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Linking, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { objectIdFromQr } from './qr';
-import { findActiveObject, objectState, type MemoryObject } from './storage';
+import { findActiveObject, objectState } from './storage';
+import { Button, NavBar, Screen } from './ui/components';
 import { haptic } from './ui/feedback/haptics';
+import { useStyles, useTheme } from './ui/theme';
+import { radius, space, type, type Palette } from './ui/tokens';
 
-export function Scanner({ onBack, onFound, onReadNfc, onShowArchived }: { onBack: () => void; onFound: (object: MemoryObject) => void; onReadNfc: () => void; onShowArchived: () => void }) {
+type Problem = { text: string; archived?: boolean };
+
+export function Scanner() {
+  const { c } = useTheme();
+  const s = useStyles(makeStyles);
   const [permission, requestPermission] = useCameraPermissions();
-  const [message, setMessage] = useState('');
-  const [archived, setArchived] = useState(false);
+  const [problem, setProblem] = useState<Problem | null>(null);
   const [busy, setBusy] = useState(false);
   const locked = useRef(false);
 
   async function resolveQr(data: string) {
     const id = objectIdFromQr(data);
-    if (!id) { haptic.error(); setMessage('Este código no pertenece a MemoraTag.'); return; }
+    if (!id) { haptic.error(); setProblem({ text: 'Este código no es de MemoraTag. Apunta al QR que imprimiste desde un objeto.' }); return; }
     try {
       const object = await findActiveObject(id);
       if (!object) {
         haptic.warning();
         const state = await objectState(id).catch(() => 'missing' as const);
-        setArchived(state === 'archived');
-        setMessage(state === 'archived' ? 'Este objeto está archivado. Restáuralo para ver su historia.' : 'Este objeto no está guardado en este teléfono. Puede haberse creado en otro dispositivo.');
+        setProblem(state === 'archived' ? { text: 'Este objeto está archivado. Restáuralo para ver su historia.', archived: true } : { text: 'Este objeto no está guardado en este teléfono. Puede haberse creado en otro dispositivo.' });
         return;
       }
       haptic.success();
-      onFound(object);
-    } catch { haptic.error(); setMessage('No se pudo consultar el almacenamiento. Vuelve a intentarlo.'); }
+      router.replace(`/object/${object.id}`);
+    } catch { haptic.error(); setProblem({ text: 'No se pudo consultar el almacenamiento. Vuelve a intentarlo.' }); }
   }
 
   async function scan(data: string) {
@@ -46,29 +51,57 @@ export function Scanner({ onBack, onFound, onReadNfc, onShowArchived }: { onBack
       const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1 });
       if (result.canceled) { locked.current = false; return; }
       const codes = await scanFromURLAsync(result.assets[0].uri, ['qr']);
-      if (codes.length === 0) { haptic.error(); setMessage('No se encontró un código QR en esta imagen.'); return; }
+      if (codes.length === 0) { haptic.error(); setProblem({ text: 'No se encontró un código QR en esta imagen. Prueba con otra más nítida.' }); return; }
       // Prefer a MemoraTag QR when an image contains several codes.
       const code = codes.find((item) => objectIdFromQr(item.data)) ?? codes[0];
       await resolveQr(code.data);
-    } catch { setMessage('No se pudo leer la imagen. Elige otra y vuelve a intentarlo.'); }
+    } catch { haptic.error(); setProblem({ text: 'No se pudo leer la imagen. Elige otra y vuelve a intentarlo.' }); }
     finally { setBusy(false); }
   }
 
-  return <SafeAreaView style={styles.page}>
-    <View style={styles.header}><Pressable accessibilityRole="button" accessibilityLabel="Volver" style={styles.back} onPress={onBack}><Ionicons name="arrow-back" size={23} color="#fff" /></Pressable><Text accessibilityRole="header" style={styles.title}>Escanear objeto</Text><View style={styles.spacer} /></View>
-    <View style={styles.content}>
-      <View style={styles.camera}>
-        {permission?.granted && <CameraView style={StyleSheet.absoluteFill} facing="back" barcodeScannerSettings={{ barcodeTypes: ['qr'] }} onBarcodeScanned={message || busy ? undefined : ({ data }) => void scan(data)} />}
-        {!permission?.granted && <View style={styles.permissionPlaceholder}><Ionicons name="camera-outline" color="#fff" size={36} /><Text style={styles.cameraText}>Permite el acceso a la cámara para escanear el QR.</Text></View>}
-        {permission?.granted && !message && <View pointerEvents="none" style={styles.frame} />}
+  function retry() { locked.current = false; setProblem(null); }
+  const cameraReady = !!permission?.granted;
+
+  return <Screen dark>
+    <NavBar title="Escanear objeto" onDark />
+    <ScrollView contentContainerStyle={s.content}>
+      <View style={s.camera}>
+        {cameraReady && <CameraView style={StyleSheet.absoluteFill} facing="back" barcodeScannerSettings={{ barcodeTypes: ['qr'] }} onBarcodeScanned={problem || busy ? undefined : ({ data }) => void scan(data)} />}
+        {!cameraReady && <View style={s.placeholder}><Ionicons name="camera-outline" color={c.onScanner} size={40} /><Text style={s.cameraText}>Para escanear, MemoraTag necesita usar la cámara.</Text></View>}
+        {cameraReady && !problem && <View pointerEvents="none" style={s.frame}><View style={[s.corner, s.tl]} /><View style={[s.corner, s.tr]} /><View style={[s.corner, s.bl]} /><View style={[s.corner, s.br]} /></View>}
       </View>
-      {message ? <View style={styles.message}><Text accessibilityLiveRegion="assertive" style={styles.messageText}>{message}</Text>{archived && <Pressable accessibilityRole="button" style={styles.action} onPress={onShowArchived}><Text style={styles.actionText}>Ver objetos archivados</Text></Pressable>}<Pressable accessibilityRole="button" style={archived ? styles.galleryAction : styles.action} onPress={() => { locked.current = false; setArchived(false); setMessage(''); }}><Text style={archived ? styles.galleryText : styles.actionText}>Escanear de nuevo</Text></Pressable></View> : !permission?.granted ? <Pressable accessibilityRole="button" style={styles.action} onPress={() => { if (permission && !permission.canAskAgain) void Linking.openSettings(); else void requestPermission(); }}><Text style={styles.actionText}>{permission && !permission.canAskAgain ? 'Abrir ajustes' : 'Activar cámara'}</Text></Pressable> : <Text style={styles.hint}>Apunta al QR del objeto.{Platform.OS === 'android' ? ' También puedes acercar su etiqueta NFC a la parte trasera del teléfono.' : ''}</Text>}
-      {!message && <Pressable accessibilityRole="button" disabled={busy} style={[styles.galleryAction, busy && { opacity: 0.6 }]} onPress={() => void chooseImage()}><Ionicons name="images-outline" size={20} color="#fff" /><Text style={styles.galleryText}>{busy ? 'Leyendo imagen…' : 'Elegir imagen de la galería'}</Text></Pressable>}
-      {!message && <Pressable accessibilityRole="button" disabled={busy} style={[styles.galleryAction, busy && { opacity: 0.6 }]} onPress={onReadNfc}><Ionicons name="radio-outline" size={20} color="#fff" /><Text style={styles.galleryText}>Leer etiqueta NFC</Text></Pressable>}
-    </View>
-  </SafeAreaView>;
+
+      {problem ? <View style={s.problem}>
+        <Ionicons name={problem.archived ? 'archive-outline' : 'alert-circle-outline'} size={28} color={c.scannerMuted} style={{ alignSelf: 'center' }} />
+        <Text accessibilityLiveRegion="assertive" style={s.problemText}>{problem.text}</Text>
+        {problem.archived && <Button label="Ver objetos archivados" icon="archive-outline" onPress={() => router.replace('/archived')} />}
+        <Button label="Escanear de nuevo" icon="scan-outline" variant="secondary" onPress={retry} />
+      </View> : !cameraReady ? <Button label={permission && !permission.canAskAgain ? 'Abrir ajustes del teléfono' : 'Permitir la cámara'} icon="camera-outline" style={{ marginTop: space.xl }} onPress={() => { if (permission && !permission.canAskAgain) void Linking.openSettings(); else void requestPermission(); }} />
+        : <Text style={s.hint}>Encuadra el código QR del objeto dentro del recuadro.</Text>}
+
+      {!problem && <View style={s.alternatives}>
+        <Text style={s.or}>O también</Text>
+        {Platform.OS === 'android' && <Button label="Leer etiqueta NFC" icon="radio-outline" variant="secondary" onPress={() => router.replace('/scan-nfc')} disabled={busy} />}
+        <Button label={busy ? 'Leyendo imagen…' : 'Elegir una foto del QR'} icon="images-outline" variant="secondary" onPress={() => void chooseImage()} disabled={busy} />
+      </View>}
+    </ScrollView>
+  </Screen>;
 }
 
-const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: '#172D27' }, header: { minHeight: 68, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20 }, back: { width: 48, height: 48, borderRadius: 14, backgroundColor: '#304B40', alignItems: 'center', justifyContent: 'center' }, spacer: { width: 48 }, title: { color: '#fff', fontWeight: '700', fontSize: 16 }, content: { flex: 1, paddingHorizontal: 20, paddingTop: 28 }, camera: { height: '60%', maxHeight: 480, minHeight: 260, borderRadius: 22, overflow: 'hidden', backgroundColor: '#304B40', justifyContent: 'center', alignItems: 'center' }, frame: { width: '70%', aspectRatio: 1, borderWidth: 2, borderColor: '#E1EEE7', borderRadius: 22 }, permissionPlaceholder: { alignItems: 'center', padding: 30, gap: 15 }, cameraText: { color: '#fff', textAlign: 'center', fontSize: 16, lineHeight: 23 }, hint: { color: '#C7D8CC', textAlign: 'center', fontSize: 14, lineHeight: 21, marginTop: 25 }, action: { backgroundColor: '#fff', minHeight: 54, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginTop: 20 }, actionText: { color: '#176B57', fontWeight: '700', fontSize: 15 }, message: { paddingTop: 20 }, messageText: { color: '#fff', textAlign: 'center', fontSize: 15, lineHeight: 22 }, galleryAction: { minHeight: 50, marginTop: 16, borderRadius: 16, borderWidth: 1, borderColor: '#89A59A', flexDirection: 'row', gap: 9, justifyContent: 'center', alignItems: 'center' }, galleryText: { color: '#fff', fontSize: 14, fontWeight: '700' },
-});
+const makeStyles = (c: Palette) => ({
+  content: { paddingHorizontal: space.xl, paddingBottom: space.xxxl },
+  camera: { aspectRatio: 1, borderRadius: radius.xl, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' },
+  placeholder: { alignItems: 'center', padding: space.xxxl, gap: space.lg },
+  cameraText: { ...type.body, color: c.onScanner, textAlign: 'center' },
+  frame: { width: '68%', aspectRatio: 1 },
+  corner: { position: 'absolute', width: 38, height: 38, borderColor: c.accent },
+  tl: { top: 0, left: 0, borderTopWidth: 4, borderLeftWidth: 4, borderTopLeftRadius: 16 },
+  tr: { top: 0, right: 0, borderTopWidth: 4, borderRightWidth: 4, borderTopRightRadius: 16 },
+  bl: { bottom: 0, left: 0, borderBottomWidth: 4, borderLeftWidth: 4, borderBottomLeftRadius: 16 },
+  br: { bottom: 0, right: 0, borderBottomWidth: 4, borderRightWidth: 4, borderBottomRightRadius: 16 },
+  hint: { ...type.body, color: c.scannerMuted, textAlign: 'center', marginTop: space.xl },
+  problem: { alignItems: 'stretch', gap: space.md, marginTop: space.xl },
+  problemText: { ...type.body, color: c.onScanner, textAlign: 'center' },
+  alternatives: { gap: space.md, marginTop: space.xxl },
+  or: { ...type.caption, color: c.scannerMuted, textAlign: 'center', textTransform: 'uppercase', letterSpacing: 1 },
+} as const);

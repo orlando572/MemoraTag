@@ -3,8 +3,8 @@
 export const BACKUP_LIMITS = { jsonBytes: 32 * 1024 * 1024, totalBytes: 20 * 1024 * 1024, fileBytes: 5 * 1024 * 1024, objects: 5000, events: 20000, files: 10000 } as const;
 
 export type BackupFile = { key: string; size: number; sha256: string; base64: string };
-export type BackupObject = { id: string; name: string; description: string; created_at: string; archived_at: string | null; cover_image: string | null; color: string; nfc_written_at?: string | null };
-export type BackupEvent = { id: string; object_id: string; title: string; description: string; created_at: string; type: 'note' | 'issue' | 'maintenance'; event_date: string; photo: string | null; document_file: string | null; document_name: string | null };
+export type BackupObject = { id: string; name: string; description: string; created_at: string; archived_at: string | null; cover_image: string | null; color: string; nfc_written_at?: string | null; icon?: string | null };
+export type BackupEvent = { id: string; object_id: string; title: string; description: string; created_at: string; type: 'note' | 'issue' | 'maintenance'; event_date: string; photo: string | null; document_file: string | null; document_name: string | null; resolved_at?: string | null };
 export type Backup = { format: 'memoratag-backup'; version: 1; appVersion: string; exportedAt: string; profile: { name: string } | null; objects: BackupObject[]; events: BackupEvent[]; files: BackupFile[] };
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -32,12 +32,12 @@ export async function validateBackup(input: unknown, sha256: (base64: string) =>
   const references = new Set<string>();
 
   for (const object of input.objects) {
-    if (!isObject(object) || !text(object.id, 36) || !uuid.test(object.id) || object.id !== object.id.toLowerCase() || objectIds.has(object.id) || !text(object.name, 120) || !object.name.trim() || !text(object.description, 100000) || !timestamp(object.created_at) || (object.archived_at !== null && !timestamp(object.archived_at)) || !text(object.color, 7) || !/^#[0-9a-f]{6}$/i.test(object.color) || (object.cover_image !== null && (!text(object.cover_image, 50) || !imageName.test(object.cover_image))) || (object.nfc_written_at != null && !timestamp(object.nfc_written_at))) fail();
+    if (!isObject(object) || !text(object.id, 36) || !uuid.test(object.id) || object.id !== object.id.toLowerCase() || objectIds.has(object.id) || !text(object.name, 120) || !object.name.trim() || !text(object.description, 100000) || !timestamp(object.created_at) || (object.archived_at !== null && !timestamp(object.archived_at)) || !text(object.color, 7) || !/^#[0-9a-f]{6}$/i.test(object.color) || (object.cover_image !== null && (!text(object.cover_image, 50) || !imageName.test(object.cover_image))) || (object.nfc_written_at != null && !timestamp(object.nfc_written_at)) || (object.icon != null && (!text(object.icon, 20) || !/^[a-z]+$/.test(object.icon)))) fail();
     objectIds.add(object.id.toLowerCase());
     if (object.cover_image) references.add(`photos/${object.cover_image}`);
   }
   for (const event of input.events) {
-    if (!isObject(event) || !text(event.id, 36) || !uuid.test(event.id) || event.id !== event.id.toLowerCase() || eventIds.has(event.id) || !text(event.object_id, 36) || event.object_id !== event.object_id.toLowerCase() || !objectIds.has(event.object_id) || !text(event.title, 120) || !event.title.trim() || !text(event.description, 100000) || !timestamp(event.created_at) || !date(event.event_date) || typeof event.type !== 'string' || !['note', 'issue', 'maintenance'].includes(event.type) || (event.photo !== null && (!text(event.photo, 50) || !imageName.test(event.photo))) || (event.document_file !== null && (!text(event.document_file, 50) || !documentName.test(event.document_file))) || (event.document_name !== null && (!text(event.document_name, 255) || !event.document_name.trim())) || (event.document_file === null) !== (event.document_name === null)) fail();
+    if (!isObject(event) || !text(event.id, 36) || !uuid.test(event.id) || event.id !== event.id.toLowerCase() || eventIds.has(event.id) || !text(event.object_id, 36) || event.object_id !== event.object_id.toLowerCase() || !objectIds.has(event.object_id) || !text(event.title, 120) || !event.title.trim() || !text(event.description, 100000) || !timestamp(event.created_at) || !date(event.event_date) || typeof event.type !== 'string' || !['note', 'issue', 'maintenance'].includes(event.type) || (event.photo !== null && (!text(event.photo, 50) || !imageName.test(event.photo))) || (event.document_file !== null && (!text(event.document_file, 50) || !documentName.test(event.document_file))) || (event.document_name !== null && (!text(event.document_name, 255) || !event.document_name.trim())) || (event.document_file === null) !== (event.document_name === null) || (event.resolved_at != null && (!timestamp(event.resolved_at) || event.type !== 'issue'))) fail();
     eventIds.add(event.id.toLowerCase());
     if (event.photo) references.add(`photos/${event.photo}`);
     if (event.document_file) references.add(`documents/${event.document_file}`);

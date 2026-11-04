@@ -5,13 +5,16 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, BackHandler, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { router, useNavigation } from 'expo-router';
+import { ActivityIndicator, AppState, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Button, NavBar, Screen, TextField } from './ui/components';
+import { useStyles, useTheme } from './ui/theme';
+import { radius, space, type, type Palette } from './ui/tokens';
 import { saveLocalName } from './storage';
 import { createBackupDocument } from './backup-export';
 import { applyBackupImport, prepareBackupImport, type PreparedImport } from './backup-import';
 import { getStorageUsage } from './storage-usage';
-import { useKeyboardScroll } from './useKeyboardScroll';
 import { useFeedback } from './ui/feedback/FeedbackProvider';
 
 type Usage = Awaited<ReturnType<typeof getStorageUsage>>;
@@ -28,15 +31,15 @@ const nfcMessages: Record<NfcState, string> = {
   checking: 'Consultando…', enabled: 'Disponible y activado', disabled: 'Disponible, pero desactivado', unsupported: 'Este dispositivo no admite NFC', expo: 'NFC no está disponible en Expo Go', platform: 'NFC solo está preparado para Android', error: 'No se pudo consultar el estado',
 };
 
-export function Settings({ name, onNameChange, onImported, onBack, onShowTutorial }: { name: string; onNameChange: (name: string) => void; onImported: (name: string | null) => Promise<boolean>; onBack: () => void; onShowTutorial: () => void }) {
+export function Settings({ name, onNameChange, onImported, onShowTutorial }: { name: string; onNameChange: (name: string) => void; onImported: (name: string | null) => Promise<boolean>; onShowTutorial: () => void }) {
   const Alert = useFeedback();
   const insets = useSafeAreaInsets();
-  const scroll = useKeyboardScroll();
+  const { c } = useTheme();
+  const styles = useStyles(makeStyles);
+  const navigation = useNavigation();
   const nameInput = useRef<TextInput>(null);
   const mounted = useRef(true);
-  const back = useRef(onBack);
   const busyRef = useRef(false);
-  back.current = onBack;
   const [draft, setDraft] = useState(name);
   const [saving, setSaving] = useState(false);
   const nameSavingRef = useRef(false);
@@ -73,9 +76,10 @@ export function Settings({ name, onNameChange, onImported, onBack, onShowTutoria
     void refreshUsage();
     void refreshNfc();
     const appState = AppState.addEventListener('change', (state) => { if (state === 'active') { void refreshUsage(); void refreshNfc(); } });
-    const handler = BackHandler.addEventListener('hardwareBackPress', () => { if (!busyRef.current && !nameSavingRef.current) back.current(); return true; });
-    return () => { mounted.current = false; appState.remove(); handler.remove(); };
-  }, [refreshUsage, refreshNfc]);
+    // A backup or import in progress must finish before leaving the screen.
+    const leave = navigation.addListener('beforeRemove', (event) => { if (busyRef.current || nameSavingRef.current) event.preventDefault(); });
+    return () => { mounted.current = false; appState.remove(); leave(); };
+  }, [refreshUsage, refreshNfc, navigation]);
 
   async function saveName() {
     const clean = draft.trim();
@@ -174,33 +178,113 @@ export function Settings({ name, onNameChange, onImported, onBack, onShowTutoria
     } catch { Alert.error('No se pudieron abrir los ajustes', 'Abre los ajustes de NFC desde la configuración del teléfono.'); }
   }
 
-  return <SafeAreaView style={styles.page} edges={['top']}><KeyboardAvoidingView style={styles.fill} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-    <View style={styles.nav}><Pressable accessibilityRole="button" accessibilityLabel="Volver" disabled={busy || saving} onPress={onBack} style={[styles.back, (busy || saving) && styles.disabled]}><Ionicons name="arrow-back" size={22} color="#203934" /></Pressable><Text accessibilityRole="header" style={styles.navTitle}>Ajustes</Text><View style={styles.spacer} /></View>
-    {busy && <View accessibilityLiveRegion="polite" style={styles.progress}><ActivityIndicator color="#176B57" /><Text style={styles.hint}>{operationStatus} No cierres la aplicación.</Text></View>}
-    <ScrollView pointerEvents={busy ? 'none' : 'auto'} accessibilityElementsHidden={busy} importantForAccessibility={busy ? 'no-hide-descendants' : 'auto'} ref={scroll.scrollRef} onLayout={scroll.onLayout} onScroll={scroll.onScroll} onContentSizeChange={scroll.onContentSizeChange} scrollEventThrottle={16} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingBottom: Math.max(insets.bottom, 24) + scroll.extraSpace }]}>
-      <Text accessibilityRole="header" style={styles.section}>Perfil</Text><View style={styles.card}><Text style={styles.label}>Nombre</Text><TextInput ref={nameInput} onFocus={() => scroll.focus(nameInput)} onBlur={() => scroll.blur(nameInput)} editable={!saving} accessibilityLabel="Nombre" accessibilityHint={nameError ? 'Escribe tu nombre para continuar' : undefined} maxLength={60} value={draft} onChangeText={(value) => { setDraft(value); if (value.trim()) setNameError(false); }} autoCapitalize="words" style={[styles.input, nameError && styles.invalidInput]} />{nameError && <Text accessibilityLiveRegion="polite" style={styles.fieldError}>Escribe tu nombre para continuar.</Text>}<Text style={styles.hint}>Este nombre se guarda en este dispositivo. No es una cuenta.</Text><View style={styles.nameActions}><Pressable accessibilityRole="button" disabled={saving || draft.trim() === name} onPress={() => void saveName()} style={[styles.button, (saving || draft.trim() === name) && styles.disabled]}>{saving ? <View style={styles.savingRow}><ActivityIndicator color="#fff" /><Text style={styles.buttonText}>Guardando…</Text></View> : <Text style={styles.buttonText}>Guardar nombre</Text>}</Pressable>{draft !== name && <Pressable accessibilityRole="button" disabled={saving} onPress={() => { setDraft(name); setNameError(false); nameInput.current?.blur(); }}><Text style={styles.link}>Cancelar</Text></Pressable>}</View></View>
-      <Text accessibilityRole="header" style={styles.section}>Datos y respaldo</Text><View style={styles.card}><Text style={styles.hint}>El respaldo incluye tus objetos, eventos, fotos y documentos. No está cifrado.</Text><Pressable accessibilityRole="button" disabled={saving} style={[styles.button, saving && styles.disabled]} onPress={exportBackup}><Text style={styles.buttonText}>Exportar respaldo</Text></Pressable><Pressable accessibilityRole="button" disabled={saving} onPress={() => void selectBackup()}><Text style={styles.link}>Seleccionar respaldo para importar</Text></Pressable><Text style={styles.hint}>El sistema no confirma si guardaste la copia compartida.</Text>
-        {prepared && <><View style={styles.divider} /><Text style={styles.label}>Revisar respaldo</Text><Text style={styles.hint}>{prepared.incoming.objects.filter((item) => item.archived_at === null).length} objetos activos · {prepared.incoming.objects.filter((item) => item.archived_at !== null).length} archivados · {prepared.incoming.events.length} eventos · {prepared.incoming.files.length} archivos</Text><Text style={styles.hint}>Espacio estimado para archivos: hasta {formatBytes(prepared.requiredBytes)}.</Text><Text style={styles.hint}>{prepared.plan.newObjects.length} objetos y {prepared.plan.newEvents.length} eventos nuevos. {prepared.plan.unchangedObjects + prepared.plan.unchangedEvents} registros sin cambios.</Text><Text style={styles.hint}>Conflictos: {prepared.plan.objectConflicts.length} objetos y {prepared.plan.eventConflicts.length} eventos.</Text>{prepared.plan.archiveChanges > 0 && <Text style={styles.warning}>{prepared.plan.archiveChanges} objetos tienen un estado de archivo diferente.</Text>}
-          {prepared.plan.objectConflicts.slice(0, 5).map(({ incoming }) => <Text key={incoming.id} style={styles.hint}>Objeto: {incoming.name}</Text>)}{prepared.plan.eventConflicts.slice(0, 5).map(({ incoming }) => <Text key={incoming.id} style={styles.hint}>Evento: {incoming.title}</Text>)}{(prepared.plan.objectConflicts.length > 5 || prepared.plan.eventConflicts.length > 5) && <Text style={styles.hint}>Se muestran hasta cinco conflictos de cada tipo.</Text>}
-          {(prepared.plan.objectConflicts.length + prepared.plan.eventConflicts.length > 0) && <><Text style={styles.label}>Para todos los conflictos</Text>{(['current', 'incoming'] as const).map((choice) => <Pressable key={choice} accessibilityRole="radio" accessibilityState={{ selected: conflictChoice === choice }} style={styles.choice} onPress={() => setConflictChoice(choice)}><Ionicons name={conflictChoice === choice ? 'radio-button-on' : 'radio-button-off'} size={21} color="#176B57" /><Text style={styles.rowLabel}>{choice === 'current' ? 'Conservar versiones actuales' : 'Usar versiones del respaldo'}</Text></Pressable>)}</>}
-          {prepared.incoming.profile && prepared.plan.profileChanged && <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: useProfile }} style={styles.choice} onPress={() => setUseProfile(!useProfile)}><Ionicons name={useProfile ? 'checkbox' : 'square-outline'} size={21} color="#176B57" /><Text style={styles.rowLabel}>Usar el nombre del respaldo</Text></Pressable>}
-          <View style={styles.nameActions}><Pressable accessibilityRole="button" style={styles.button} onPress={confirmImport}><Text style={styles.buttonText}>Importar</Text></Pressable><Pressable accessibilityRole="button" hitSlop={12} onPress={() => setPrepared(null)}><Text style={styles.link}>Cancelar</Text></Pressable></View>
+  const nfcTone = nfc === 'enabled' ? c.success : nfc === 'disabled' ? c.warning : c.muted;
+  return <Screen>
+    <NavBar title="Ajustes y ayuda" disabled={busy || saving} />
+    {busy && <View accessibilityLiveRegion="polite" style={styles.progress}><ActivityIndicator color={c.primary} /><Text style={styles.progressText}>{operationStatus} No cierres la aplicación.</Text></View>}
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <ScrollView pointerEvents={busy ? 'none' : 'auto'} accessibilityElementsHidden={busy} importantForAccessibility={busy ? 'no-hide-descendants' : 'auto'} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingBottom: Math.max(insets.bottom, 24) + space.xl }]}>
+      <Section title="Tu perfil" icon="person-circle-outline">
+        <TextField ref={nameInput} label="Nombre" value={draft} maxLength={60} editable={!saving} autoCapitalize="words" hint="Solo se usa para saludarte. Se guarda en este teléfono y no es una cuenta."
+          error={nameError ? 'Escribe tu nombre para continuar.' : undefined} onChangeText={(value) => { setDraft(value); if (value.trim()) setNameError(false); }} style={{ marginBottom: 0 }} />
+        {draft !== name && <View style={styles.row}>
+          <Button label={saving ? 'Guardando…' : 'Guardar nombre'} icon="checkmark" loading={saving} disabled={!draft.trim()} onPress={() => void saveName()} style={{ flex: 1 }} />
+          <Button label="Cancelar" variant="ghost" disabled={saving} onPress={() => { setDraft(name); setNameError(false); nameInput.current?.blur(); }} />
+        </View>}
+      </Section>
+
+      <Section title="Ayuda" icon="help-buoy-outline">
+        <Help icon="qr-code-outline" title="Abrir un objeto con su QR" text="Dentro del objeto, toca «Código QR» y compártelo para imprimirlo. Para abrirlo, usa «Escanear» o la cámara del teléfono." />
+        {Platform.OS === 'android' && <Help icon="radio-outline" title="Usar una etiqueta NFC" text="Dentro del objeto, toca «Etiqueta NFC» y acerca una NTAG213/215 a la parte trasera del teléfono hasta que se verifique. Después se abre al acercarla, incluso con la app cerrada." />}
+        <Help icon="alert-circle-outline" title="Incidencias" text="Registra una incidencia cuando algo falle y márcala como resuelta al arreglarlo. El objeto muestra cuántas siguen abiertas." />
+        <Help icon="arrow-undo-outline" title="Deshacer" text="Al archivar un objeto o borrar un evento aparece «Deshacer» durante unos segundos." />
+        <Help icon="phone-portrait-outline" title="Si un código no abre nada" text="Los datos solo están en el teléfono donde creaste el objeto. Si lo archivaste, restáuralo desde «Objetos archivados»." />
+        <Button label="Ver el tutorial de nuevo" icon="play-circle-outline" variant="secondary" onPress={onShowTutorial} />
+      </Section>
+
+      <Section title="Respaldo" icon="cloud-download-outline">
+        <Text style={styles.hint}>Guarda una copia de tus objetos, eventos, fotos y documentos para recuperarlos en otro teléfono. La copia no está cifrada.</Text>
+        <Button label="Exportar respaldo" icon="share-outline" disabled={saving} onPress={exportBackup} />
+        <Button label="Importar un respaldo" icon="download-outline" variant="secondary" disabled={saving} onPress={() => void selectBackup()} />
+        {prepared && <View style={styles.review}>
+          <Text accessibilityRole="header" style={styles.label}>Revisar respaldo</Text>
+          <Text style={styles.hint}>{prepared.incoming.objects.filter((item) => item.archived_at === null).length} objetos activos · {prepared.incoming.objects.filter((item) => item.archived_at !== null).length} archivados · {prepared.incoming.events.length} eventos · {prepared.incoming.files.length} archivos</Text>
+          <Text style={styles.hint}>Nuevos: {prepared.plan.newObjects.length} objetos y {prepared.plan.newEvents.length} eventos. Sin cambios: {prepared.plan.unchangedObjects + prepared.plan.unchangedEvents}. Espacio necesario: hasta {formatBytes(prepared.requiredBytes)}.</Text>
+          {(prepared.plan.objectConflicts.length + prepared.plan.eventConflicts.length > 0) && <>
+            <Text style={styles.warning}>Hay {prepared.plan.objectConflicts.length + prepared.plan.eventConflicts.length} registros distintos en tu teléfono y en el respaldo.{prepared.plan.archiveChanges > 0 ? ` ${prepared.plan.archiveChanges} cambian su estado de archivo.` : ''}</Text>
+            {prepared.plan.objectConflicts.slice(0, 5).map(({ incoming }) => <Text key={incoming.id} style={styles.hint}>• Objeto: {incoming.name}</Text>)}
+            {prepared.plan.eventConflicts.slice(0, 5).map(({ incoming }) => <Text key={incoming.id} style={styles.hint}>• Evento: {incoming.title}</Text>)}
+            <Text style={styles.label}>¿Qué versión conservar?</Text>
+            {(['current', 'incoming'] as const).map((choice) => <Pressable key={choice} accessibilityRole="radio" accessibilityState={{ checked: conflictChoice === choice }} style={styles.choice} onPress={() => setConflictChoice(choice)}><Ionicons name={conflictChoice === choice ? 'radio-button-on' : 'radio-button-off'} size={22} color={c.primary} /><Text style={styles.rowLabel}>{choice === 'current' ? 'La de este teléfono' : 'La del respaldo'}</Text></Pressable>)}
+          </>}
+          {prepared.incoming.profile && prepared.plan.profileChanged && <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: useProfile }} style={styles.choice} onPress={() => setUseProfile(!useProfile)}><Ionicons name={useProfile ? 'checkbox' : 'square-outline'} size={22} color={c.primary} /><Text style={styles.rowLabel}>Usar el nombre del respaldo</Text></Pressable>}
+          <View style={styles.row}><Button label="Importar" icon="checkmark" onPress={confirmImport} style={{ flex: 1 }} /><Button label="Cancelar" variant="ghost" onPress={() => setPrepared(null)} /></View>
+        </View>}
+      </Section>
+
+      <Section title="Almacenamiento" icon="folder-open-outline">
+        {usageError ? <><Text style={styles.hint}>No se pudo consultar el almacenamiento.</Text><Button label="Reintentar" icon="refresh" variant="secondary" onPress={() => void refreshUsage()} /></> : !usage ? <ActivityIndicator color={c.primary} /> : <>
+          <Info label="Fotografías" value={formatBytes(usage.photoBytes)} /><Info label="Documentos" value={formatBytes(usage.documentBytes)} /><Info label="Total" value={formatBytes(usage.photoBytes + usage.documentBytes)} strong />
+          <Text style={styles.hint}>{usage.active} objetos activos · {usage.archived} archivados · {usage.events} eventos</Text>
+          {usage.missing > 0 && <Text style={styles.warning}>{usage.missing} archivos no están disponibles y no se incluyen en el tamaño.</Text>}
         </>}
-      </View>
-      <Text accessibilityRole="header" style={styles.section}>Almacenamiento</Text><View style={styles.card}>{usageError ? <><Text style={styles.hint}>No se pudo consultar el almacenamiento.</Text><Pressable accessibilityRole="button" hitSlop={12} onPress={() => void refreshUsage()}><Text style={styles.link}>Reintentar</Text></Pressable></> : !usage ? <ActivityIndicator color="#176B57" /> : <><View style={styles.row}><Text style={styles.rowLabel}>Fotografías</Text><Text style={styles.rowValue}>{formatBytes(usage.photoBytes)}</Text></View><View style={styles.row}><Text style={styles.rowLabel}>Documentos</Text><Text style={styles.rowValue}>{formatBytes(usage.documentBytes)}</Text></View><View style={styles.row}><Text style={styles.rowLabel}>Total de archivos</Text><Text style={styles.rowValue}>{formatBytes(usage.photoBytes + usage.documentBytes)}</Text></View><View style={styles.divider} /><Text style={styles.hint}>{usage.active} objetos activos · {usage.archived} archivados · {usage.events} eventos</Text>{usage.missing > 0 && <Text style={styles.warning}>{usage.missing} archivos no están disponibles y no se incluyen en el tamaño.</Text>}</>}</View>
-      <Text accessibilityRole="header" style={styles.section}>NFC</Text><View style={styles.card}><View style={styles.row}><Text style={styles.rowLabel}>Estado</Text><Text style={styles.nfcValue}>{nfcMessages[nfc]}</Text></View><Pressable accessibilityRole="button" hitSlop={12} onPress={() => void refreshNfc()}><Text style={styles.link}>Consultar de nuevo</Text></Pressable>{Platform.OS === 'android' && nfc === 'disabled' && <Pressable accessibilityRole="button" hitSlop={12} onPress={() => void openNfcSettings()}><Text style={styles.link}>Abrir ajustes del teléfono</Text></Pressable>}</View>
-      <Text accessibilityRole="header" style={styles.section}>Ayuda</Text><View style={styles.card}>
-        <Text style={styles.label}>Abrir un objeto con su QR</Text><Text style={styles.hint}>Dentro del objeto, toca «Código QR» y compártelo para imprimirlo. Para abrirlo, usa «Escanear» en el inicio o la cámara del teléfono.</Text>
-        {Platform.OS === 'android' && <><Text style={styles.label}>Usar una etiqueta NFC</Text><Text style={styles.hint}>Dentro del objeto, toca «Vincular NFC» y acerca una etiqueta NTAG a la parte trasera del teléfono hasta que se verifique. Después, acércala para abrir el objeto, incluso con la app cerrada. NFC debe estar activado.</Text></>}
-        <Text style={styles.label}>Si un código no abre nada</Text><Text style={styles.hint}>Los datos solo están en el teléfono donde creaste el objeto. Si lo archivaste, restáuralo desde «Objetos archivados».</Text>
-        <Pressable accessibilityRole="button" onPress={onShowTutorial} style={styles.button}><Text style={styles.buttonText}>Ver el tutorial de nuevo</Text></Pressable>
-      </View>
-      <Text accessibilityRole="header" style={styles.section}>Acerca de MemoraTag</Text><View style={styles.card}><View style={styles.row}><Text style={styles.rowLabel}>Versión</Text><Text style={styles.rowValue}>{Constants.expoConfig?.version ?? 'No disponible'}</Text></View><Text style={styles.hint}>Tus objetos, eventos y archivos se guardan en este dispositivo. Podrían perderse si borras los datos de la aplicación o pierdes el teléfono.</Text></View>
+      </Section>
+
+      <Section title="NFC" icon="radio-outline">
+        <View style={styles.row}><Ionicons name={nfc === 'enabled' ? 'checkmark-circle' : nfc === 'disabled' ? 'alert-circle' : 'information-circle'} size={22} color={nfcTone} /><Text style={[styles.rowLabel, { flex: 1 }]}>{nfcMessages[nfc]}</Text></View>
+        {Platform.OS === 'android' && nfc === 'disabled' && <Button label="Activar NFC en el teléfono" icon="settings-outline" onPress={() => void openNfcSettings()} />}
+        <Button label="Consultar de nuevo" icon="refresh" variant="ghost" onPress={() => void refreshNfc()} />
+      </Section>
+
+      <Section title="Acerca de MemoraTag" icon="information-circle-outline">
+        <Info label="Versión" value={Constants.expoConfig?.version ?? 'No disponible'} />
+        <Text style={styles.hint}>Tus objetos, eventos y archivos se guardan solo en este teléfono. Se perderían si borras los datos de la aplicación o pierdes el teléfono: haz un respaldo de vez en cuando.</Text>
+      </Section>
     </ScrollView>
-  </KeyboardAvoidingView></SafeAreaView>;
+    </KeyboardAvoidingView>
+  </Screen>;
 }
 
-const styles = StyleSheet.create({
-  invalidInput: { borderColor: '#A33F43', borderWidth: 2 }, fieldError: { color: '#A33F43', fontSize: 13 }, savingRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  page: { flex: 1, backgroundColor: '#F5F8F6' }, fill: { flex: 1 }, nav: { minHeight: 74, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, back: { width: 48, height: 48, borderRadius: 14, backgroundColor: '#fff', borderWidth: 1, borderColor: '#DBE7E1', justifyContent: 'center', alignItems: 'center' }, spacer: { width: 48 }, navTitle: { color: '#203934', fontSize: 16, fontWeight: '800' }, content: { paddingHorizontal: 20, paddingTop: 8 }, section: { color: '#203934', fontSize: 19, fontWeight: '700', marginTop: 20, marginBottom: 12 }, card: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#DBE7E1', borderRadius: 18, padding: 18, gap: 10 }, label: { color: '#203934', fontSize: 14, fontWeight: '700' }, input: { minHeight: 54, borderWidth: 1, borderColor: '#DBE7E1', borderRadius: 14, paddingHorizontal: 14, color: '#203934', fontSize: 16 }, hint: { color: '#526C65', fontSize: 14, lineHeight: 21 }, progress: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 20, paddingBottom: 10 }, choice: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 }, nameActions: { flexDirection: 'row', alignItems: 'center', gap: 18 }, button: { alignSelf: 'flex-start', backgroundColor: '#176B57', borderRadius: 13, paddingHorizontal: 18, minHeight: 48, justifyContent: 'center', marginTop: 3 }, disabled: { opacity: 0.5 }, buttonText: { color: '#fff', fontWeight: '700', fontSize: 14 }, row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }, rowLabel: { color: '#203934', fontSize: 15 }, rowValue: { color: '#203934', fontSize: 15, fontWeight: '700' }, nfcValue: { color: '#526C65', fontSize: 14, textAlign: 'right', flexShrink: 1 }, divider: { height: 1, backgroundColor: '#DBE7E1', marginVertical: 3 }, warning: { color: '#924C23', fontSize: 14, lineHeight: 20 }, link: { color: '#176B57', fontSize: 14, fontWeight: '700', paddingVertical: 6 },
-});
+function Section({ title, icon, children }: { title: string; icon: keyof typeof Ionicons.glyphMap; children: React.ReactNode }) {
+  const styles = useStyles(makeStyles);
+  const { c } = useTheme();
+  return <View style={styles.section}>
+    <View style={styles.sectionHead}><Ionicons name={icon} size={20} color={c.primary} /><Text accessibilityRole="header" style={styles.sectionTitle}>{title}</Text></View>
+    <View style={styles.card}>{children}</View>
+  </View>;
+}
+
+function Help({ icon, title, text }: { icon: keyof typeof Ionicons.glyphMap; title: string; text: string }) {
+  const styles = useStyles(makeStyles);
+  const { c } = useTheme();
+  return <View style={styles.help} accessible accessibilityLabel={`${title}. ${text}`}>
+    <View style={styles.helpIcon}><Ionicons name={icon} size={18} color={c.onPrimarySoft} /></View>
+    <View style={{ flex: 1 }}><Text style={styles.label}>{title}</Text><Text style={styles.hint}>{text}</Text></View>
+  </View>;
+}
+
+function Info({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
+  const styles = useStyles(makeStyles);
+  return <View style={styles.info}><Text style={styles.rowLabel}>{label}</Text><Text style={[styles.rowValue, strong && { fontWeight: '800' }]}>{value}</Text></View>;
+}
+
+const makeStyles = (c: Palette) => ({
+  content: { paddingHorizontal: space.xl, paddingTop: space.sm },
+  progress: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginHorizontal: space.xl, marginBottom: space.md, padding: space.md, borderRadius: radius.md, backgroundColor: c.primarySoft },
+  progressText: { ...type.caption, color: c.onPrimarySoft, flex: 1 },
+  section: { marginBottom: space.xxl },
+  sectionHead: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginBottom: space.md },
+  sectionTitle: { ...type.headline, color: c.ink },
+  card: { backgroundColor: c.surface, borderWidth: 1, borderColor: c.line, borderRadius: radius.lg, padding: space.lg, gap: space.md },
+  row: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  label: { ...type.label, color: c.ink },
+  hint: { ...type.caption, fontSize: 14, lineHeight: 20, color: c.muted },
+  warning: { ...type.caption, fontSize: 14, lineHeight: 20, color: c.warning },
+  review: { gap: space.sm, paddingTop: space.md, borderTopWidth: 1, borderTopColor: c.line },
+  choice: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: space.md },
+  rowLabel: { ...type.body, fontSize: 15, color: c.ink },
+  rowValue: { ...type.body, fontSize: 15, color: c.ink, fontWeight: '600' },
+  info: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: space.md },
+  help: { flexDirection: 'row', gap: space.md, alignItems: 'flex-start' },
+  helpIcon: { width: 34, height: 34, borderRadius: 11, backgroundColor: c.primarySoft, alignItems: 'center', justifyContent: 'center' },
+} as const);

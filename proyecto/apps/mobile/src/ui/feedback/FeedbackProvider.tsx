@@ -2,10 +2,20 @@ import { Ionicons } from '@expo/vector-icons';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { AccessibilityInfo, Animated, BackHandler, findNodeHandle, Keyboard, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useStyles, useTheme } from '../theme';
+import { radius, space, type, type Palette } from '../tokens';
 import { haptic } from './haptics';
 
-type Action = { text?: string; style?: 'default' | 'cancel' | 'destructive'; onPress?: () => void };
+type Action = { text?: string; style?: 'default' | 'cancel' | 'destructive'; onPress?: () => void; icon?: keyof typeof Ionicons.glyphMap };
 type Request = { kind: 'dialog' | 'sheet'; title: string; message?: string; actions: Action[] };
+type ToastOptions = {
+  /** Optional action such as «Deshacer». */
+  action?: { label: string; onPress: () => void };
+  /** Called when the toast closes without its action being used (time out or replaced). */
+  onExpire?: () => void;
+  tone?: 'success' | 'info';
+};
+type Toast = { id: number; message: string } & ToastOptions;
 type Feedback = {
   /** Neutral dialog; vibrates as a warning when it confirms a destructive action. */
   alert: (title: string, message?: string, actions?: Action[]) => void;
@@ -13,7 +23,7 @@ type Feedback = {
   error: (title: string, message?: string, actions?: Action[]) => void;
   sheet: (title: string, message?: string, actions?: Action[]) => void;
   /** Brief confirmation of a completed operation; adds a success vibration. */
-  toast: (message: string) => void;
+  toast: (message: string, options?: ToastOptions) => void;
 };
 const Context = createContext<Feedback | null>(null);
 
@@ -25,8 +35,10 @@ export function useFeedback() {
 
 export function FeedbackProvider({ children }: { children: ReactNode }) {
   const insets = useSafeAreaInsets();
+  const { c } = useTheme();
+  const styles = useStyles(makeStyles);
   const [current, setCurrent] = useState<Request | null>(null);
-  const [toast, setToast] = useState<{ message: string; id: number } | null>(null);
+  const [toast, setToast] = useState<Toast | null>(null);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
   const active = useRef<Request | null>(null);
@@ -36,9 +48,11 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
   const toastProgress = useRef(new Animated.Value(0)).current;
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const toastId = useRef(0);
+  const currentToast = useRef<Toast | null>(null);
   const announcedToast = useRef(0);
   const focusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const titleRef = useRef<Text>(null);
+  const toastActionRef = useRef<View>(null);
   const mounted = useRef(true);
 
   useEffect(() => {
@@ -47,7 +61,7 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
     const listener = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
     const keyboardShown = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
     const keyboardHidden = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
-    return () => { mounted.current = false; listener.remove(); keyboardShown.remove(); keyboardHidden.remove(); if (toastTimer.current) clearTimeout(toastTimer.current); if (focusTimer.current) clearTimeout(focusTimer.current); progress.stopAnimation(); toastProgress.stopAnimation(); };
+    return () => { mounted.current = false; listener.remove(); keyboardShown.remove(); keyboardHidden.remove(); if (toastTimer.current) clearTimeout(toastTimer.current); if (focusTimer.current) clearTimeout(focusTimer.current); progress.stopAnimation(); toastProgress.stopAnimation(); currentToast.current?.onExpire?.(); };
   }, [progress, toastProgress]);
 
   const showNext = useCallback(() => {
@@ -91,52 +105,97 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
     return () => handler.remove();
   }, [cancel]);
 
-  const showToast = useCallback((message: string) => {
-    setToast((previous) => previous?.message === message ? previous : { message, id: ++toastId.current });
+  // A newer toast replaces the current one; the replaced toast counts as expired.
+  const showToast = useCallback((message: string, options?: ToastOptions) => {
+    const previous = currentToast.current;
+    const next: Toast = { message, id: ++toastId.current, ...options };
+    currentToast.current = next;
+    setToast(next);
+    if (previous && previous.id !== next.id) previous.onExpire?.();
   }, []);
+
+  const closeToast = useCallback((id: number, usedAction: boolean) => {
+    const item = currentToast.current;
+    if (!item || item.id !== id) return;
+    currentToast.current = null;
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    Animated.timing(toastProgress, { toValue: 0, duration: reduceMotion ? 0 : 180, useNativeDriver: true }).start(() => { if (mounted.current && toastId.current === id) setToast(null); });
+    if (usedAction) item.action?.onPress(); else item.onExpire?.();
+  }, [reduceMotion, toastProgress]);
 
   useEffect(() => {
     if (!toast || current || keyboardVisible) return;
-    const { id, message } = toast;
+    const { id, message, action } = toast;
     let cancelled = false;
-    if (announcedToast.current !== id) { announcedToast.current = id; AccessibilityInfo.announceForAccessibility(message); }
+    if (announcedToast.current !== id) {
+      announcedToast.current = id;
+      AccessibilityInfo.announceForAccessibility(action ? `${message}. Puedes tocar ${action.label}.` : message);
+      if (action) setTimeout(() => { const node = findNodeHandle(toastActionRef.current); if (node) AccessibilityInfo.setAccessibilityFocus(node); }, 400);
+    }
     toastProgress.setValue(reduceMotion ? 1 : 0);
     Animated.timing(toastProgress, { toValue: 1, duration: reduceMotion ? 0 : 200, useNativeDriver: true }).start();
-    void AccessibilityInfo.getRecommendedTimeoutMillis(2500).catch(() => 2500).then((duration) => {
+    // Toasts with an action stay longer; both respect the user's accessibility timeout setting.
+    void AccessibilityInfo.getRecommendedTimeoutMillis(action ? 7000 : 2500).catch(() => (action ? 7000 : 2500)).then((duration) => {
       if (cancelled || !mounted.current || id !== toastId.current) return;
-      toastTimer.current = setTimeout(() => Animated.timing(toastProgress, { toValue: 0, duration: reduceMotion ? 0 : 180, useNativeDriver: true }).start(({ finished }) => { if (finished && mounted.current && id === toastId.current) setToast(null); }), duration);
+      toastTimer.current = setTimeout(() => closeToast(id, false), duration);
     });
     return () => { cancelled = true; if (toastTimer.current) clearTimeout(toastTimer.current); toastProgress.stopAnimation(); };
-  }, [toast, current, keyboardVisible, reduceMotion, toastProgress]);
+  }, [toast, current, keyboardVisible, reduceMotion, toastProgress, closeToast]);
 
   const feedback: Feedback = {
     alert: (title, message, actions) => { if (actions?.some((action) => action.style === 'destructive')) haptic.warning(); enqueue('dialog', title, message, actions); },
     error: (title, message, actions) => { haptic.error(); enqueue('dialog', title, message, actions); },
     sheet: (title, message, actions) => enqueue('sheet', title, message, actions),
-    toast: (message) => { haptic.success(); showToast(message); },
+    toast: (message, options) => { if (options?.tone !== 'info') haptic.success(); showToast(message, options); },
   };
+  const cancelAction = current?.actions.find((action) => action.style === 'cancel');
   return <Context.Provider value={feedback}>
     <View style={styles.fill} accessibilityElementsHidden={!!current} importantForAccessibility={current ? 'no-hide-descendants' : 'auto'}>{children}</View>
     <Modal visible={!!current} transparent animationType="none" onRequestClose={cancel} statusBarTranslucent>
       <View style={[styles.modalRoot, current?.kind === 'sheet' && styles.sheetRoot]} accessibilityViewIsModal>
-        <Animated.View style={[StyleSheet.absoluteFill, styles.scrim, { opacity: progress }]} />
+        <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: c.scrim, opacity: progress }]} />
         <Pressable accessibilityRole="button" accessibilityLabel="Cerrar" onPress={cancel} style={StyleSheet.absoluteFill} />
         {current && <Animated.View style={[styles.panel, current.kind === 'sheet' ? [styles.sheet, { paddingBottom: Math.max(insets.bottom, 20), transform: [{ translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [reduceMotion ? 0 : 70, 0] }) }] }] : [styles.dialog, { opacity: progress, transform: [{ scale: progress.interpolate({ inputRange: [0, 1], outputRange: [reduceMotion ? 1 : 0.96, 1] }) }] }]]}>
           {current.kind === 'sheet' && <View style={styles.handle} />}
           <ScrollView bounces={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.panelContent}>
             <Text ref={titleRef} accessible accessibilityRole="header" style={styles.title}>{current.title}</Text>
             {!!current.message && <Text style={styles.message}>{current.message}</Text>}
-            <View style={styles.actions}>{current.actions.filter((action) => action.style !== 'cancel').map((action, index) => <Pressable key={`${action.text}-${index}`} accessibilityRole="button" onPress={() => dismiss(action)} style={({ pressed }) => [current.kind === 'sheet' ? styles.sheetAction : action.style === 'destructive' ? styles.danger : styles.primary, pressed && styles.pressed]}>{current.kind === 'sheet' && <Ionicons name={action.text?.toLowerCase().includes('foto') ? 'camera-outline' : 'images-outline'} size={20} color="#176B57" />}<Text style={current.kind === 'sheet' ? styles.sheetActionText : styles.primaryText}>{action.text ?? 'Aceptar'}</Text></Pressable>)}
-              {current.actions.some((action) => action.style === 'cancel') && <Pressable accessibilityRole="button" onPress={cancel} style={({ pressed }) => [styles.cancel, pressed && styles.pressed]}><Text style={styles.cancelText}>{current.actions.find((action) => action.style === 'cancel')?.text ?? 'Cancelar'}</Text></Pressable>}
+            <View style={styles.actions}>{current.actions.filter((action) => action.style !== 'cancel').map((action, index) => {
+              const destructive = action.style === 'destructive';
+              return <Pressable key={`${action.text}-${index}`} accessibilityRole="button" onPress={() => dismiss(action)} style={({ pressed }) => [current.kind === 'sheet' ? styles.sheetAction : destructive ? styles.danger : styles.primary, pressed && styles.pressed]}>
+                {current.kind === 'sheet' && <Ionicons name={action.icon ?? (destructive ? 'trash-outline' : 'ellipse-outline')} size={21} color={destructive ? c.danger : c.primary} />}
+                <Text style={current.kind === 'sheet' ? [styles.sheetActionText, destructive && { color: c.danger }] : destructive ? styles.dangerText : styles.primaryText}>{action.text ?? 'Aceptar'}</Text>
+              </Pressable>;
+            })}
+              {cancelAction && <Pressable accessibilityRole="button" onPress={cancel} style={({ pressed }) => [styles.cancel, pressed && styles.pressed]}><Text style={styles.cancelText}>{cancelAction.text ?? 'Cancelar'}</Text></Pressable>}
             </View>
           </ScrollView>
         </Animated.View>}
       </View>
     </Modal>
-    {!!toast && !current && !keyboardVisible && <Animated.View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={[styles.toast, { bottom: Math.max(insets.bottom, 16) + 88, opacity: toastProgress, transform: [{ translateY: toastProgress.interpolate({ inputRange: [0, 1], outputRange: [reduceMotion ? 0 : 10, 0] }) }] }]}><Ionicons name="checkmark-circle" size={20} color="#D9F3E6" /><Text style={styles.toastText}>{toast.message}</Text></Animated.View>}
+    {!!toast && !current && !keyboardVisible && <Animated.View pointerEvents={toast.action ? 'box-none' : 'none'} accessibilityElementsHidden={!toast.action} importantForAccessibility={toast.action ? 'auto' : 'no-hide-descendants'}
+      style={[styles.toast, { bottom: Math.max(insets.bottom, 16) + 84, opacity: toastProgress, transform: [{ translateY: toastProgress.interpolate({ inputRange: [0, 1], outputRange: [reduceMotion ? 0 : 10, 0] }) }] }]}>
+      <Ionicons name={toast.tone === 'info' ? 'information-circle' : 'checkmark-circle'} size={20} color={c.onToast} />
+      <Text style={styles.toastText}>{toast.message}</Text>
+      {toast.action && <Pressable ref={toastActionRef} accessibilityRole="button" accessibilityLabel={`${toast.action.label}: ${toast.message}`} hitSlop={8} onPress={() => closeToast(toast.id, true)} style={({ pressed }) => [styles.toastAction, pressed && styles.pressed]}><Text style={styles.toastActionText}>{toast.action.label}</Text></Pressable>}
+    </Animated.View>}
   </Context.Provider>;
 }
 
-const styles = StyleSheet.create({
-  fill: { flex: 1 }, modalRoot: { flex: 1, justifyContent: 'center', padding: 24 }, sheetRoot: { justifyContent: 'flex-end', padding: 0 }, scrim: { backgroundColor: 'rgba(13, 30, 24, 0.55)' }, panel: { backgroundColor: '#F8FBF9', maxHeight: '85%' }, dialog: { borderRadius: 24, width: '100%', maxWidth: 440, alignSelf: 'center' }, sheet: { borderTopLeftRadius: 26, borderTopRightRadius: 26 }, handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#BBCDC3', alignSelf: 'center', marginTop: 12 }, panelContent: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 24 }, title: { color: '#203934', fontSize: 21, fontWeight: '700', lineHeight: 27 }, message: { color: '#526C65', fontSize: 15, lineHeight: 23, marginTop: 10 }, actions: { gap: 10, marginTop: 24 }, primary: { minHeight: 50, borderRadius: 14, backgroundColor: '#176B57', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 16 }, danger: { minHeight: 50, borderRadius: 14, backgroundColor: '#A33F43', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 16 }, primaryText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700', textAlign: 'center' }, cancel: { minHeight: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center', backgroundColor: '#EAF2ED' }, cancelText: { color: '#176B57', fontSize: 15, fontWeight: '700' }, sheetAction: { minHeight: 54, borderRadius: 14, borderWidth: 1, borderColor: '#DBE7E1', backgroundColor: '#FFFFFF', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, gap: 12 }, sheetActionText: { color: '#203934', fontSize: 15, fontWeight: '700', flex: 1 }, pressed: { opacity: 0.7 }, toast: { position: 'absolute', alignSelf: 'center', maxWidth: '90%', backgroundColor: '#203F33', borderRadius: 16, paddingHorizontal: 18, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', gap: 9 }, toastText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600', flexShrink: 1 },
-});
+const makeStyles = (c: Palette) => ({
+  fill: { flex: 1 }, modalRoot: { flex: 1, justifyContent: 'center', padding: space.xxl }, sheetRoot: { justifyContent: 'flex-end', padding: 0 },
+  panel: { backgroundColor: c.surface, maxHeight: '85%' }, dialog: { borderRadius: radius.xl, width: '100%', maxWidth: 440, alignSelf: 'center' }, sheet: { borderTopLeftRadius: 26, borderTopRightRadius: 26 },
+  handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: c.inputBorder, alignSelf: 'center', marginTop: space.md },
+  panelContent: { paddingHorizontal: space.xxl, paddingTop: space.xxl, paddingBottom: space.xxl },
+  title: { color: c.ink, ...type.title, fontSize: 21, lineHeight: 27 }, message: { color: c.muted, ...type.body, fontSize: 15, lineHeight: 23, marginTop: 10 },
+  actions: { gap: 10, marginTop: space.xxl },
+  primary: { minHeight: 52, borderRadius: radius.md, backgroundColor: c.primary, justifyContent: 'center', alignItems: 'center', paddingHorizontal: space.lg },
+  danger: { minHeight: 52, borderRadius: radius.md, backgroundColor: c.danger, justifyContent: 'center', alignItems: 'center', paddingHorizontal: space.lg },
+  primaryText: { color: c.onPrimary, ...type.label, fontWeight: '700', textAlign: 'center' }, dangerText: { color: c.surface, ...type.label, fontWeight: '700', textAlign: 'center' },
+  cancel: { minHeight: 50, borderRadius: radius.md, justifyContent: 'center', alignItems: 'center', backgroundColor: c.surfaceAlt }, cancelText: { color: c.primary, ...type.label, fontWeight: '700' },
+  sheetAction: { minHeight: 56, borderRadius: radius.md, borderWidth: 1, borderColor: c.line, backgroundColor: c.surface, flexDirection: 'row', alignItems: 'center', paddingHorizontal: space.lg, gap: space.md },
+  sheetActionText: { color: c.ink, ...type.label, fontWeight: '700', flex: 1 }, pressed: { opacity: 0.7 },
+  toast: { position: 'absolute', left: space.lg, right: space.lg, backgroundColor: c.toast, borderRadius: radius.lg, paddingLeft: space.lg, paddingRight: space.sm, minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  toastText: { color: c.onToast, ...type.label, flex: 1, paddingVertical: space.md }, toastAction: { minHeight: 48, paddingHorizontal: space.md, justifyContent: 'center', borderRadius: radius.sm },
+  toastActionText: { color: c.toastAction, ...type.label, fontWeight: '800' },
+} as const);

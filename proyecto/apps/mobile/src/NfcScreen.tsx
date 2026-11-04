@@ -1,13 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, ActivityIndicator, Animated, BackHandler, Easing, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { router, useNavigation } from 'expo-router';
+import { AccessibilityInfo, ActivityIndicator, Animated, Easing, Platform, ScrollView, Text, View } from 'react-native';
 import { NfcSession, type NfcAdapter, type NfcPhase } from './nfc-session';
 import { objectLink } from './qr';
 import { findActiveObject, markNfcWritten, objectState, type MemoryObject } from './storage';
 import { useFeedback } from './ui/feedback/FeedbackProvider';
 import { haptic } from './ui/feedback/haptics';
+import { Button, NavBar, Screen } from './ui/components';
+import { useStyles, useTheme } from './ui/theme';
+import { radius, space, type, type Palette } from './ui/tokens';
 
 async function createAdapter(): Promise<NfcAdapter> {
   if (Platform.OS !== 'android') throw new Error('ANDROID_ONLY');
@@ -31,7 +34,7 @@ const messages: Record<string, string> = {
   DEV_BUILD: 'NFC necesita una compilación de desarrollo. No está disponible en Expo Go.',
   UNSUPPORTED: 'Este dispositivo no admite NFC.',
   DISABLED: 'Activa NFC en los ajustes del dispositivo y vuelve a intentarlo.',
-  INVALID_TAG: 'La etiqueta no contiene un identificador local de MemoraTag.',
+  INVALID_TAG: 'Esta etiqueta está vacía o no es de MemoraTag. Puedes vincularla desde un objeto.',
   READ_ONLY: 'La etiqueta no permite escritura o no se pudo comprobar.',
   CAPACITY: 'La etiqueta no tiene espacio suficiente.',
   NO_TAG: 'No se pudo leer la etiqueta. Vuelve a intentarlo.',
@@ -39,8 +42,12 @@ const messages: Record<string, string> = {
   BUSY: 'Ya hay una operación NFC en curso.',
 };
 
-export function NfcScreen({ object, onBack, onFound, onWritten }: { object?: MemoryObject; onBack: () => void; onFound: (object: MemoryObject) => void; onWritten?: (at: string) => void }) {
+export function NfcScreen({ object, onFound, onWritten }: { object?: MemoryObject; onFound?: (object: MemoryObject) => void; onWritten?: (at: string) => void }) {
   const Alert = useFeedback();
+  const { c } = useTheme();
+  const styles = useStyles(makeStyles);
+  const navigation = useNavigation();
+  const [archivedFound, setArchivedFound] = useState(false);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState('');
   const [phase, setPhase] = useState<NfcPhase | null>(null);
@@ -51,18 +58,17 @@ export function NfcScreen({ object, onBack, onFound, onWritten }: { object?: Mem
   const alive = useRef(true);
   const running = useRef(false);
   const cancelRequested = useRef(false);
-  const back = useRef(onBack);
-  back.current = onBack;
 
   useEffect(() => {
     alive.current = true;
-    const listener = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (running.current) return true;
-      back.current();
-      return true;
-    });
-    return () => { alive.current = false; listener.remove(); void session.current?.cancel().catch(() => {}); };
+    return () => { alive.current = false; void session.current?.cancel().catch(() => {}); };
   }, []);
+  // Leaving is blocked only while a write is in progress, so the tag is never left half written.
+  useEffect(() => navigation.addListener('beforeRemove', (event) => {
+    if (!running.current || (phase !== 'writing' && phase !== 'verifying')) return;
+    event.preventDefault();
+    announce('Escritura en curso. Mantén la etiqueta cerca hasta terminar.');
+  }), [navigation, phase]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     void AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion).catch(() => {});
@@ -89,6 +95,7 @@ export function NfcScreen({ object, onBack, onFound, onWritten }: { object?: Mem
     cancelRequested.current = false;
     setBusy(true);
     setResult(null);
+    setArchivedFound(false);
     setPhase('checking');
     setStatus('Comprobando NFC…');
     try {
@@ -111,11 +118,12 @@ export function NfcScreen({ object, onBack, onFound, onWritten }: { object?: Mem
       else {
         const found = await findActiveObject(id);
         if (!alive.current) return;
-        if (found) { haptic.success(); onFound(found); }
+        if (found) { haptic.success(); onFound?.(found); }
         else {
           haptic.warning();
           setResult('error');
           const state = await objectState(id).catch(() => 'missing' as const);
+          if (alive.current) setArchivedFound(state === 'archived');
           if (alive.current) announce(state === 'archived' ? 'Este objeto está archivado. Restáuralo desde «Objetos archivados» para ver su historia.' : 'Este objeto no está guardado en este teléfono. Puede haberse creado en otro dispositivo.');
         }
       }
@@ -140,24 +148,48 @@ export function NfcScreen({ object, onBack, onFound, onWritten }: { object?: Mem
     ]);
   }
 
-  return <SafeAreaView style={styles.page} edges={['top']}>
-    <View style={styles.nav}><Pressable accessibilityRole="button" accessibilityLabel="Volver" disabled={busy} style={[styles.back, busy && styles.disabled]} onPress={onBack}><Ionicons name="arrow-back" size={22} color="#203934" /></Pressable><Text accessibilityRole="header" style={styles.navTitle}>Etiqueta NFC</Text><View style={styles.spacer} /></View>
+  const tone = result === 'success' ? c.success : result === 'error' ? c.danger : c.primary;
+  const soft = result === 'success' ? c.successSoft : result === 'error' ? c.dangerSoft : c.primarySoft;
+  const writing = phase === 'writing' || phase === 'verifying';
+  return <Screen>
+    <NavBar title={object ? 'Vincular etiqueta NFC' : 'Leer etiqueta NFC'} disabled={busy && writing} />
     <ScrollView contentContainerStyle={styles.content}>
       <View style={styles.illustrationWrap} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
-        {phase === 'waiting' && !reduceMotion && <Animated.View style={[styles.pulse, { opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.45, 0] }), transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.6] }) }] }]} />}
-        <View style={[styles.illustration, result === 'success' && styles.illustrationSuccess, result === 'error' && styles.illustrationError]}><Ionicons name={result === 'success' ? 'checkmark' : result === 'error' ? 'alert' : 'radio-outline'} size={46} color={result === 'success' ? '#FFFFFF' : result === 'error' ? '#A33F43' : '#176B57'} /></View>
+        {phase === 'waiting' && !reduceMotion && <Animated.View style={[styles.pulse, { backgroundColor: c.primary, opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.4, 0] }), transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.7] }) }] }]} />}
+        <View style={[styles.illustration, { backgroundColor: result === 'success' ? c.success : soft }]}>
+          <Ionicons name={result === 'success' ? 'checkmark' : result === 'error' ? 'alert' : phase === 'waiting' ? 'phone-portrait-outline' : 'radio-outline'} size={50} color={result === 'success' ? c.onPrimary : tone} />
+        </View>
       </View>
-      {phase === 'waiting' && <Text style={styles.howTo}>Acerca la etiqueta a la parte trasera del teléfono, cerca de la cámara, y mantenla quieta.</Text>}
-      <Text accessibilityRole="header" style={styles.title}>{object ? `Etiqueta para ${object.name}` : 'Leer etiqueta NFC'}</Text>
-      <Text style={styles.description}>{object ? 'Guarda el identificador de este objeto en una etiqueta NFC.' : 'Abre un objeto guardado en este dispositivo acercando su etiqueta.'}</Text>
-      <View style={styles.notice}><Ionicons name="information-circle-outline" size={20} color="#176B57" /><Text style={styles.noticeText}>La etiqueta guarda solo un enlace al objeto, no su historia. Abre el objeto en este teléfono; en otro dispositivo no estará disponible.</Text></View>
-      {!!status && <View style={styles.status}>{busy && <ActivityIndicator color="#176B57" />}<Text style={styles.statusText}>{status}</Text></View>}
-      {!busy && <Pressable accessibilityRole="button" style={styles.primary} onPress={start}><Ionicons name="radio-outline" size={20} color="#fff" /><Text style={styles.primaryText}>{object ? 'Escribir etiqueta' : 'Leer etiqueta'}</Text></Pressable>}
-      {busy && phase !== 'writing' && phase !== 'verifying' && <Pressable accessibilityRole="button" style={styles.secondary} onPress={() => { cancelRequested.current = true; void session.current?.cancel().then((cancelled) => { if (!cancelled && alive.current) setStatus('Escritura en curso. Mantén la etiqueta cerca hasta terminar.'); }).catch(() => {}); }}><Text style={styles.secondaryText}>Cancelar</Text></Pressable>}
+      <Text accessibilityRole="header" style={styles.title}>{object ? object.name : 'Acerca una etiqueta'}</Text>
+      <Text style={styles.description}>{phase === 'waiting' ? 'Acerca la etiqueta a la parte trasera del teléfono, cerca de la cámara, y mantenla quieta.' : object ? (object.nfc_written_at ? 'Este objeto ya tiene una etiqueta. Puedes escribir otra o reemplazarla.' : 'Graba en una etiqueta NFC el enlace a este objeto. Después, al acercarla, se abrirá su historia.') : 'Abre la historia de un objeto acercando su etiqueta NFC.'}</Text>
+      {!!status && <View accessibilityLiveRegion="none" style={[styles.status, { backgroundColor: soft }]}>
+        {busy ? <ActivityIndicator color={tone} /> : <Ionicons name={result === 'success' ? 'checkmark-circle' : result === 'error' ? 'alert-circle' : 'information-circle'} size={22} color={tone} />}
+        <Text style={[styles.statusText, { color: c.ink }]}>{status}</Text>
+      </View>}
+      <View style={styles.actions}>
+        {!busy && <Button label={result === 'success' ? 'Escribir otra etiqueta' : result === 'error' ? 'Reintentar' : object ? 'Escribir etiqueta' : 'Leer etiqueta'} icon="radio-outline" variant={result === 'success' ? 'secondary' : 'primary'} onPress={start} />}
+        {!busy && result === 'success' && object && <Button label="Volver al objeto" icon="arrow-back" onPress={() => router.back()} />}
+        {!busy && archivedFound && <Button label="Ver objetos archivados" icon="archive-outline" variant="secondary" onPress={() => router.replace('/archived')} />}
+        {busy && !writing && <Button label="Cancelar" variant="ghost" onPress={() => { cancelRequested.current = true; void session.current?.cancel().catch(() => {}); }} />}
+      </View>
+      <View style={styles.notice}>
+        <Ionicons name="lock-closed-outline" size={18} color={c.muted} />
+        <Text style={styles.noticeText}>La etiqueta solo guarda un enlace, nunca la historia. Funciona en este teléfono, donde están los datos. Usa etiquetas NTAG213 o NTAG215.</Text>
+      </View>
     </ScrollView>
-  </SafeAreaView>;
+  </Screen>;
 }
 
-const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: '#F5F8F6' }, nav: { minHeight: 74, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, back: { width: 48, height: 48, borderRadius: 14, backgroundColor: '#fff', borderWidth: 1, borderColor: '#DBE7E1', alignItems: 'center', justifyContent: 'center' }, disabled: { opacity: 0.5 }, spacer: { width: 48 }, navTitle: { color: '#203934', fontSize: 16, fontWeight: '800' }, content: { alignItems: 'center', paddingHorizontal: 24, paddingTop: 8, paddingBottom: 48 }, illustrationWrap: { width: 200, height: 200, alignItems: 'center', justifyContent: 'center' }, pulse: { position: 'absolute', width: 128, height: 128, borderRadius: 64, backgroundColor: '#176B57' }, illustration: { width: 128, height: 128, borderRadius: 44, backgroundColor: '#E1EEE7', alignItems: 'center', justifyContent: 'center' }, illustrationSuccess: { backgroundColor: '#176B57' }, illustrationError: { backgroundColor: '#F6E3E3' }, howTo: { color: '#203934', fontSize: 15, lineHeight: 22, textAlign: 'center', marginTop: 4, maxWidth: 300, fontWeight: '600' }, title: { color: '#203934', fontSize: 26, fontWeight: '700', textAlign: 'center', marginTop: 25 }, description: { color: '#526C65', fontSize: 15, lineHeight: 23, textAlign: 'center', marginTop: 12, maxWidth: 310 }, notice: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', backgroundColor: '#E1EEE7', borderRadius: 15, padding: 16, marginTop: 24, width: '100%' }, noticeText: { color: '#203934', flex: 1, fontSize: 14, lineHeight: 20 }, status: { flexDirection: 'row', gap: 10, alignItems: 'center', marginTop: 22 }, statusText: { color: '#203934', flex: 1, fontSize: 15, lineHeight: 22 }, primary: { width: '100%', minHeight: 56, borderRadius: 16, backgroundColor: '#176B57', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 24 }, primaryText: { color: '#fff', fontSize: 16, fontWeight: '700' }, secondary: { minHeight: 50, alignItems: 'center', justifyContent: 'center', marginTop: 16 }, secondaryText: { color: '#176B57', fontWeight: '700', fontSize: 15 },
-});
+const makeStyles = (c: Palette) => ({
+  content: { alignItems: 'center', paddingHorizontal: space.xl, paddingBottom: space.xxxl },
+  illustrationWrap: { width: 220, height: 220, alignItems: 'center', justifyContent: 'center' },
+  pulse: { position: 'absolute', width: 136, height: 136, borderRadius: 68 },
+  illustration: { width: 136, height: 136, borderRadius: 48, alignItems: 'center', justifyContent: 'center' },
+  title: { ...type.title, color: c.ink, textAlign: 'center' },
+  description: { ...type.body, color: c.muted, textAlign: 'center', marginTop: space.sm, maxWidth: 330 },
+  status: { flexDirection: 'row', gap: space.md, alignItems: 'center', marginTop: space.xl, padding: space.lg, borderRadius: radius.lg, width: '100%' },
+  statusText: { ...type.body, fontSize: 15, lineHeight: 22, flex: 1 },
+  actions: { width: '100%', gap: space.md, marginTop: space.xl },
+  notice: { flexDirection: 'row', gap: space.sm, alignItems: 'flex-start', marginTop: space.xxl },
+  noticeText: { ...type.caption, color: c.muted, flex: 1, lineHeight: 19 },
+} as const);

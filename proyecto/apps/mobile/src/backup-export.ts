@@ -31,8 +31,8 @@ export async function createBackupDocument(onPhase?: (message: string) => void) 
   let events: BackupEvent[] = [];
   let profile: { name: string } | null = null;
   await db.withExclusiveTransactionAsync(async (tx) => {
-    objects = await tx.getAllAsync<BackupObject>('SELECT id, name, description, created_at, archived_at, cover_image, color, nfc_written_at FROM objects ORDER BY id');
-    events = await tx.getAllAsync<BackupEvent>('SELECT id, object_id, title, description, created_at, type, event_date, photo, document_file, document_name FROM events ORDER BY id');
+    objects = await tx.getAllAsync<BackupObject>('SELECT id, name, description, created_at, archived_at, cover_image, color, nfc_written_at, icon FROM objects ORDER BY id');
+    events = await tx.getAllAsync<BackupEvent>('SELECT id, object_id, title, description, created_at, type, event_date, photo, document_file, document_name, resolved_at FROM events ORDER BY id');
     profile = await tx.getFirstAsync<{ name: string }>('SELECT name FROM local_profile WHERE id = 1');
   });
   if (objects.length > BACKUP_LIMITS.objects || events.length > BACKUP_LIMITS.events) throw new Error('BACKUP_LIMIT');

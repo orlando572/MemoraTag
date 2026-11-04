@@ -30,6 +30,7 @@ export function planBackupMerge(current: Backup, incoming: Backup): BackupPlan {
     if (!existing) { result.newObjects.push(item); continue; }
     const fields: string[] = [];
     for (const field of ['name', 'description', 'created_at', 'archived_at', 'color'] as const) if (existing[field] !== item[field]) fields.push(field);
+    if (item.icon !== undefined && (existing.icon ?? null) !== item.icon) fields.push('icon');
     if (fileDigest(currentFiles, 'photos', existing.cover_image) !== fileDigest(incomingFiles, 'photos', item.cover_image)) fields.push('cover_image');
     if (!fields.length) result.unchangedObjects++;
     else {
@@ -42,6 +43,7 @@ export function planBackupMerge(current: Backup, incoming: Backup): BackupPlan {
     if (!existing) { result.newEvents.push(item); continue; }
     const fields: string[] = [];
     for (const field of ['object_id', 'title', 'description', 'created_at', 'type', 'event_date', 'document_name'] as const) if (existing[field] !== item[field]) fields.push(field);
+    if (item.resolved_at !== undefined && (existing.resolved_at ?? null) !== item.resolved_at) fields.push('resolved_at');
     if (fileDigest(currentFiles, 'photos', existing.photo) !== fileDigest(incomingFiles, 'photos', item.photo)) fields.push('photo');
     if (fileDigest(currentFiles, 'documents', existing.document_file) !== fileDigest(incomingFiles, 'documents', item.document_file)) fields.push('document_file');
     if (!fields.length) result.unchangedEvents++;
