@@ -9,6 +9,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import QRCode from 'react-native-qrcode-svg';
 import { Scanner } from '../src/Scanner';
 import { NfcScreen } from '../src/NfcScreen';
+import { Settings } from '../src/Settings';
 import { Welcome } from '../src/Welcome';
 import { useKeyboardScroll } from '../src/useKeyboardScroll';
 import { objectQrValue } from '../src/qr';
@@ -73,6 +74,7 @@ export default function Home() {
   const [profileError, setProfileError] = useState(false);
   const [archivedObjects, setArchivedObjects] = useState<MemoryObject[]>([]);
   const [showArchived, setShowArchived] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [archivedLoading, setArchivedLoading] = useState(false);
   const [archivedError, setArchivedError] = useState('');
   const [restoring, setRestoring] = useState<string | null>(null);
@@ -304,6 +306,7 @@ export default function Home() {
   if (profileLoading) return <SafeAreaView style={[styles.page, styles.profileLoading]}><ActivityIndicator color={colors.green} /></SafeAreaView>;
   if (profileError) return <SafeAreaView style={[styles.page, styles.profileLoading]}><Text style={styles.profileError}>No se pudo cargar tu información.</Text><Pressable accessibilityRole="button" onPress={() => void loadProfile()}><Text style={styles.retry}>Reintentar</Text></Pressable></SafeAreaView>;
   if (!localName) return <Welcome onContinue={setLocalName} />;
+  if (showSettings) return <Settings name={localName} onNameChange={setLocalName} onImported={(name) => { if (name) setLocalName(name); void loadObjects(); }} onBack={() => setShowSettings(false)} />;
   if (readingNfc) return <NfcScreen onBack={() => setReadingNfc(false)} onFound={(object) => { setError(''); setSelected(object); setReadingNfc(false); }} />;
   if (showNfc && selected) return <NfcScreen object={selected} onBack={() => setShowNfc(false)} onFound={() => {}} />;
   if (scanning) return <Scanner onBack={() => setScanning(false)} onFound={(object) => { setError(''); setSelected(object); setScanning(false); }} onReadNfc={() => { setScanning(false); setReadingNfc(true); }} />;
@@ -376,7 +379,7 @@ export default function Home() {
         </ScrollView>
         <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}><PrimaryButton label="Registrar evento" icon="add" onPress={() => openForm('event')} /></View>
       </> : <>
-        <View style={styles.homeHeader}><View style={styles.homeHeaderText}><Text style={styles.greeting} numberOfLines={1}>Hola, {localName}</Text><Text style={styles.homeTitle}>Tus memorias</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Objetos archivados" onPress={() => { setShowArchived(true); void loadArchived(); }} style={styles.headerMark}><Ionicons name="archive-outline" size={23} color={colors.green} /></Pressable></View>
+        <View style={styles.homeHeader}><View style={styles.homeHeaderText}><Text style={styles.greeting} numberOfLines={1}>Hola, {localName}</Text><Text style={styles.homeTitle}>Tus memorias</Text></View><View style={styles.homeActions}><Pressable accessibilityRole="button" accessibilityLabel="Objetos archivados" onPress={() => { setShowArchived(true); void loadArchived(); }} style={styles.headerMark}><Ionicons name="archive-outline" size={23} color={colors.green} /></Pressable><Pressable accessibilityRole="button" accessibilityLabel="Ajustes" onPress={() => setShowSettings(true)} style={styles.headerMark}><Ionicons name="settings-outline" size={23} color={colors.green} /></Pressable></View></View>
         <ScrollView contentContainerStyle={styles.list}>
           <View style={styles.sectionHead}><Text style={styles.listLabel}>Objetos que cuidas</Text><Text style={styles.count}>{objects.length} {objects.length === 1 ? 'objeto' : 'objetos'}</Text></View>
           {loading ? <ActivityIndicator color={colors.green} /> : error ? <><Text style={styles.error}>{error}</Text><Pressable accessibilityRole="button" onPress={() => void loadObjects()}><Text style={styles.retry}>Reintentar</Text></Pressable></> : objects.length === 0 ? <View style={styles.emptyHome}><View style={styles.emptyIcon}><Ionicons name="cube-outline" size={30} color={colors.green} /></View><Text style={styles.emptyTitle}>Cada objeto tiene una historia</Text><Text style={styles.emptyText}>Crea tu primer objeto y guarda aquí todo lo que quieras recordar.</Text></View> : objects.map((item) => <Pressable accessibilityRole="button" key={item.id} style={({ pressed }) => [styles.card, { backgroundColor: paleColor(item.color) }, pressed && styles.pressed]} onPress={() => setSelected(item)}><View style={[styles.cover, { backgroundColor: item.color }]}>{photoUri(item.cover_image) ? <Image source={{ uri: photoUri(item.cover_image)! }} style={styles.coverImage} /> : <Artwork name={item.name} />}</View><View style={styles.cardCopy}><Text style={styles.cardTitle}>{item.name}</Text><View style={styles.cardEvent}>{item.latest_event_title && <Ionicons name={(item.latest_event_type && eventTypes[item.latest_event_type] || eventTypes.note).icon} size={15} color={(item.latest_event_type && eventTypes[item.latest_event_type] || eventTypes.note).color} />}<Text numberOfLines={1} style={[styles.cardDescription, styles.cardEventText]}>{item.latest_event_title || 'Aún no tiene eventos'}</Text></View>{item.latest_event_date && <Text style={styles.cardDate}>{formatDate(item.latest_event_date)}</Text>}</View><Ionicons name="chevron-forward" size={18} color="#60786D" /></Pressable>)}
@@ -389,7 +392,7 @@ export default function Home() {
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: colors.canvas }, flex: { flex: 1 },
-  profileLoading: { justifyContent: 'center', alignItems: 'center', padding: 24 }, profileError: { color: colors.ink, textAlign: 'center', fontSize: 16 }, homeHeaderText: { flex: 1, marginRight: 12 },
+  profileLoading: { justifyContent: 'center', alignItems: 'center', padding: 24 }, profileError: { color: colors.ink, textAlign: 'center', fontSize: 16 }, homeHeaderText: { flex: 1, marginRight: 12 }, homeActions: { flexDirection: 'row', gap: 8 },
   homeHeader: { paddingHorizontal: 24, paddingTop: 26, paddingBottom: 34, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, greeting: { color: colors.green, fontSize: 14, fontWeight: '700', letterSpacing: 0.2 }, homeTitle: { color: colors.ink, fontSize: 32, fontWeight: '700', letterSpacing: -0.9, marginTop: 7 }, headerMark: { width: 48, height: 48, borderRadius: 16, backgroundColor: colors.pale, justifyContent: 'center', alignItems: 'center' },
   list: { paddingHorizontal: 20, paddingBottom: 32, flexGrow: 1 }, sectionHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }, listLabel: { color: colors.ink, fontSize: 16, fontWeight: '700' }, count: { color: colors.soft, fontSize: 13, fontWeight: '600' },
   card: { minHeight: 104, backgroundColor: '#FFFFFF', borderRadius: 18, borderWidth: 1, borderColor: colors.line, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 10 }, cover: { width: 78, height: 78, borderRadius: 13, backgroundColor: '#DCEBE2', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }, art: { width: 46, height: 46, backgroundColor: '#F4FAF6', borderWidth: 1, borderColor: '#C5DDCE', borderRadius: 14, justifyContent: 'center', alignItems: 'center' }, cardCopy: { flex: 1, gap: 5 }, cardTitle: { color: colors.ink, fontSize: 17, fontWeight: '700' }, cardDescription: { color: colors.muted, fontSize: 13, lineHeight: 19 },

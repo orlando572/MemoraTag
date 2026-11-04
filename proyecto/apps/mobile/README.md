@@ -16,6 +16,7 @@ Abre la aplicación en un dispositivo o emulador compatible con Expo. Para compr
 ## Implementado
 
 - Pantalla de bienvenida que guarda el nombre en el dispositivo y lo muestra en el saludo. El nombre no constituye una cuenta ni autentica al usuario.
+- Ajustes para cambiar el nombre, consultar el espacio de fotos y documentos, el estado NFC y la versión de la aplicación. El flujo de respaldo está implementado, pero aún no se ha validado la recuperación en otra instalación.
 - Crear, consultar y editar objetos, archivarlos y registrar eventos con nombre y descripción.
 - Elegir el color de cada objeto al crearlo o editarlo. Cuando tiene foto, esta ocupa el fondo de su cabecera; sin foto, se muestra el color elegido.
 - Añadir, cambiar o quitar la foto de portada de un objeto desde la cámara o la galería. Se guarda una copia local de hasta 5 MB; se admiten JPEG, PNG, WebP, HEIC y HEIF cuando el dispositivo los soporta.
@@ -32,7 +33,9 @@ Los datos locales se pierden si se eliminan los datos de la aplicación o se pie
 
 ## Pendiente
 
-Múltiples documentos por evento, validación NFC con hardware, inicio de sesión y creación de cuentas, backend, publicación y sincronización. Las opciones de cuenta son informativas y todavía no autentican ni crean usuarios. QR y NFC usan un formato local provisional: no son enlaces web públicos ni están pensados para etiquetas permanentes. La nueva app aún no sustituye todas las funciones del prototipo.
+Validación de recuperación de respaldos en otro dispositivo, tema oscuro, múltiples documentos por evento, validación NFC con hardware, inicio de sesión y creación de cuentas, backend, publicación y sincronización. Las opciones de cuenta son informativas y todavía no autentican ni crean usuarios. QR y NFC usan un formato local provisional: no son enlaces web públicos ni están pensados para etiquetas permanentes. La nueva app aún no sustituye todas las funciones del prototipo.
+
+Los respaldos se comparten como JSON sin cifrar y contienen información privada. Cada archivo está limitado a 5 MiB, el total de archivos a 20 MiB y el documento a 32 MiB. La importación valida referencias e integridad, ofrece una decisión global para los conflictos y aplica los cambios en una transacción; no elimina los archivos originales al reemplazar registros. La preparación de la importación también necesita que los datos actuales estén dentro de los límites y que sus archivos estén disponibles. El menú de compartir no informa si la copia se guardó o se canceló, por lo que no se registra una fecha de exportación confirmada. **Todavía falta validar la exportación y la recuperación completa en instalaciones reales; no uses esta función como única copia de datos importantes.**
 
 ## NFC en Android
 
