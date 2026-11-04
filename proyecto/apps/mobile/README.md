@@ -4,6 +4,8 @@ Nueva aplicación Expo y React Native, independiente del prototipo original que 
 
 ## Ejecutar
 
+La [guía de compilación y pruebas](../../../docs/guia-compilacion-y-pruebas.md) explica paso a paso cómo instalar el entorno de Android, compilar la app con NFC, instalarla en un teléfono y probarla, además de los problemas frecuentes.
+
 Desde `proyecto/`:
 
 ```bash

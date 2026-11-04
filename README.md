@@ -93,3 +93,5 @@ El workspace en `proyecto/` contiene la nueva app móvil inicializada y carpetas
 - [Privacidad y acceso](docs/privacidad.md)
 - [Evaluación](docs/evaluacion.md)
 - [Plan de trabajo](docs/plan-de-trabajo.md)
+- [Guía de compilación y pruebas de la app móvil](docs/guia-compilacion-y-pruebas.md)
+- [Mejoras de interacción humano-computadora](docs/mejoras-ihm.md)
