@@ -46,6 +46,9 @@ export function openDatabase() {
       if (!profileColumns.some((column) => column.name === 'onboarding_done')) {
         await db.execAsync('ALTER TABLE local_profile ADD COLUMN onboarding_done INTEGER NOT NULL DEFAULT 0');
       }
+      if (!profileColumns.some((column) => column.name === 'theme_mode')) {
+        await db.execAsync("ALTER TABLE local_profile ADD COLUMN theme_mode TEXT NOT NULL DEFAULT 'system'");
+      }
       const eventColumns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(events)');
       if (!eventColumns.some((column) => column.name === 'type')) {
         await db.execAsync("ALTER TABLE events ADD COLUMN type TEXT NOT NULL DEFAULT 'note'");
@@ -87,6 +90,17 @@ export async function getOnboardingDone() {
 
 export async function setOnboardingDone() {
   await (await openDatabase()).runAsync('UPDATE local_profile SET onboarding_done = 1 WHERE id = 1');
+}
+
+export type ThemeMode = 'system' | 'light' | 'dark';
+
+export async function getThemeMode(): Promise<ThemeMode> {
+  const row = await (await openDatabase()).getFirstAsync<{ theme_mode: string }>('SELECT theme_mode FROM local_profile WHERE id = 1');
+  return row?.theme_mode === 'light' || row?.theme_mode === 'dark' ? row.theme_mode : 'system';
+}
+
+export async function setThemeMode(mode: ThemeMode) {
+  await (await openDatabase()).runAsync('UPDATE local_profile SET theme_mode = ? WHERE id = 1', mode);
 }
 
 export async function saveLocalName(name: string) {

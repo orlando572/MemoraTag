@@ -11,7 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, NavBar, Screen, TextField } from './ui/components';
 import { useStyles, useTheme } from './ui/theme';
 import { radius, space, type, type Palette } from './ui/tokens';
-import { saveLocalName } from './storage';
+import { saveLocalName, type ThemeMode } from './storage';
 import { createBackupDocument } from './backup-export';
 import { applyBackupImport, prepareBackupImport, type PreparedImport } from './backup-import';
 import { getStorageUsage } from './storage-usage';
@@ -31,7 +31,7 @@ const nfcMessages: Record<NfcState, string> = {
   checking: 'Consultando…', enabled: 'Disponible y activado', disabled: 'Disponible, pero desactivado', unsupported: 'Este dispositivo no admite NFC', expo: 'NFC no está disponible en Expo Go', platform: 'NFC solo está preparado para Android', error: 'No se pudo consultar el estado',
 };
 
-export function Settings({ name, onNameChange, onImported, onShowTutorial }: { name: string; onNameChange: (name: string) => void; onImported: (name: string | null) => Promise<boolean>; onShowTutorial: () => void }) {
+export function Settings({ name, onNameChange, onImported, onShowTutorial, themeMode, onThemeMode }: { name: string; onNameChange: (name: string) => void; onImported: (name: string | null) => Promise<boolean>; onShowTutorial: () => void; themeMode: ThemeMode; onThemeMode: (mode: ThemeMode) => Promise<void> }) {
   const Alert = useFeedback();
   const insets = useSafeAreaInsets();
   const { c } = useTheme();
@@ -193,6 +193,25 @@ export function Settings({ name, onNameChange, onImported, onShowTutorial }: { n
         </View>}
       </Section>
 
+      <Section title="Apariencia" icon="color-palette-outline">
+        <Text style={styles.hint}>Elige cómo se ve MemoraTag. No cambia el modo de tu teléfono.</Text>
+        <View accessibilityRole="radiogroup" style={{ gap: space.sm }}>
+          {themeOptions.map((option) => {
+            const selected = themeMode === option.mode;
+            return <Pressable key={option.mode} accessibilityRole="radio" accessibilityState={{ checked: selected }} accessibilityLabel={`${option.label}. ${option.detail}`}
+              onPress={() => { if (!selected) void onThemeMode(option.mode).catch(() => Alert.error('No se pudo guardar la preferencia', 'El tema se aplicó, pero volverá al anterior al reiniciar la app.')); }}
+              style={({ pressed }) => [styles.themeOption, selected && { borderColor: c.primary, borderWidth: 2, backgroundColor: c.primarySoft }, pressed && { opacity: 0.75 }]}>
+              <Ionicons name={option.icon} size={22} color={selected ? c.onPrimarySoft : c.ink} />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.label, selected && { color: c.onPrimarySoft }]}>{option.label}</Text>
+                <Text style={[styles.hint, selected && { color: c.onPrimarySoft }]}>{option.detail}</Text>
+              </View>
+              <Ionicons name={selected ? 'radio-button-on' : 'radio-button-off'} size={22} color={selected ? c.onPrimarySoft : c.muted} />
+            </Pressable>;
+          })}
+        </View>
+      </Section>
+
       <Section title="Ayuda" icon="help-buoy-outline">
         <Help icon="qr-code-outline" title="Abrir un objeto con su QR" text="Dentro del objeto, toca «Código QR» y compártelo para imprimirlo. Para abrirlo, usa «Escanear» o la cámara del teléfono." />
         {Platform.OS === 'android' && <Help icon="radio-outline" title="Usar una etiqueta NFC" text="Dentro del objeto, toca «Etiqueta NFC» y acerca una NTAG213/215 a la parte trasera del teléfono hasta que se verifique. Después se abre al acercarla, incluso con la app cerrada." />}
@@ -245,6 +264,12 @@ export function Settings({ name, onNameChange, onImported, onShowTutorial }: { n
   </Screen>;
 }
 
+const themeOptions: { mode: ThemeMode; label: string; detail: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { mode: 'system', label: 'Automático', detail: 'Igual que el teléfono', icon: 'phone-portrait-outline' },
+  { mode: 'light', label: 'Claro', detail: 'Fondo claro siempre', icon: 'sunny-outline' },
+  { mode: 'dark', label: 'Oscuro', detail: 'Fondo oscuro siempre; cómodo con poca luz', icon: 'moon-outline' },
+];
+
 function Section({ title, icon, children }: { title: string; icon: keyof typeof Ionicons.glyphMap; children: React.ReactNode }) {
   const styles = useStyles(makeStyles);
   const { c } = useTheme();
@@ -286,5 +311,6 @@ const makeStyles = (c: Palette) => ({
   rowValue: { ...type.body, fontSize: 15, color: c.ink, fontWeight: '600' },
   info: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: space.md },
   help: { flexDirection: 'row', gap: space.md, alignItems: 'flex-start' },
+  themeOption: { minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.md, paddingVertical: space.sm, borderRadius: radius.md, borderWidth: 1, borderColor: c.line, backgroundColor: c.surface },
   helpIcon: { width: 34, height: 34, borderRadius: 11, backgroundColor: c.primarySoft, alignItems: 'center', justifyContent: 'center' },
 } as const);

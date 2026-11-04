@@ -19,7 +19,7 @@ Abre la aplicación en un dispositivo o emulador compatible con Expo. Comprobaci
 
 Resumen; el detalle de cada cambio y el principio de IHM en que se basa está en [`docs/mejoras-ihm.md`](../../../docs/mejoras-ihm.md).
 
-- **Identidad:** paleta «petróleo y ámbar» con tema claro y oscuro automático. Logotipo propio (etiqueta con ojal y línea de tiempo), icono de app, icono adaptativo y monocromo, y pantalla de carga. Los recursos se regeneran con `pnpm icons`.
+- **Identidad:** paleta «petróleo y ámbar» con tema claro y oscuro. En Ajustes → Apariencia se elige Automático, Claro u Oscuro. Logotipo propio (etiqueta con ojal y línea de tiempo), icono de app, icono adaptativo y monocromo, y pantalla de carga. Los recursos se regeneran con `pnpm icons`.
 - **Sistema de diseño:** tokens en `src/ui/tokens.ts` y componentes compartidos en `src/ui/components.tsx`. `pnpm check:contrast` valida el contraste WCAG AA de todos los colores.
 - **Navegación:** pantallas reales con Expo Router (`app/`), con transiciones nativas y gesto de volver. Los enlaces de QR y NFC abren `/object/<id>`.
 - **Inicio:** buscador, resumen (objetos, incidencias abiertas, con NFC) y tarjetas con fecha relativa e insignias.
