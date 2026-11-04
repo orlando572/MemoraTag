@@ -72,8 +72,8 @@ test('detecta cambios de archivo, nombre y estado archivado', async () => {
 function database() {
   const db = new DatabaseSync(':memory:');
   db.exec(`PRAGMA foreign_keys = ON;
-    CREATE TABLE objects (id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT NOT NULL, created_at TEXT NOT NULL, archived_at TEXT, cover_image TEXT, color TEXT NOT NULL, nfc_written_at TEXT);
-    CREATE TABLE events (id TEXT PRIMARY KEY, object_id TEXT NOT NULL REFERENCES objects(id), title TEXT NOT NULL, description TEXT NOT NULL, created_at TEXT NOT NULL, type TEXT NOT NULL, event_date TEXT, photo TEXT, document_file TEXT, document_name TEXT);
+    CREATE TABLE objects (id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT NOT NULL, created_at TEXT NOT NULL, archived_at TEXT, cover_image TEXT, color TEXT NOT NULL, nfc_written_at TEXT, icon TEXT);
+    CREATE TABLE events (id TEXT PRIMARY KEY, object_id TEXT NOT NULL REFERENCES objects(id), title TEXT NOT NULL, description TEXT NOT NULL, created_at TEXT NOT NULL, type TEXT NOT NULL, event_date TEXT, photo TEXT, document_file TEXT, document_name TEXT, resolved_at TEXT);
     CREATE TABLE local_profile (id INTEGER PRIMARY KEY CHECK (id = 1), name TEXT NOT NULL);`);
   return db;
 }
@@ -123,5 +123,26 @@ test('el vínculo NFC es opcional, se valida y no se pierde al restaurar un resp
     const older = await sample();
     await transact(db, older.objects, older.events, null);
     assert.equal(db.prepare('SELECT nfc_written_at FROM objects').get().nfc_written_at, '2026-02-01T10:00:00.000Z');
+  } finally { db.close(); }
+});
+
+test('icono y estado de incidencias son opcionales, se validan y se conservan', async () => {
+  const data = await sample();
+  data.objects[0].icon = 'bicycle';
+  data.events[0].type = 'issue'; data.events[0].resolved_at = '2026-03-01T09:00:00.000Z';
+  assert.deepEqual(await validateBackup(data, digest), data);
+  const badIcon = await sample(); badIcon.objects[0].icon = '../x';
+  await assert.rejects(validateBackup(badIcon, digest), /INVALID_BACKUP/);
+  const resolvedNote = await sample(); resolvedNote.events[0].resolved_at = '2026-03-01T09:00:00.000Z';
+  await assert.rejects(validateBackup(resolvedNote, digest), /INVALID_BACKUP/);
+  const db = database();
+  try {
+    await transact(db, data.objects, data.events, null);
+    const older = await sample(); older.events[0].type = 'issue';
+    await transact(db, older.objects, older.events, null);
+    assert.equal(db.prepare('SELECT icon FROM objects').get().icon, 'bicycle');
+    assert.equal(db.prepare('SELECT resolved_at FROM events').get().resolved_at, '2026-03-01T09:00:00.000Z');
+    const plan = planBackupMerge({ ...older, events: [{ ...older.events[0], resolved_at: null }] }, data);
+    assert.ok(plan.eventConflicts[0].fields.includes('resolved_at'));
   } finally { db.close(); }
 });
