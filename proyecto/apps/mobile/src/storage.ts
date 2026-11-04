@@ -39,6 +39,10 @@ export function openDatabase() {
       if (!columns.some((column) => column.name === 'nfc_written_at')) {
         await db.execAsync('ALTER TABLE objects ADD COLUMN nfc_written_at TEXT');
       }
+      const profileColumns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(local_profile)');
+      if (!profileColumns.some((column) => column.name === 'onboarding_done')) {
+        await db.execAsync('ALTER TABLE local_profile ADD COLUMN onboarding_done INTEGER NOT NULL DEFAULT 0');
+      }
       const eventColumns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(events)');
       if (!eventColumns.some((column) => column.name === 'type')) {
         await db.execAsync("ALTER TABLE events ADD COLUMN type TEXT NOT NULL DEFAULT 'note'");
@@ -68,6 +72,15 @@ export function openDatabase() {
 export async function getLocalName() {
   const profile = await (await openDatabase()).getFirstAsync<{ name: string }>('SELECT name FROM local_profile WHERE id = 1');
   return profile?.name ?? null;
+}
+
+export async function getOnboardingDone() {
+  const profile = await (await openDatabase()).getFirstAsync<{ onboarding_done: number }>('SELECT onboarding_done FROM local_profile WHERE id = 1');
+  return profile?.onboarding_done === 1;
+}
+
+export async function setOnboardingDone() {
+  await (await openDatabase()).runAsync('UPDATE local_profile SET onboarding_done = 1 WHERE id = 1');
 }
 
 export async function saveLocalName(name: string) {
