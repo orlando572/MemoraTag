@@ -11,9 +11,24 @@ pnpm install
 pnpm --filter @memoratag/mobile start
 ```
 
-Abre la aplicación en un dispositivo o emulador compatible con Expo. Para comprobar los tipos: `pnpm --filter @memoratag/mobile typecheck`.
+Abre la aplicación en un dispositivo o emulador compatible con Expo. Comprobaciones: `typecheck`, `test:nfc`, `test:backup`, `test:ui` y `check:contrast` (todas con `pnpm --filter @memoratag/mobile <script>`). El icono y la pantalla de carga son recursos nativos: tras cambiarlos hay que recompilar la app (`expo prebuild --clean` y `expo run:android`).
 
 ## Implementado
+
+### Diseño e interacción (rediseño)
+
+Resumen; el detalle de cada cambio y el principio de IHM en que se basa está en [`docs/mejoras-ihm.md`](../../../docs/mejoras-ihm.md).
+
+- **Identidad:** paleta «petróleo y ámbar» con tema claro y oscuro automático. Logotipo propio (etiqueta con ojal y línea de tiempo), icono de app, icono adaptativo y monocromo, y pantalla de carga. Los recursos se regeneran con `pnpm icons`.
+- **Sistema de diseño:** tokens en `src/ui/tokens.ts` y componentes compartidos en `src/ui/components.tsx`. `pnpm check:contrast` valida el contraste WCAG AA de todos los colores.
+- **Navegación:** pantallas reales con Expo Router (`app/`), con transiciones nativas y gesto de volver. Los enlaces de QR y NFC abren `/object/<id>`.
+- **Inicio:** buscador, resumen (objetos, incidencias abiertas, con NFC) y tarjetas con fecha relativa e insignias.
+- **Objeto:** resumen de estado (incidencias abiertas y último mantenimiento), accesos a QR y NFC, filtros por tipo e historia agrupada por mes.
+- **Incidencias:** se pueden marcar como resueltas y reabrir (`events.resolved_at`).
+- **Deshacer:** archivar, borrar un evento y resolver una incidencia se aplican al momento y ofrecen «Deshacer». Los formularios avisan antes de descartar cambios.
+- **Icono del objeto:** el usuario elige el icono (`objects.icon`). Los respaldos incluyen `icon` y `resolved_at` como campos opcionales.
+
+### Funcionalidad
 
 - Pantalla de bienvenida que guarda el nombre en el dispositivo y lo muestra en el saludo. El nombre no constituye una cuenta ni autentica al usuario.
 - Ajustes para cambiar el nombre, consultar el espacio de fotos y documentos, el estado NFC y la versión de la aplicación. El flujo de respaldo está implementado, pero aún no se ha validado la recuperación en otra instalación.
@@ -32,13 +47,13 @@ Abre la aplicación en un dispositivo o emulador compatible con Expo. Para compr
 - Los objetos archivados y sus eventos permanecen en el dispositivo y dejan de mostrarse en la lista principal. Desde «Objetos archivados» se pueden restaurar con su historia y archivos.
 - Si un QR o una etiqueta corresponde a un objeto archivado, se ofrece ir a «Objetos archivados». Si no existe en el dispositivo, se explica que pudo crearse en otro teléfono.
 - Accesibilidad: contraste de texto WCAG AA (4.5:1), áreas táctiles de al menos 48 dp, encabezados y etiquetas descriptivas para TalkBack, anuncios de los estados NFC y alturas mínimas en lugar de fijas para la letra grande del sistema. **Pendiente de revisar con TalkBack y letra grande en un dispositivo físico.**
-- Tutorial de tres pasos, que se puede saltar, tras introducir el nombre (qué es MemoraTag, cómo usar QR/NFC y dónde se guardan los datos). Se puede volver a ver desde Ajustes, que incluye además una sección de ayuda. El inicio vacío ofrece crear el primer objeto.
+- Tutorial de cuatro pasos, que se puede saltar, tras introducir el nombre (qué es MemoraTag, incidencias y deshacer, cómo usar QR/NFC y dónde se guardan los datos). Se puede volver a ver desde Ajustes, que incluye además una sección de ayuda. El inicio vacío ofrece crear el primer objeto.
 
 Los datos locales se pierden si se eliminan los datos de la aplicación o se pierde el dispositivo. La persistencia todavía debe comprobarse en un dispositivo o emulador.
 
 ## Pendiente
 
-Validación de recuperación de respaldos en otro dispositivo, tema oscuro, múltiples documentos por evento, validación NFC con hardware, inicio de sesión y creación de cuentas, backend, publicación y sincronización. Las opciones de cuenta son informativas y todavía no autentican ni crean usuarios. QR y NFC usan el enlace de la app `memoratag://objeto/<id>`, no un enlace web público: sin la app y sin los datos en el teléfono no muestran nada. Cuando exista la consulta pública, el formato tendrá que pasar a una URL web. La nueva app aún no sustituye todas las funciones del prototipo.
+Validación de recuperación de respaldos en otro dispositivo, múltiples documentos por evento, validación NFC con hardware, inicio de sesión y creación de cuentas, backend, publicación y sincronización. Las opciones de cuenta son informativas y todavía no autentican ni crean usuarios. QR y NFC usan el enlace de la app `memoratag://objeto/<id>`, no un enlace web público: sin la app y sin los datos en el teléfono no muestran nada. Cuando exista la consulta pública, el formato tendrá que pasar a una URL web. La nueva app aún no sustituye todas las funciones del prototipo.
 
 Los respaldos se comparten como JSON sin cifrar y contienen información privada. Cada archivo está limitado a 5 MiB, el total de archivos a 20 MiB y el documento a 32 MiB. La importación valida referencias e integridad, ofrece una decisión global para los conflictos y aplica los cambios en una transacción; no elimina los archivos originales al reemplazar registros. La preparación de la importación también necesita que los datos actuales estén dentro de los límites y que sus archivos estén disponibles. El menú de compartir no informa si la copia se guardó o se canceló, por lo que no se registra una fecha de exportación confirmada. **Todavía falta validar la exportación y la recuperación completa en instalaciones reales; no uses esta función como única copia de datos importantes.**
 
