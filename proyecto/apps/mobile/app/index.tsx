@@ -4,7 +4,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, BackHandler, Image, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, BackHandler, Image, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
 import { Scanner } from '../src/Scanner';
@@ -12,6 +12,7 @@ import { NfcScreen } from '../src/NfcScreen';
 import { Settings } from '../src/Settings';
 import { Welcome } from '../src/Welcome';
 import { useKeyboardScroll } from '../src/useKeyboardScroll';
+import { useFeedback } from '../src/ui/feedback/FeedbackProvider';
 import { objectQrValue } from '../src/qr';
 import { documentFormat, openDocument, removeDocument, saveDocument } from '../src/event-document';
 import { photoUri, removePhoto, savePhoto } from '../src/object-photos';
@@ -64,6 +65,7 @@ function PrimaryButton({ label, icon, onPress, disabled }: { label: string; icon
 }
 
 export default function Home() {
+  const Alert = useFeedback();
   const insets = useSafeAreaInsets();
   const keyboardScroll = useKeyboardScroll();
   const titleInput = useRef<TextInput>(null);
@@ -156,7 +158,7 @@ export default function Home() {
       await restoreObject(item.id);
       setArchivedObjects((items) => items.filter((object) => object.id !== item.id));
       setObjects((items) => [item, ...items].sort((a, b) => b.created_at.localeCompare(a.created_at)));
-      Alert.alert('Objeto restaurado', `${item.name} vuelve a estar en tus memorias.`);
+      Alert.toast(`${item.name} vuelve a estar en tus memorias.`);
     } catch { Alert.alert('No se pudo restaurar', 'Vuelve a intentarlo.'); }
     finally { setRestoring(null); }
   }
@@ -226,7 +228,7 @@ export default function Home() {
     } catch { Alert.alert('No se pudo abrir la imagen', 'Vuelve a intentarlo.'); }
   }
   function showPhotoOptions() {
-    Alert.alert(isEventForm ? 'Foto del evento' : 'Foto del objeto', 'Elige una opción.', [
+    Alert.sheet(isEventForm ? 'Foto del evento' : 'Foto del objeto', 'Elige una opción.', [
       { text: 'Tomar foto', onPress: () => void choosePhoto('camera') },
       { text: 'Elegir de la galería', onPress: () => void choosePhoto('gallery') },
       { text: 'Cancelar', style: 'cancel' },

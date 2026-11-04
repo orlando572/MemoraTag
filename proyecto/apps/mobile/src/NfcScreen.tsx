@@ -1,11 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, BackHandler, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, BackHandler, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NfcSession, type NfcAdapter } from './nfc-session';
 import { objectIdFromQr, objectQrValue } from './qr';
 import { findActiveObject, type MemoryObject } from './storage';
+import { useFeedback } from './ui/feedback/FeedbackProvider';
 
 async function createAdapter(): Promise<NfcAdapter> {
   if (Platform.OS !== 'android') throw new Error('ANDROID_ONLY');
@@ -38,6 +39,7 @@ const messages: Record<string, string> = {
 };
 
 export function NfcScreen({ object, onBack, onFound }: { object?: MemoryObject; onBack: () => void; onFound: (object: MemoryObject) => void }) {
+  const Alert = useFeedback();
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState('');
   const session = useRef<NfcSession | null>(null);
