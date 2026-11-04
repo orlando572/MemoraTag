@@ -33,7 +33,9 @@ test('lee identificador y libera la sesión', async () => {
 
 test('escribe solo si la lectura posterior coincide', async () => {
   const device = adapter();
-  assert.equal(await new NfcSession(device).run('write', value), value);
+  const phases = [];
+  assert.equal(await new NfcSession(device, (phase) => phases.push(phase)).run('write', value), value);
+  assert.deepEqual(phases, ['checking', 'waiting', 'checkingTag', 'writing', 'verifying']);
   assert.deepEqual(device.calls, ['write', 'cancel']);
   const failed = adapter({ read: async () => [] });
   await assert.rejects(new NfcSession(failed).run('write', value), /WRITE_UNCONFIRMED/);

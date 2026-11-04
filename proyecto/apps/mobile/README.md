@@ -17,11 +17,13 @@ Abre la aplicación en un dispositivo o emulador compatible con Expo. Para compr
 
 - Pantalla de bienvenida que guarda el nombre en el dispositivo y lo muestra en el saludo. El nombre no constituye una cuenta ni autentica al usuario.
 - Ajustes para cambiar el nombre, consultar el espacio de fotos y documentos, el estado NFC y la versión de la aplicación. El flujo de respaldo está implementado, pero aún no se ha validado la recuperación en otra instalación.
+- Avisos breves al guardar y restaurar, validación junto a los campos y estados de progreso para NFC y respaldos. La revisión de accesibilidad y el comportamiento en dispositivos físicos siguen pendientes.
 - Crear, consultar y editar objetos, archivarlos y registrar eventos con nombre y descripción.
 - Elegir el color de cada objeto al crearlo o editarlo. Cuando tiene foto, esta ocupa el fondo de su cabecera; sin foto, se muestra el color elegido.
 - Añadir, cambiar o quitar la foto de portada de un objeto desde la cámara o la galería. Se guarda una copia local de hasta 5 MB; se admiten JPEG, PNG, WebP, HEIC y HEIF cuando el dispositivo los soporta.
 - Registrar eventos de tipo nota, incidencia o mantenimiento, eligiendo su fecha; la historia se ordena por fecha del evento. Los eventos anteriores se conservan como notas con su fecha de creación.
 - Editar el título, descripción, tipo y fecha de eventos, y cambiar o quitar su foto y documento.
+- Eliminar eventos tras una confirmación. El borrado es definitivo en el dispositivo (no se archiva ni se puede deshacer) y elimina su foto y documento locales cuando ningún otro registro los utiliza. Cómo se reflejará este borrado al sincronizar con la eliminación lógica de la base central todavía está pendiente de definir.
 - Añadir una foto opcional a un evento desde la cámara o la galería. Se conserva una copia local de hasta 5 MB y se muestra en la historia. Las fotos del objeto y de los eventos pueden abrirse a pantalla completa.
 - Adjuntar un documento PDF, XLS o XLSX por evento, de hasta 5 MB. Se guarda una copia local y se puede abrir con una aplicación compatible (en iOS se utiliza el menú del sistema para abrir o compartir).
 - Mostrar un QR de prueba y leerlo con la cámara o desde una imagen de la galería para abrir un objeto activo guardado en el mismo dispositivo. El QR contiene únicamente el identificador local, no la historia.

@@ -1,5 +1,7 @@
 import * as SQLite from 'expo-sqlite';
 import * as Crypto from 'expo-crypto';
+import { removePhoto } from './object-photos';
+import { removeDocument } from './event-document';
 
 export type MemoryObject = { id: string; name: string; description: string; created_at: string; cover_image: string | null; color: string; latest_event_title?: string | null; latest_event_date?: string | null; latest_event_type?: EventType | null };
 export type EventType = 'note' | 'issue' | 'maintenance';
@@ -127,4 +129,32 @@ export async function updateEvent(event: MemoryEvent) {
     event.title, event.description, event.type, event.event_date, event.photo, event.document_file, event.document_name, event.id, event.object_id, event.object_id,
   );
   if (result.changes !== 1) throw new Error('Event not found or object archived');
+}
+
+export async function deleteEvent(id: string, objectId: string) {
+  const db = await openDatabase();
+  let attachments: { photo: string | null; document_file: string | null } | null = null;
+  await db.withExclusiveTransactionAsync(async (tx) => {
+    attachments = await tx.getFirstAsync<{ photo: string | null; document_file: string | null }>(
+      'SELECT photo, document_file FROM events WHERE id = ? AND object_id = ? AND EXISTS (SELECT 1 FROM objects WHERE id = ? AND archived_at IS NULL)', id, objectId, objectId,
+    );
+    if (!attachments) throw new Error('Event not found or object archived');
+    const result = await tx.runAsync('DELETE FROM events WHERE id = ? AND object_id = ?', id, objectId);
+    if (result.changes !== 1) throw new Error('Event not found');
+  });
+  // Cleanup is best-effort and must never change the result of a committed deletion.
+  const files = attachments as { photo: string | null; document_file: string | null } | null;
+  if (!files) return;
+  try {
+    if (files.photo) {
+      const used = await db.getFirstAsync<{ used: number }>('SELECT 1 AS used WHERE EXISTS (SELECT 1 FROM events WHERE photo = ?) OR EXISTS (SELECT 1 FROM objects WHERE cover_image = ?)', files.photo, files.photo);
+      if (!used) await removePhoto(files.photo);
+    }
+  } catch { /* Keep orphaned files when cleanup cannot be confirmed. */ }
+  try {
+    if (files.document_file) {
+      const used = await db.getFirstAsync<{ used: number }>('SELECT 1 AS used WHERE EXISTS (SELECT 1 FROM events WHERE document_file = ?)', files.document_file);
+      if (!used) await removeDocument(files.document_file);
+    }
+  } catch { /* Cleanup can be retried separately. */ }
 }

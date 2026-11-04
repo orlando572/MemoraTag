@@ -24,7 +24,8 @@ function utf8Bytes(value: string) {
 
 // The caller must prevent edits for the duration of this operation. No existing
 // files or rows are changed; absent attachments abort instead of being omitted.
-export async function createBackupDocument() {
+export async function createBackupDocument(onPhase?: (message: string) => void) {
+  onPhase?.('Preparando datos…');
   const db = await openDatabase();
   let objects: BackupObject[] = [];
   let events: BackupEvent[] = [];
@@ -49,6 +50,7 @@ export async function createBackupDocument() {
 
   let total = 0;
   const files: BackupFile[] = [];
+  onPhase?.('Preparando archivos…');
   for (const [key, uri] of references) {
     const info = await FileSystem.getInfoAsync(uri);
     if (!info.exists || info.isDirectory || typeof info.size !== 'number') throw new Error('BACKUP_FILE_MISSING');
@@ -57,6 +59,7 @@ export async function createBackupDocument() {
     files.push({ key, size: info.size, base64, sha256: await backupDigest(base64) });
   }
   const backup: Backup = { format: 'memoratag-backup', version: 1, appVersion: Constants.expoConfig?.version ?? 'desconocida', exportedAt: new Date().toISOString(), profile, objects, events, files };
+  onPhase?.('Validando respaldo…');
   await validateBackup(backup, backupDigest);
   const output = JSON.stringify(backup);
   if (utf8Bytes(output) > BACKUP_LIMITS.jsonBytes) throw new Error('BACKUP_LIMIT');
