@@ -86,4 +86,4 @@ proyecto/                  # Workspace independiente del prototipo
 └── pnpm-workspace.yaml
 ```
 
-El workspace y las carpetas están preparados, pero las aplicaciones aún no están inicializadas. El prototipo existente permanece intacto en la raíz y conserva su propio `package.json` y lockfile. El móvil y la web se organizarán por funcionalidades, separando interfaz, lógica y acceso a datos sin imponerles todas las capas del backend. La implementación debe priorizar el flujo principal y una web sencilla para conservar tiempo para la evaluación del artículo.
+El workspace es independiente y la nueva aplicación móvil cuenta con una base Expo y almacenamiento local SQLite para objetos y eventos. La web y el backend aún no están inicializados. El prototipo existente permanece intacto en la raíz y conserva su propio `package.json` y lockfile. El móvil y la web se organizarán por funcionalidades, separando interfaz, lógica y acceso a datos sin imponerles todas las capas del backend. La implementación debe priorizar el flujo principal y una web sencilla para conservar tiempo para la evaluación del artículo.
