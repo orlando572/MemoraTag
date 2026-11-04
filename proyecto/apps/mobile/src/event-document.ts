@@ -14,6 +14,10 @@ export function documentFormat(name: string) {
   return formats[extension] ? { extension, mimeType: formats[extension] } : null;
 }
 
+export function documentUri(name: string | null) {
+  return name && safeName.test(name) ? `${directory}${name}` : null;
+}
+
 export async function saveDocument(uri: string, originalName: string) {
   const format = documentFormat(originalName);
   if (!format) throw new Error('DOCUMENT_FORMAT');
