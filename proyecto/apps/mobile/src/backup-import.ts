@@ -24,19 +24,22 @@ async function snapshotDigest(backup: Backup) {
 
 // Selection is copied to app-owned cache first: content:// permissions and
 // provider metadata differ across Android versions. Reject unknown-size files.
-export async function prepareBackupImport(uri: string, reportedSize: number | undefined): Promise<PreparedImport> {
+export async function prepareBackupImport(uri: string, reportedSize: number | undefined, onPhase?: (message: string) => void): Promise<PreparedImport> {
   if (!FileSystem.cacheDirectory || typeof reportedSize !== 'number' || !Number.isSafeInteger(reportedSize) || reportedSize < 0 || reportedSize > BACKUP_LIMITS.jsonBytes) throw new Error('BACKUP_SIZE');
   const temporary = `${FileSystem.cacheDirectory}memoratag-import-${Crypto.randomUUID()}.json`;
   try {
+    onPhase?.('Leyendo respaldo…');
     await FileSystem.copyAsync({ from: uri, to: temporary });
     const info = await FileSystem.getInfoAsync(temporary);
     if (!info.exists || info.isDirectory || typeof info.size !== 'number' || info.size > BACKUP_LIMITS.jsonBytes) throw new Error('BACKUP_SIZE');
     const text = await FileSystem.readAsStringAsync(temporary);
     let parsed: unknown;
     try { parsed = JSON.parse(text); } catch { throw new Error('INVALID_BACKUP'); }
+    onPhase?.('Validando respaldo…');
     const incoming = await validateBackup(parsed, backupDigest);
     const requiredBytes = incoming.files.reduce((total, file) => total + file.size, 0);
     await ensureFreeSpace(requiredBytes);
+    onPhase?.('Revisando datos actuales…');
     const current = await validateBackup(JSON.parse(await createBackupDocument()), backupDigest);
     return { incoming, plan: planBackupMerge(current, incoming), currentDigest: await snapshotDigest(current), requiredBytes };
   } finally {
@@ -44,10 +47,11 @@ export async function prepareBackupImport(uri: string, reportedSize: number | un
   }
 }
 
-export async function applyBackupImport(prepared: PreparedImport, conflictChoice: 'current' | 'incoming', useProfile: boolean) {
+export async function applyBackupImport(prepared: PreparedImport, conflictChoice: 'current' | 'incoming', useProfile: boolean, onPhase?: (message: string) => void) {
   if (!FileSystem.documentDirectory) throw new Error('BACKUP_DIRECTORY');
   const { incoming, plan } = prepared;
   await ensureFreeSpace(prepared.requiredBytes);
+  onPhase?.('Comprobando datos actuales…');
   const latest = await validateBackup(JSON.parse(await createBackupDocument()), backupDigest);
   if (await snapshotDigest(latest) !== prepared.currentDigest) throw new Error('BACKUP_STALE');
   const objects = [...plan.newObjects, ...(conflictChoice === 'incoming' ? plan.objectConflicts.map((item) => item.incoming) : [])];
@@ -82,12 +86,14 @@ export async function applyBackupImport(prepared: PreparedImport, conflictChoice
   }
 
   try {
+    onPhase?.('Preparando archivos…');
     const objectRows: BackupObject[] = [];
     const eventRows: BackupEvent[] = [];
     for (const object of objects) objectRows.push({ ...object, cover_image: await stage('photos', object.cover_image) });
     for (const event of events) eventRows.push({ ...event, photo: await stage('photos', event.photo), document_file: await stage('documents', event.document_file) });
     const db = await openDatabase();
     transactionStarted = true;
+    onPhase?.('Aplicando cambios…');
     await db.withExclusiveTransactionAsync(async (tx) => {
       await writeBackupRows((sql, ...values) => tx.runAsync(sql, ...values), objectRows, eventRows, useProfile ? incoming.profile?.name ?? null : null);
       // The exclusive transaction uses another SQLite connection; do not

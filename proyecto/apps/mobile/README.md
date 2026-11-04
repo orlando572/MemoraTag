@@ -17,6 +17,7 @@ Abre la aplicación en un dispositivo o emulador compatible con Expo. Para compr
 
 - Pantalla de bienvenida que guarda el nombre en el dispositivo y lo muestra en el saludo. El nombre no constituye una cuenta ni autentica al usuario.
 - Ajustes para cambiar el nombre, consultar el espacio de fotos y documentos, el estado NFC y la versión de la aplicación. El flujo de respaldo está implementado, pero aún no se ha validado la recuperación en otra instalación.
+- Avisos breves al guardar y restaurar, validación junto a los campos y estados de progreso para NFC y respaldos. La revisión de accesibilidad y el comportamiento en dispositivos físicos siguen pendientes.
 - Crear, consultar y editar objetos, archivarlos y registrar eventos con nombre y descripción.
 - Elegir el color de cada objeto al crearlo o editarlo. Cuando tiene foto, esta ocupa el fondo de su cabecera; sin foto, se muestra el color elegido.
 - Añadir, cambiar o quitar la foto de portada de un objeto desde la cámara o la galería. Se guarda una copia local de hasta 5 MB; se admiten JPEG, PNG, WebP, HEIC y HEIF cuando el dispositivo los soporta.

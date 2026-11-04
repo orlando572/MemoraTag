@@ -11,6 +11,7 @@ export interface NfcAdapter {
   read(): Promise<NfcRecord[]>;
   cancel(): Promise<void>;
 }
+export type NfcPhase = 'checking' | 'waiting' | 'reading' | 'checkingTag' | 'writing' | 'verifying';
 
 export class NfcSession {
   private busy = false;
@@ -18,7 +19,8 @@ export class NfcSession {
   private requesting = false;
   private inFlightWrite = false;
   private adapter: NfcAdapter;
-  constructor(adapter: NfcAdapter) { this.adapter = adapter; }
+  private onPhase?: (phase: NfcPhase) => void;
+  constructor(adapter: NfcAdapter, onPhase?: (phase: NfcPhase) => void) { this.adapter = adapter; this.onPhase = onPhase; }
 
   async cancel() {
     if (this.inFlightWrite) return false;
@@ -33,6 +35,7 @@ export class NfcSession {
     this.busy = true;
     this.cancelled = false;
     try {
+      this.onPhase?.('checking');
       if (!await this.adapter.isSupported()) throw new Error('UNSUPPORTED');
       if (this.cancelled) throw new Error('CANCELLED');
       if (!await this.adapter.isEnabled()) throw new Error('DISABLED');
@@ -40,24 +43,29 @@ export class NfcSession {
       await this.adapter.start();
       if (this.cancelled) throw new Error('CANCELLED');
       this.requesting = true;
+      this.onPhase?.('waiting');
       await this.adapter.request();
       if (this.cancelled) throw new Error('CANCELLED');
       const tag = await this.adapter.tag();
       if (this.cancelled) throw new Error('CANCELLED');
       if (!tag) throw new Error('NO_TAG');
       if (mode === 'read') {
+        this.onPhase?.('reading');
         const decoded = decodeNfcIdentifier(await this.adapter.read());
         if (this.cancelled) throw new Error('CANCELLED');
         if (!decoded) throw new Error('INVALID_TAG');
         return decoded;
       }
+      this.onPhase?.('checkingTag');
       const status = await this.adapter.status();
       if (this.cancelled) throw new Error('CANCELLED');
       if (!status.writable || tag.isWritable === false) throw new Error('READ_ONLY');
       if (!bytes || bytes.length > status.capacity || (typeof tag.maxSize === 'number' && bytes.length > tag.maxSize)) throw new Error('CAPACITY');
       this.inFlightWrite = true;
       try {
+        this.onPhase?.('writing');
         await this.adapter.write(bytes);
+        this.onPhase?.('verifying');
         const decoded = decodeNfcIdentifier(await this.adapter.read());
         if (!decoded || decoded !== value?.toLowerCase()) throw new Error('VERIFY_FAILED');
         return decoded;

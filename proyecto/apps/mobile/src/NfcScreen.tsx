@@ -3,7 +3,7 @@ import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, BackHandler, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { NfcSession, type NfcAdapter } from './nfc-session';
+import { NfcSession, type NfcAdapter, type NfcPhase } from './nfc-session';
 import { objectIdFromQr, objectQrValue } from './qr';
 import { findActiveObject, type MemoryObject } from './storage';
 import { useFeedback } from './ui/feedback/FeedbackProvider';
@@ -42,6 +42,7 @@ export function NfcScreen({ object, onBack, onFound }: { object?: MemoryObject; 
   const Alert = useFeedback();
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState('');
+  const [phase, setPhase] = useState<NfcPhase | null>(null);
   const session = useRef<NfcSession | null>(null);
   const alive = useRef(true);
   const running = useRef(false);
@@ -64,12 +65,14 @@ export function NfcScreen({ object, onBack, onFound }: { object?: MemoryObject; 
     running.current = true;
     cancelRequested.current = false;
     setBusy(true);
-    setStatus('Acerca la etiqueta a la parte posterior del teléfono y mantenla cerca.');
+    setPhase('checking');
+    setStatus('Comprobando NFC…');
     try {
       const adapter = await createAdapter();
       if (!alive.current) return;
       if (cancelRequested.current) throw new Error('CANCELLED');
-      const current = new NfcSession(adapter);
+      const phaseMessages: Record<NfcPhase, string> = { checking: 'Comprobando NFC…', waiting: 'Esperando etiqueta. Acércala al teléfono.', reading: 'Leyendo etiqueta…', checkingTag: 'Comprobando etiqueta…', writing: 'Escribiendo… Mantén la etiqueta cerca.', verifying: 'Verificando… Mantén la etiqueta cerca.' };
+      const current = new NfcSession(adapter, (value) => { if (alive.current) { setPhase(value); setStatus(phaseMessages[value]); } });
       session.current = current;
       const value = await current.run(object ? 'write' : 'read', object ? objectQrValue(object.id) : undefined);
       if (!alive.current) return;
@@ -89,7 +92,7 @@ export function NfcScreen({ object, onBack, onFound }: { object?: MemoryObject; 
     } finally {
       session.current = null;
       running.current = false;
-      if (alive.current) setBusy(false);
+      if (alive.current) { setBusy(false); setPhase(null); }
     }
   }
 
@@ -110,7 +113,7 @@ export function NfcScreen({ object, onBack, onFound }: { object?: MemoryObject; 
       <View style={styles.notice}><Ionicons name="information-circle-outline" size={20} color="#176B57" /><Text style={styles.noticeText}>La etiqueta usa un identificador local provisional; no es un enlace web y no permite abrir el objeto en otro dispositivo.</Text></View>
       {!!status && <View accessibilityLiveRegion="polite" style={styles.status}>{busy && <ActivityIndicator color="#176B57" />}<Text style={styles.statusText}>{status}</Text></View>}
       {!busy && <Pressable accessibilityRole="button" style={styles.primary} onPress={start}><Ionicons name="radio-outline" size={20} color="#fff" /><Text style={styles.primaryText}>{object ? 'Escribir etiqueta' : 'Leer etiqueta'}</Text></Pressable>}
-      {busy && <Pressable accessibilityRole="button" style={styles.secondary} onPress={() => { cancelRequested.current = true; void session.current?.cancel().then((cancelled) => { if (!cancelled && alive.current) setStatus('Escritura en curso. Mantén la etiqueta cerca hasta terminar.'); }).catch(() => {}); }}><Text style={styles.secondaryText}>Cancelar</Text></Pressable>}
+      {busy && phase !== 'writing' && phase !== 'verifying' && <Pressable accessibilityRole="button" style={styles.secondary} onPress={() => { cancelRequested.current = true; void session.current?.cancel().then((cancelled) => { if (!cancelled && alive.current) setStatus('Escritura en curso. Mantén la etiqueta cerca hasta terminar.'); }).catch(() => {}); }}><Text style={styles.secondaryText}>Cancelar</Text></Pressable>}
     </ScrollView>
   </SafeAreaView>;
 }

@@ -17,7 +17,8 @@ export function useFeedback() {
 export function FeedbackProvider({ children }: { children: ReactNode }) {
   const insets = useSafeAreaInsets();
   const [current, setCurrent] = useState<Request | null>(null);
-  const [toast, setToast] = useState('');
+  const [toast, setToast] = useState<{ message: string; id: number } | null>(null);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
   const active = useRef<Request | null>(null);
   const queue = useRef<Request[]>([]);
@@ -26,6 +27,7 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
   const toastProgress = useRef(new Animated.Value(0)).current;
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const toastId = useRef(0);
+  const announcedToast = useRef(0);
   const focusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const titleRef = useRef<Text>(null);
   const mounted = useRef(true);
@@ -34,7 +36,9 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
     mounted.current = true;
     void AccessibilityInfo.isReduceMotionEnabled().then((enabled) => { if (mounted.current) setReduceMotion(enabled); }).catch(() => {});
     const listener = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
-    return () => { mounted.current = false; listener.remove(); if (toastTimer.current) clearTimeout(toastTimer.current); if (focusTimer.current) clearTimeout(focusTimer.current); progress.stopAnimation(); toastProgress.stopAnimation(); };
+    const keyboardShown = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
+    const keyboardHidden = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
+    return () => { mounted.current = false; listener.remove(); keyboardShown.remove(); keyboardHidden.remove(); if (toastTimer.current) clearTimeout(toastTimer.current); if (focusTimer.current) clearTimeout(focusTimer.current); progress.stopAnimation(); toastProgress.stopAnimation(); };
   }, [progress, toastProgress]);
 
   const showNext = useCallback(() => {
@@ -79,17 +83,22 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
   }, [cancel]);
 
   const showToast = useCallback((message: string) => {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    const id = ++toastId.current;
-    setToast(message);
-    AccessibilityInfo.announceForAccessibility(message);
+    setToast((previous) => previous?.message === message ? previous : { message, id: ++toastId.current });
+  }, []);
+
+  useEffect(() => {
+    if (!toast || current || keyboardVisible) return;
+    const { id, message } = toast;
+    let cancelled = false;
+    if (announcedToast.current !== id) { announcedToast.current = id; AccessibilityInfo.announceForAccessibility(message); }
     toastProgress.setValue(reduceMotion ? 1 : 0);
     Animated.timing(toastProgress, { toValue: 1, duration: reduceMotion ? 0 : 200, useNativeDriver: true }).start();
-    void AccessibilityInfo.getRecommendedTimeoutMillis(4000).catch(() => 4000).then((duration) => {
-      if (!mounted.current || id !== toastId.current) return;
-      toastTimer.current = setTimeout(() => Animated.timing(toastProgress, { toValue: 0, duration: reduceMotion ? 0 : 180, useNativeDriver: true }).start(({ finished }) => { if (finished && mounted.current && id === toastId.current) setToast(''); }), duration);
+    void AccessibilityInfo.getRecommendedTimeoutMillis(2500).catch(() => 2500).then((duration) => {
+      if (cancelled || !mounted.current || id !== toastId.current) return;
+      toastTimer.current = setTimeout(() => Animated.timing(toastProgress, { toValue: 0, duration: reduceMotion ? 0 : 180, useNativeDriver: true }).start(({ finished }) => { if (finished && mounted.current && id === toastId.current) setToast(null); }), duration);
     });
-  }, [reduceMotion, toastProgress]);
+    return () => { cancelled = true; if (toastTimer.current) clearTimeout(toastTimer.current); toastProgress.stopAnimation(); };
+  }, [toast, current, keyboardVisible, reduceMotion, toastProgress]);
 
   const feedback: Feedback = { alert: (title, message, actions) => enqueue('dialog', title, message, actions), sheet: (title, message, actions) => enqueue('sheet', title, message, actions), toast: showToast };
   return <Context.Provider value={feedback}>
@@ -110,7 +119,7 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
         </Animated.View>}
       </View>
     </Modal>
-    {!!toast && !current && <Animated.View pointerEvents="none" accessibilityLiveRegion="polite" style={[styles.toast, { bottom: Math.max(insets.bottom, 16) + 16, opacity: toastProgress, transform: [{ translateY: toastProgress.interpolate({ inputRange: [0, 1], outputRange: [reduceMotion ? 0 : 10, 0] }) }] }]}><Ionicons name="checkmark-circle" size={20} color="#D9F3E6" /><Text style={styles.toastText}>{toast}</Text></Animated.View>}
+    {!!toast && !current && !keyboardVisible && <Animated.View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={[styles.toast, { bottom: Math.max(insets.bottom, 16) + 88, opacity: toastProgress, transform: [{ translateY: toastProgress.interpolate({ inputRange: [0, 1], outputRange: [reduceMotion ? 0 : 10, 0] }) }] }]}><Ionicons name="checkmark-circle" size={20} color="#D9F3E6" /><Text style={styles.toastText}>{toast.message}</Text></Animated.View>}
   </Context.Provider>;
 }
 

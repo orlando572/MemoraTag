@@ -16,7 +16,7 @@ import { useFeedback } from '../src/ui/feedback/FeedbackProvider';
 import { objectQrValue } from '../src/qr';
 import { documentFormat, openDocument, removeDocument, saveDocument } from '../src/event-document';
 import { photoUri, removePhoto, savePhoto } from '../src/object-photos';
-import { archiveObject, createEvent, createObject, getLocalName, listArchivedObjects, listEvents, listObjects, restoreObject, updateEvent, updateObject, type EventType, type MemoryEvent, type MemoryObject } from '../src/storage';
+import { archiveObject, createEvent, createObject, deleteEvent, getLocalName, listArchivedObjects, listEvents, listObjects, restoreObject, updateEvent, updateObject, type EventType, type MemoryEvent, type MemoryObject } from '../src/storage';
 
 const colors = { ink: '#203934', muted: '#526C65', soft: '#647B74', canvas: '#F5F8F6', line: '#DBE7E1', green: '#176B57', darkGreen: '#124A3C', pale: '#E1EEE7' };
 const objectColors = [
@@ -56,12 +56,12 @@ function Artwork({ name }: { name: string }) {
   return <View style={styles.art}><Ionicons name={icon} size={28} color={colors.darkGreen} /></View>;
 }
 
-function BackButton({ onPress }: { onPress: () => void }) {
-  return <Pressable accessibilityRole="button" accessibilityLabel="Volver" onPress={onPress} style={styles.back}><Ionicons name="arrow-back" size={22} color={colors.ink} /></Pressable>;
+function BackButton({ onPress, disabled }: { onPress: () => void; disabled?: boolean }) {
+  return <Pressable accessibilityRole="button" accessibilityLabel="Volver" disabled={disabled} onPress={onPress} style={[styles.back, disabled && styles.pressed]}><Ionicons name="arrow-back" size={22} color={colors.ink} /></Pressable>;
 }
 
-function PrimaryButton({ label, icon, onPress, disabled }: { label: string; icon: 'add' | 'checkmark' | 'arrow-forward'; onPress: () => void; disabled?: boolean }) {
-  return <Pressable accessibilityRole="button" disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.button, (pressed || disabled) && styles.pressed]}><Ionicons name={icon} size={21} color="#fff" /><Text style={styles.buttonText}>{label}</Text></Pressable>;
+function PrimaryButton({ label, icon, onPress, disabled, loading }: { label: string; icon: 'add' | 'checkmark' | 'arrow-forward'; onPress: () => void; disabled?: boolean; loading?: boolean }) {
+  return <Pressable accessibilityRole="button" disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.button, (pressed || disabled) && styles.pressed]}>{loading ? <ActivityIndicator color="#fff" /> : <Ionicons name={icon} size={21} color="#fff" />}<Text accessibilityLiveRegion="polite" style={styles.buttonText}>{label}</Text></Pressable>;
 }
 
 export default function Home() {
@@ -102,12 +102,17 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [eventsLoading, setEventsLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
+  const [deletingEvent, setDeletingEvent] = useState<string | null>(null);
+  const deletingRef = useRef(false);
+  const restoringRef = useRef(false);
+  const [titleError, setTitleError] = useState(false);
   const [error, setError] = useState('');
   const isEventForm = form === 'event' || form === 'editEvent';
 
   async function loadObjects() {
-    try { setObjects(await listObjects()); setError(''); }
-    catch { setError('No se pudieron cargar los objetos. Inténtalo de nuevo.'); }
+    try { setObjects(await listObjects()); setError(''); return true; }
+    catch { setError('No se pudieron cargar los objetos. Inténtalo de nuevo.'); return false; }
     finally { setLoading(false); }
   }
   async function loadProfile() {
@@ -119,6 +124,13 @@ export default function Home() {
   function updateEventSummary(objectId: string, items: MemoryEvent[]) {
     const latest = items[0];
     setObjects((current) => current.map((item) => item.id === objectId ? { ...item, latest_event_title: latest?.title ?? null, latest_event_date: latest?.event_date ?? null, latest_event_type: latest?.type ?? null } : item));
+  }
+  async function reloadSelectedEvents() {
+    if (!selected) return;
+    setEventsLoading(true);
+    try { const items = await listEvents(selected.id); setEvents(items); updateEventSummary(selected.id, items); setError(''); }
+    catch { setError('No se pudo cargar la historia. Vuelve a intentarlo.'); }
+    finally { setEventsLoading(false); }
   }
   useEffect(() => { void loadObjects(); }, []);
   useEffect(() => { void loadProfile(); }, []);
@@ -133,6 +145,7 @@ export default function Home() {
   }, [selected]);
   useEffect(() => {
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (savingRef.current || deletingRef.current) return true;
       if (scanning) { setScanning(false); return true; }
       if (showQr) { setShowQr(false); return true; }
       if (showNfc) { setShowNfc(false); return true; }
@@ -144,6 +157,40 @@ export default function Home() {
     return () => subscription.remove();
   }, [form, selected, scanning, showQr, showNfc, showArchived]);
 
+  function confirmDeleteEvent(event: MemoryEvent) {
+    if (deletingRef.current || savingRef.current || !selected) return;
+    const objectId = selected.id;
+    Alert.alert('¿Eliminar este evento?', 'Se eliminará de la historia de este objeto. Esta acción no se puede deshacer.', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Eliminar', style: 'destructive', onPress: () => { void (async () => {
+        if (deletingRef.current || savingRef.current) return;
+        deletingRef.current = true;
+        setDeletingEvent(event.id);
+        try {
+          await deleteEvent(event.id, objectId);
+          setForm(null);
+          try {
+            const items = await listEvents(objectId);
+            setEvents(items);
+            updateEventSummary(objectId, items);
+            setError('');
+            Alert.toast('Evento eliminado');
+          } catch {
+            const remaining = events.filter((item) => item.id !== event.id);
+            setEvents(remaining);
+            updateEventSummary(objectId, remaining);
+            setError('El evento se eliminó, pero no se pudo actualizar la historia.');
+          }
+        } catch {
+          Alert.alert('No se pudo eliminar el evento', 'Vuelve a intentarlo.');
+        } finally {
+          deletingRef.current = false;
+          setDeletingEvent(null);
+        }
+      })(); } },
+    ]);
+  }
+
   async function loadArchived() {
     setArchivedLoading(true);
     try { setArchivedObjects(await listArchivedObjects()); setArchivedError(''); }
@@ -152,19 +199,21 @@ export default function Home() {
   }
 
   async function restore(item: MemoryObject) {
-    if (restoring) return;
+    if (restoringRef.current) return;
+    restoringRef.current = true;
     setRestoring(item.id);
     try {
       await restoreObject(item.id);
       setArchivedObjects((items) => items.filter((object) => object.id !== item.id));
       setObjects((items) => [item, ...items].sort((a, b) => b.created_at.localeCompare(a.created_at)));
-      Alert.toast(`${item.name} vuelve a estar en tus memorias.`);
+      Alert.toast('Objeto restaurado');
     } catch { Alert.alert('No se pudo restaurar', 'Vuelve a intentarlo.'); }
-    finally { setRestoring(null); }
+    finally { restoringRef.current = false; setRestoring(null); }
   }
 
   function openForm(kind: 'object' | 'edit' | 'event') {
     keyboardScroll.reset();
+    setTitleError(false);
     setTitle(kind === 'edit' ? selected?.name ?? '' : '');
     setDescription(kind === 'edit' ? selected?.description ?? '' : '');
     setObjectColor(kind === 'edit' ? selected?.color ?? objectColors[0].hex : objectColors[0].hex);
@@ -180,6 +229,7 @@ export default function Home() {
   }
   function editEvent(event: MemoryEvent) {
     keyboardScroll.reset();
+    setTitleError(false);
     const [year, month, day] = event.event_date.split('-').map(Number);
     setEditingEvent(event);
     setTitle(event.title);
@@ -198,8 +248,8 @@ export default function Home() {
       const result = await DocumentPicker.getDocumentAsync({ type: ['application/pdf', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'], copyToCacheDirectory: Platform.OS !== 'android', multiple: false });
       if (result.canceled) return;
       const asset = result.assets[0];
-      if (!documentFormat(asset.name)) { Alert.alert('Formato no admitido', 'Elige un archivo PDF, XLS o XLSX.'); return; }
-      if (asset.size != null && asset.size > 5 * 1024 * 1024) { Alert.alert('Archivo demasiado grande', 'Elige un documento de hasta 5 MB.'); return; }
+      if (!documentFormat(asset.name)) { Alert.alert('Formato no admitido', 'Elige un archivo PDF, XLS o XLSX.', [{ text: 'Cancelar', style: 'cancel' }, { text: 'Elegir otro archivo', onPress: () => void chooseDocument() }]); return; }
+      if (asset.size != null && asset.size > 5 * 1024 * 1024) { Alert.alert('Archivo demasiado grande', 'Elige un documento de hasta 5 MB.', [{ text: 'Cancelar', style: 'cancel' }, { text: 'Elegir otro archivo', onPress: () => void chooseDocument() }]); return; }
       setDocument(asset);
       setDocumentRemoved(false);
     } catch { Alert.alert('No se pudo seleccionar el archivo', 'Vuelve a intentarlo.'); }
@@ -221,7 +271,7 @@ export default function Home() {
       const result = source === 'camera' ? await ImagePicker.launchCameraAsync(options) : await ImagePicker.launchImageLibraryAsync(options);
       if (!result.canceled) {
         const asset = result.assets[0];
-        if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) { Alert.alert('Imagen demasiado grande', 'Elige una imagen de hasta 5 MB.'); return; }
+        if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) { Alert.alert('Imagen demasiado grande', 'Elige una imagen de hasta 5 MB.', [{ text: 'Cancelar', style: 'cancel' }, { text: 'Elegir otra imagen', onPress: () => void choosePhoto(source) }]); return; }
         setPhoto(asset);
         setPhotoRemoved(false);
       }
@@ -235,31 +285,35 @@ export default function Home() {
     ]);
   }
   function confirmArchive() {
-    if (!selected || saving) return;
+    if (!selected || savingRef.current) return;
     Alert.alert('¿Archivar objeto?', 'El objeto y su historia dejarán de aparecer en la lista principal. Podrás restaurarlos desde Objetos archivados.', [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Archivar', onPress: () => { void (async () => {
+        if (savingRef.current) return;
+        savingRef.current = true;
         setSaving(true);
-        try { await archiveObject(selected.id); setSelected(null); await loadObjects(); }
+        try { await archiveObject(selected.id); setSelected(null); if (await loadObjects()) Alert.toast('Objeto archivado'); else setError('El objeto se archivó, pero no se pudo actualizar la lista.'); }
         catch { Alert.alert('No se pudo archivar', 'Vuelve a intentarlo.'); }
-        finally { setSaving(false); }
+        finally { savingRef.current = false; setSaving(false); }
       })(); } },
     ]);
   }
   async function save() {
-    if (!title.trim()) { Alert.alert('Falta un nombre', !isEventForm ? 'Escribe el nombre del objeto.' : 'Escribe el título del evento.'); return; }
-    if (saving) return;
+    if (!title.trim()) { setTitleError(true); titleInput.current?.focus(); return; }
+    if (savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     let newPhoto: string | null = null;
     let newDocument: string | null = null;
     let photoSaved = false;
     let stage = 'PHOTO';
+    let successMessage: string | null = null;
     try {
       if (photo) newPhoto = await savePhoto(photo.uri, photo.mimeType, photo.fileName);
       stage = 'DOCUMENT';
       if (isEventForm && document) newDocument = await saveDocument(document.uri, document.name);
       stage = 'DATABASE';
-      if (form === 'object') { await createObject(title.trim(), description.trim(), newPhoto, objectColor); photoSaved = true; await loadObjects(); }
+      if (form === 'object') { await createObject(title.trim(), description.trim(), newPhoto, objectColor); photoSaved = true; if (await loadObjects()) successMessage = 'Objeto creado'; else setError('El objeto se guardó, pero no se pudo actualizar la lista.'); }
       else if (form === 'edit' && selected) {
         const updated = { ...selected, name: title.trim(), description: description.trim(), cover_image: newPhoto ?? (photoRemoved ? null : selected.cover_image), color: objectColor };
         await updateObject(selected.id, updated.name, updated.description, updated.cover_image, updated.color);
@@ -267,11 +321,12 @@ export default function Home() {
         setSelected(updated);
         setObjects((items) => items.map((item) => item.id === updated.id ? { ...item, name: updated.name, description: updated.description, cover_image: updated.cover_image, color: updated.color } : item));
         if (selected.cover_image && selected.cover_image !== updated.cover_image) void removePhoto(selected.cover_image).catch(() => {});
+        successMessage = 'Cambios guardados';
       }
       else if (form === 'event' && selected) {
         await createEvent(selected.id, title.trim(), description.trim(), eventType, localDate(eventDate), newPhoto, newDocument, document?.name ?? null);
         photoSaved = true;
-        try { const items = await listEvents(selected.id); setEvents(items); updateEventSummary(selected.id, items); setError(''); }
+        try { const items = await listEvents(selected.id); setEvents(items); updateEventSummary(selected.id, items); setError(''); successMessage = 'Evento guardado'; }
         catch { setError('El evento se guardó, pero no se pudo actualizar la historia. Vuelve a abrir el objeto.'); }
       }
       else if (form === 'editEvent' && editingEvent && selected) {
@@ -283,8 +338,10 @@ export default function Home() {
         updateEventSummary(selected.id, items);
         if (editingEvent.photo && editingEvent.photo !== updated.photo) void removePhoto(editingEvent.photo).catch(() => {});
         if (editingEvent.document_file && editingEvent.document_file !== updated.document_file) void removeDocument(editingEvent.document_file).catch(() => {});
+        successMessage = 'Cambios guardados';
       }
       setForm(null);
+      if (successMessage) Alert.toast(successMessage);
     } catch (error) {
       if (newPhoto && !photoSaved) await removePhoto(newPhoto).catch(() => {});
       if (newDocument && !photoSaved) await removeDocument(newDocument).catch(() => {});
@@ -300,15 +357,17 @@ export default function Home() {
         DOCUMENT_VERIFY: 'No se pudo verificar la copia del documento. Vuelve a seleccionarlo.',
       };
       const fallback = stage === 'DATABASE' ? 'No se pudo registrar el evento en la base de datos local.' : stage === 'DOCUMENT' ? 'No se pudo preparar el documento seleccionado.' : 'No se pudo guardar la imagen seleccionada.';
-      Alert.alert('No se pudo guardar', messages[reason] ?? fallback);
+      const canChooseDocument = stage === 'DOCUMENT' && !!document;
+      const canChoosePhoto = stage === 'PHOTO' && !!photo;
+      Alert.alert('No se pudo guardar', messages[reason] ?? fallback, canChooseDocument ? [{ text: 'Cancelar', style: 'cancel' }, { text: 'Elegir otro archivo', onPress: () => void chooseDocument() }] : canChoosePhoto ? [{ text: 'Cancelar', style: 'cancel' }, { text: 'Elegir otra imagen', onPress: showPhotoOptions }] : undefined);
     }
-    finally { setSaving(false); }
+    finally { savingRef.current = false; setSaving(false); }
   }
 
   if (profileLoading) return <SafeAreaView style={[styles.page, styles.profileLoading]}><ActivityIndicator color={colors.green} /></SafeAreaView>;
   if (profileError) return <SafeAreaView style={[styles.page, styles.profileLoading]}><Text style={styles.profileError}>No se pudo cargar tu información.</Text><Pressable accessibilityRole="button" onPress={() => void loadProfile()}><Text style={styles.retry}>Reintentar</Text></Pressable></SafeAreaView>;
   if (!localName) return <Welcome onContinue={setLocalName} />;
-  if (showSettings) return <Settings name={localName} onNameChange={setLocalName} onImported={(name) => { if (name) setLocalName(name); void loadObjects(); }} onBack={() => setShowSettings(false)} />;
+  if (showSettings) return <Settings name={localName} onNameChange={setLocalName} onImported={async (name) => { if (name) setLocalName(name); return loadObjects(); }} onBack={() => setShowSettings(false)} />;
   if (readingNfc) return <NfcScreen onBack={() => setReadingNfc(false)} onFound={(object) => { setError(''); setSelected(object); setReadingNfc(false); }} />;
   if (showNfc && selected) return <NfcScreen object={selected} onBack={() => setShowNfc(false)} onFound={() => {}} />;
   if (scanning) return <Scanner onBack={() => setScanning(false)} onFound={(object) => { setError(''); setSelected(object); setScanning(false); }} onReadNfc={() => { setScanning(false); setReadingNfc(true); }} />;
@@ -334,8 +393,8 @@ export default function Home() {
         <View style={styles.nav}><BackButton onPress={() => setShowQr(false)} /><Text style={styles.navTitle}>Código QR</Text><View style={styles.navSpacer} /></View>
         <ScrollView contentContainerStyle={styles.qrContent}><View style={styles.qrIcon}><Ionicons name="qr-code-outline" size={25} color={colors.green} /></View><Text style={styles.qrTitle}>El código de {selected.name}</Text><Text style={styles.qrDescription}>Escanea este código con MemoraTag para abrir su historia en este dispositivo.</Text><View style={styles.qrBox}><QRCode value={objectQrValue(selected.id)} size={220} /></View><Text style={styles.qrNotice}>No permite compartir el objeto con otros dispositivos.</Text></ScrollView>
       </> : form ? <>
-        <View style={styles.nav}><BackButton onPress={() => setForm(null)} /><Text style={styles.navTitle}>{form === 'object' ? 'Nuevo objeto' : form === 'edit' ? 'Editar objeto' : form === 'editEvent' ? 'Editar evento' : 'Registrar evento'}</Text><View style={styles.navSpacer} /></View>
-        <ScrollView ref={keyboardScroll.scrollRef} onLayout={keyboardScroll.onLayout} onScroll={keyboardScroll.onScroll} onContentSizeChange={keyboardScroll.onContentSizeChange} scrollEventThrottle={16} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.formContent, { paddingBottom: 30 + keyboardScroll.extraSpace }]}>
+        <View style={styles.nav}><BackButton disabled={saving || !!deletingEvent} onPress={() => setForm(null)} /><Text style={styles.navTitle}>{form === 'object' ? 'Nuevo objeto' : form === 'edit' ? 'Editar objeto' : form === 'editEvent' ? 'Editar evento' : 'Registrar evento'}</Text>{form === 'editEvent' && editingEvent ? <Pressable accessibilityRole="button" accessibilityLabel="Eliminar evento" disabled={saving || !!deletingEvent} onPress={() => confirmDeleteEvent(editingEvent)} style={styles.back}><Ionicons name="trash-outline" size={20} color="#A33F43" /></Pressable> : <View style={styles.navSpacer} />}</View>
+        <ScrollView pointerEvents={saving || deletingEvent ? 'none' : 'auto'} accessibilityElementsHidden={saving || !!deletingEvent} importantForAccessibility={saving || deletingEvent ? 'no-hide-descendants' : 'auto'} ref={keyboardScroll.scrollRef} onLayout={keyboardScroll.onLayout} onScroll={keyboardScroll.onScroll} onContentSizeChange={keyboardScroll.onContentSizeChange} scrollEventThrottle={16} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.formContent, { paddingBottom: 30 + keyboardScroll.extraSpace }]}>
           <Text style={styles.formHeading}>{form === 'object' ? 'Dale un lugar\na su historia.' : form === 'edit' ? 'Edita sus detalles.' : form === 'editEvent' ? 'Edita este momento.' : '¿Qué pasó?'}</Text>
           <Text style={styles.formIntro}>{form === 'object' ? 'Empieza con lo esencial. Podrás añadir recuerdos cuando quieras.' : form === 'edit' ? 'Actualiza los detalles de tu objeto.' : form === 'editEvent' ? 'Actualiza la información de este evento.' : 'Guarda un momento en su historia.'}</Text>
           {!isEventForm && <><Pressable accessibilityRole="button" accessibilityLabel={photo || (form === 'edit' && selected?.cover_image && !photoRemoved) ? 'Cambiar foto del objeto' : 'Añadir foto del objeto'} onPress={showPhotoOptions} style={[styles.formArtwork, { backgroundColor: objectColor }]}>
@@ -346,7 +405,8 @@ export default function Home() {
             <View style={styles.typeOptions}>{(Object.keys(eventTypes) as EventType[]).map((type) => <Pressable accessibilityRole="button" accessibilityState={{ selected: eventType === type }} key={type} onPress={() => setEventType(type)} style={[styles.typeOption, eventType === type && { borderColor: eventTypes[type].color, backgroundColor: `${eventTypes[type].color}10` }]}><Ionicons name={eventTypes[type].icon} size={18} color={eventTypes[type].color} /><Text style={[styles.typeText, eventType === type && { color: eventTypes[type].color }]}>{eventTypes[type].label}</Text></Pressable>)}</View>
           </>}
           <Text style={styles.label}>{!isEventForm ? 'Nombre del objeto' : 'Título'}</Text>
-          <TextInput ref={titleInput} onFocus={() => keyboardScroll.focus(titleInput)} onBlur={() => keyboardScroll.blur(titleInput)} accessibilityLabel={!isEventForm ? 'Nombre del objeto' : 'Título del evento'} style={styles.input} value={title} onChangeText={setTitle} maxLength={120} placeholder={!isEventForm ? 'Ej. Guitarra, mochila, bici…' : 'Ej. Lo usé por primera vez'} placeholderTextColor="#999F97" />
+          <TextInput ref={titleInput} onFocus={() => keyboardScroll.focus(titleInput)} onBlur={() => keyboardScroll.blur(titleInput)} accessibilityLabel={!isEventForm ? 'Nombre del objeto' : 'Título del evento'} accessibilityHint={titleError ? (!isEventForm ? 'Escribe el nombre del objeto' : 'Escribe el título del evento') : undefined} style={[styles.input, titleError && styles.invalidInput]} value={title} onChangeText={(value) => { setTitle(value); if (value.trim()) setTitleError(false); }} maxLength={120} placeholder={!isEventForm ? 'Ej. Guitarra, mochila, bici…' : 'Ej. Lo usé por primera vez'} placeholderTextColor="#999F97" />
+          {titleError && <Text accessibilityLiveRegion="polite" style={styles.fieldError}>{!isEventForm ? 'Escribe el nombre del objeto.' : 'Escribe el título del evento.'}</Text>}
           <Text style={styles.label}>Descripción <Text style={styles.optional}>opcional</Text></Text>
           <TextInput ref={descriptionInput} onFocus={() => keyboardScroll.focus(descriptionInput)} onBlur={() => keyboardScroll.blur(descriptionInput)} onSelectionChange={keyboardScroll.reveal} onContentSizeChange={keyboardScroll.reveal} accessibilityLabel="Descripción" style={[styles.input, styles.textarea]} value={description} onChangeText={setDescription} multiline scrollEnabled textAlignVertical="top" placeholder={!isEventForm ? '¿Qué lo hace especial?' : 'Añade más detalles'} placeholderTextColor="#999F97" />
           {!isEventForm && <><Text style={styles.label}>Color del objeto</Text><View style={styles.colorOptions}>{objectColors.map((option) => <Pressable key={option.hex} accessibilityRole="button" accessibilityLabel={option.name} accessibilityState={{ selected: objectColor === option.hex }} onPress={() => setObjectColor(option.hex)} style={[styles.colorChoice, { backgroundColor: option.hex }, objectColor === option.hex && styles.colorSelected]}>{objectColor === option.hex && <Ionicons name="checkmark" size={22} color={colors.darkGreen} />}</Pressable>)}</View></>}
@@ -356,9 +416,9 @@ export default function Home() {
             {showDatePicker && <><DateTimePicker value={eventDate} mode="date" display={Platform.OS === 'ios' ? 'spinner' : 'default'} onChange={(event, date) => { if (Platform.OS !== 'ios') setShowDatePicker(false); if (event.type !== 'dismissed' && date) setEventDate(date); }} />{Platform.OS === 'ios' && <Pressable accessibilityRole="button" onPress={() => setShowDatePicker(false)}><Text style={styles.retry}>Listo</Text></Pressable>}</>}
           </>}
         </ScrollView>
-        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}><PrimaryButton label={saving ? 'Guardando…' : form === 'object' ? 'Crear objeto' : form === 'edit' || form === 'editEvent' ? 'Guardar cambios' : 'Guardar evento'} icon="checkmark" disabled={saving} onPress={() => void save()} /></View>
+        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>{deletingEvent ? <View accessibilityLiveRegion="polite" style={styles.deleting}><ActivityIndicator color={colors.green} /><Text>Eliminando…</Text></View> : <PrimaryButton label={saving ? 'Guardando…' : form === 'object' ? 'Crear objeto' : form === 'edit' || form === 'editEvent' ? 'Guardar cambios' : 'Guardar evento'} icon="checkmark" disabled={saving} loading={saving} onPress={() => void save()} />}</View>
       </> : selected ? <>
-        <ScrollView contentContainerStyle={styles.detailScroll}>
+        <ScrollView pointerEvents={deletingEvent ? 'none' : 'auto'} accessibilityElementsHidden={!!deletingEvent} importantForAccessibility={deletingEvent ? 'no-hide-descendants' : 'auto'} contentContainerStyle={styles.detailScroll}>
           <View style={[styles.hero, { backgroundColor: selected.color, borderBottomColor: selected.color }, !!photoUri(selected.cover_image) && styles.heroWithPhoto]}>
             {photoUri(selected.cover_image) && <Pressable accessibilityRole="button" accessibilityLabel="Ver foto del objeto a pantalla completa" onPress={() => setFullPhoto(photoUri(selected.cover_image))} style={StyleSheet.absoluteFill}><Image source={{ uri: photoUri(selected.cover_image)! }} style={styles.heroImage} /><View pointerEvents="none" style={styles.heroOverlay} /></Pressable>}
             <View style={styles.heroTop}><BackButton onPress={() => { setSelected(null); setError(''); }} /><View style={styles.heroActions}>
@@ -373,13 +433,13 @@ export default function Home() {
           </View>
           <View style={styles.history}>
             <View style={styles.sectionHead}><Text style={styles.sectionTitle}>Su historia</Text><Text style={styles.count}>{events.length} {events.length === 1 ? 'evento' : 'eventos'}</Text></View>
-            {eventsLoading ? <ActivityIndicator color={colors.green} /> : error ? <Text style={styles.error}>{error}</Text> : events.length === 0 ? <View style={styles.emptyHistory}><Ionicons name="time-outline" size={25} color={colors.green} /><Text style={styles.emptyTitle}>Aquí empieza su historia</Text><Text style={styles.emptyText}>Registra un primer evento para guardar un recuerdo o detalle importante.</Text></View> : events.map((event, index) => <View key={event.id} style={styles.event}>
+            {eventsLoading ? <ActivityIndicator color={colors.green} /> : error ? <><Text style={styles.error}>{error}</Text><Pressable accessibilityRole="button" onPress={() => void reloadSelectedEvents()}><Text style={styles.retry}>Actualizar</Text></Pressable></> : events.length === 0 ? <View style={styles.emptyHistory}><Ionicons name="time-outline" size={25} color={colors.green} /><Text style={styles.emptyTitle}>Aquí empieza su historia</Text><Text style={styles.emptyText}>Registra un primer evento para guardar un recuerdo o detalle importante.</Text></View> : events.map((event, index) => <View key={event.id} style={styles.event}>
               <View style={styles.timeline}><View style={[styles.eventIcon, { backgroundColor: selected.color }]}><Ionicons name={(eventTypes[event.type] ?? eventTypes.note).icon} size={19} color={eventAccent} /></View>{index < events.length - 1 && <View style={[styles.timelineLine, { backgroundColor: selected.color }]} />}</View>
               <View style={styles.eventCopy}><View style={styles.eventHeader}><Text style={[styles.date, { color: eventAccent }]}>{(eventTypes[event.type] ?? eventTypes.note).label} · {formatDate(event.event_date)}</Text><Pressable accessibilityRole="button" accessibilityLabel={`Editar evento ${event.title}`} hitSlop={10} onPress={() => editEvent(event)}><Ionicons name="pencil-outline" size={19} color={eventAccent} /></Pressable></View><Text style={[styles.eventTitle, { color: eventAccent }]}>{event.title}</Text>{event.description ? <Text style={styles.eventDescription}>{event.description}</Text> : null}{photoUri(event.photo) ? <Pressable accessibilityRole="button" accessibilityLabel="Ver foto del evento a pantalla completa" onPress={() => setFullPhoto(photoUri(event.photo))}><Image source={{ uri: photoUri(event.photo)! }} style={styles.eventPhoto} /></Pressable> : null}{event.document_file && <Pressable accessibilityRole="button" accessibilityLabel={`Abrir documento ${event.document_name ?? ''}`} style={styles.documentButton} onPress={() => void showDocument(event.document_file!)}><Ionicons name="document-attach-outline" size={20} color={eventAccent} /><Text numberOfLines={2} style={[styles.documentText, { color: eventAccent }]}>{event.document_name || 'Documento adjunto'}</Text><Ionicons name="open-outline" size={18} color={eventAccent} /></Pressable>}</View>
             </View>)}
           </View>
         </ScrollView>
-        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}><PrimaryButton label="Registrar evento" icon="add" onPress={() => openForm('event')} /></View>
+        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>{deletingEvent ? <View accessibilityLiveRegion="polite" style={styles.deleting}><ActivityIndicator color={colors.green} /><Text>Eliminando…</Text></View> : <PrimaryButton label="Registrar evento" icon="add" onPress={() => openForm('event')} />}</View>
       </> : <>
         <View style={styles.homeHeader}><View style={styles.homeHeaderText}><Text style={styles.greeting} numberOfLines={1}>Hola, {localName}</Text><Text style={styles.homeTitle}>Tus memorias</Text></View><View style={styles.homeActions}><Pressable accessibilityRole="button" accessibilityLabel="Objetos archivados" onPress={() => { setShowArchived(true); void loadArchived(); }} style={styles.headerMark}><Ionicons name="archive-outline" size={23} color={colors.green} /></Pressable><Pressable accessibilityRole="button" accessibilityLabel="Ajustes" onPress={() => setShowSettings(true)} style={styles.headerMark}><Ionicons name="settings-outline" size={23} color={colors.green} /></Pressable></View></View>
         <ScrollView contentContainerStyle={styles.list}>
@@ -393,8 +453,10 @@ export default function Home() {
 }
 
 const styles = StyleSheet.create({
+  deleting: { minHeight: 56, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 },
   page: { flex: 1, backgroundColor: colors.canvas }, flex: { flex: 1 },
   profileLoading: { justifyContent: 'center', alignItems: 'center', padding: 24 }, profileError: { color: colors.ink, textAlign: 'center', fontSize: 16 }, homeHeaderText: { flex: 1, marginRight: 12 }, homeActions: { flexDirection: 'row', gap: 8 },
+  invalidInput: { borderColor: '#A33F43', borderWidth: 2 }, fieldError: { color: '#A33F43', fontSize: 13, marginTop: -15, marginBottom: 18 },
   homeHeader: { paddingHorizontal: 24, paddingTop: 26, paddingBottom: 34, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, greeting: { color: colors.green, fontSize: 14, fontWeight: '700', letterSpacing: 0.2 }, homeTitle: { color: colors.ink, fontSize: 32, fontWeight: '700', letterSpacing: -0.9, marginTop: 7 }, headerMark: { width: 48, height: 48, borderRadius: 16, backgroundColor: colors.pale, justifyContent: 'center', alignItems: 'center' },
   list: { paddingHorizontal: 20, paddingBottom: 32, flexGrow: 1 }, sectionHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }, listLabel: { color: colors.ink, fontSize: 16, fontWeight: '700' }, count: { color: colors.soft, fontSize: 13, fontWeight: '600' },
   card: { minHeight: 104, backgroundColor: '#FFFFFF', borderRadius: 18, borderWidth: 1, borderColor: colors.line, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 10 }, cover: { width: 78, height: 78, borderRadius: 13, backgroundColor: '#DCEBE2', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }, art: { width: 46, height: 46, backgroundColor: '#F4FAF6', borderWidth: 1, borderColor: '#C5DDCE', borderRadius: 14, justifyContent: 'center', alignItems: 'center' }, cardCopy: { flex: 1, gap: 5 }, cardTitle: { color: colors.ink, fontSize: 17, fontWeight: '700' }, cardDescription: { color: colors.muted, fontSize: 13, lineHeight: 19 },
