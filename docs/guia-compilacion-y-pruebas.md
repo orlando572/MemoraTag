@@ -172,7 +172,7 @@ Recorre estos pasos en el teléfono tras cada cambio importante. Marca cada uno 
 - [ ] Filtrar la historia por tipo; la historia aparece agrupada por mes.
 - [ ] Editar un evento, borrarlo y usar «Deshacer»: el evento vuelve.
 - [ ] Escribir en un formulario y pulsar atrás: pregunta «¿Descartar los cambios?».
-- [ ] Archivar el objeto («…» → Archivar) y usar «Deshacer». Volver a archivarlo y restaurarlo desde «Objetos archivados».
+- [ ] Archivar el objeto («…» → Archivar) y usar «Deshacer». Volver a archivarlo y restaurarlo desde Ajustes → «Objetos archivados».
 - [ ] Buscar en el inicio por nombre, también sin tildes.
 
 **QR**

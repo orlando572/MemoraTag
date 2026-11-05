@@ -193,6 +193,16 @@ export function Settings({ name, onNameChange, onImported, onShowTutorial, theme
         </View>}
       </Section>
 
+      <Section title="Tus objetos" icon="archive-outline">
+        <Pressable accessibilityRole="button" accessibilityLabel={usage ? `Objetos archivados: ${usage.archived}` : 'Objetos archivados'} accessibilityHint="Abre la lista de objetos archivados"
+          disabled={busy || saving} onPress={() => router.push('/archived')} style={({ pressed }) => [styles.link, (pressed || busy || saving) && { opacity: 0.7 }]}>
+          <Ionicons name="archive-outline" size={22} color={c.ink} />
+          <Text style={[styles.label, { flex: 1 }]}>Objetos archivados</Text>
+          {!!usage && <Text style={styles.hint}>{usage.archived}</Text>}
+          <Ionicons name="chevron-forward" size={20} color={c.muted} />
+        </Pressable>
+      </Section>
+
       <Section title="Apariencia" icon="color-palette-outline">
         <View accessibilityRole="radiogroup" style={{ gap: space.sm }}>
           {themeOptions.map((option) => {
@@ -216,7 +226,7 @@ export function Settings({ name, onNameChange, onImported, onShowTutorial, theme
         {Platform.OS === 'android' && <Help icon="radio-outline" title="Usar una etiqueta NFC" text="Dentro del objeto, toca «Etiqueta NFC» y acerca una NTAG213/215 a la parte trasera del teléfono hasta que se verifique. Después se abre al acercarla, incluso con la app cerrada." />}
         <Help icon="alert-circle-outline" title="Incidencias" text="Registra una incidencia cuando algo falle y márcala como resuelta al arreglarlo. El objeto muestra cuántas siguen abiertas." />
         <Help icon="arrow-undo-outline" title="Deshacer" text="Al archivar un objeto o borrar un evento aparece «Deshacer» durante unos segundos." />
-        <Help icon="phone-portrait-outline" title="Si un código no abre nada" text="Los datos solo están en el teléfono donde creaste el objeto. Si lo archivaste, restáuralo desde «Objetos archivados»." />
+        <Help icon="phone-portrait-outline" title="Si un código no abre nada" text="Los datos solo están en el teléfono donde creaste el objeto. Si lo archivaste, restáuralo desde «Objetos archivados», en esta misma pantalla." />
         <Button label="Ver el tutorial de nuevo" icon="play-circle-outline" variant="secondary" onPress={onShowTutorial} />
       </Section>
 
@@ -315,6 +325,7 @@ const makeStyles = (c: Palette) => ({
   rowLabel: { ...type.body, color: c.ink },
   rowValue: { ...type.card, color: c.ink },
   info: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: space.md },
+  link: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: space.md },
   help: { minHeight: 48, flexDirection: 'row', gap: space.md, alignItems: 'center' },
   helpText: { ...type.secondary, color: c.muted, marginLeft: 34 + space.md, paddingBottom: space.sm },
   themeOption: { minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.md, paddingVertical: space.sm, borderRadius: radius.md, borderWidth: 1, borderColor: c.line, backgroundColor: c.surface },

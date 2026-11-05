@@ -60,13 +60,15 @@ const buttonStyles = (c: Palette) => ({
 } as const);
 
 /** Icon-only button: 48 dp target and a mandatory accessible label. */
-export function IconButton({ icon, label, onPress, disabled, tone = 'surface', badge }: { icon: IconName; label: string; onPress: () => void; disabled?: boolean; tone?: 'surface' | 'soft' | 'onDark' | 'onPhoto'; badge?: boolean }) {
+export function IconButton({ icon, label, onPress, disabled, tone = 'surface', badge, size = 'md' }: { icon: IconName; label: string; onPress: () => void; disabled?: boolean; tone?: 'surface' | 'soft' | 'onDark' | 'onPhoto'; badge?: boolean; size?: 'md' | 'sm' }) {
   const { c } = useTheme();
+  // `sm` looks smaller but keeps a ~48 px touch area through hitSlop.
+  const box = size === 'sm' ? 36 : 48;
   const bg = tone === 'surface' ? c.surface : tone === 'soft' ? c.primarySoft : tone === 'onDark' ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.45)';
   const fg = tone === 'surface' ? c.ink : tone === 'soft' ? c.onPrimarySoft : '#FFFFFF';
-  return <Pressable accessibilityRole="button" accessibilityLabel={label} disabled={disabled} onPress={onPress} hitSlop={4}
-    style={({ pressed }) => [{ width: 48, height: 48, borderRadius: radius.md, backgroundColor: bg, alignItems: 'center', justifyContent: 'center', borderWidth: tone === 'surface' ? 1 : 0, borderColor: c.line }, (pressed || disabled) && { opacity: 0.6 }]}>
-    <Ionicons name={icon} size={22} color={fg} />
+  return <Pressable accessibilityRole="button" accessibilityLabel={label} disabled={disabled} onPress={onPress} hitSlop={size === 'sm' ? 6 : 4}
+    style={({ pressed }) => [{ width: box, height: box, borderRadius: size === 'sm' ? radius.sm : radius.md, backgroundColor: bg, alignItems: 'center', justifyContent: 'center', borderWidth: tone === 'surface' ? 1 : 0, borderColor: c.line }, (pressed || disabled) && { opacity: 0.6 }]}>
+    <Ionicons name={icon} size={size === 'sm' ? 18 : 22} color={fg} />
     {badge && <View style={{ position: 'absolute', top: 10, right: 10, width: 9, height: 9, borderRadius: 5, backgroundColor: c.warning }} />}
   </Pressable>;
 }
@@ -85,11 +87,11 @@ export function Chip({ label, selected, onPress, icon, color, count }: { label: 
 }
 
 /** Small status label. Colour is never the only cue: it always carries text and, optionally, an icon. */
-export function Badge({ label, tone = 'neutral', icon }: { label: string; tone?: 'neutral' | 'primary' | 'danger' | 'success' | 'warning'; icon?: IconName }) {
+export function Badge({ label, tone = 'neutral', icon, style }: { label: string; tone?: 'neutral' | 'primary' | 'danger' | 'success' | 'warning'; icon?: IconName; style?: StyleProp<ViewStyle> }) {
   const { c } = useTheme();
   const map = { neutral: [c.surfaceAlt, c.muted], primary: [c.primarySoft, c.onPrimarySoft], danger: [c.dangerSoft, c.danger], success: [c.successSoft, c.success], warning: [c.warningSoft, c.warning] } as const;
   const [bg, fg] = map[tone];
-  return <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', backgroundColor: bg, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4 }}>
+  return <View style={[{ flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', backgroundColor: bg, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4 }, style]}>
     {icon && <Ionicons name={icon} size={14} color={fg} />}
     <Text style={{ ...type.mini, color: fg }}>{label}</Text>
   </View>;
