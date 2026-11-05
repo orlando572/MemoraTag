@@ -5,7 +5,7 @@ type IconName = keyof typeof Ionicons.glyphMap;
 /** Icons the user can choose for an object (stored in objects.icon). */
 export const objectIcons: { key: string; label: string; icon: IconName }[] = [
   { key: 'cube', label: 'General', icon: 'cube-outline' },
-  { key: 'bicycle', label: 'Bicicleta', icon: 'bicycle-outline' },
+  { key: 'pet', label: 'Mascota', icon: 'paw-outline' },
   { key: 'car', label: 'Vehículo', icon: 'car-sport-outline' },
   { key: 'music', label: 'Instrumento', icon: 'musical-notes-outline' },
   { key: 'camera', label: 'Cámara', icon: 'camera-outline' },
@@ -17,6 +17,9 @@ export const objectIcons: { key: string; label: string; icon: IconName }[] = [
   { key: 'shirt', label: 'Ropa', icon: 'shirt-outline' },
   { key: 'gift', label: 'Recuerdo', icon: 'gift-outline' },
 ];
+
+/** Icons no longer offered in the picker but still saved in older objects, so they keep their look. */
+const legacyIcons: Record<string, IconName> = { bicycle: 'bicycle-outline' };
 
 /** Earlier versions guessed the icon from the name; kept as the default when none was chosen. */
 export function guessIcon(name: string) {
@@ -34,5 +37,5 @@ export function guessIcon(name: string) {
 
 export function objectIcon(icon: string | null | undefined, name: string): IconName {
   const key = icon ?? guessIcon(name);
-  return (objectIcons.find((item) => item.key === key) ?? objectIcons[0]).icon;
+  return objectIcons.find((item) => item.key === key)?.icon ?? legacyIcons[key] ?? objectIcons[0].icon;
 }

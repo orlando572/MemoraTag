@@ -38,6 +38,7 @@ const messages: Record<string, string> = {
   READ_ONLY: 'La etiqueta no permite escritura o no se pudo comprobar.',
   CAPACITY: 'La etiqueta no tiene espacio suficiente.',
   NO_TAG: 'No se pudo leer la etiqueta. Vuelve a intentarlo.',
+  TIMEOUT: 'No se detectó ninguna etiqueta en 12 segundos. Acércala y vuelve a intentarlo.',
   WRITE_UNCONFIRMED: 'No se pudo confirmar la escritura. La etiqueta podría haberse modificado; léela antes de volver a escribirla.',
   BUSY: 'Ya hay una operación NFC en curso.',
 };

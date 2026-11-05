@@ -5,7 +5,7 @@ import { useRef, useState } from 'react';
 import { AccessibilityInfo, Image, KeyboardAvoidingView, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { dataChanged } from '../data/bus';
 import { photoUri, removePhoto, savePhoto } from '../object-photos';
-import { guessIcon, objectIcons } from '../objects/icons';
+import { guessIcon, objectIcon, objectIcons } from '../objects/icons';
 import { createObject, updateObject, type MemoryObject } from '../storage';
 import { Button, Footer, NavBar, Screen, TextField } from '../ui/components';
 import { useFeedback } from '../ui/feedback/FeedbackProvider';
@@ -85,7 +85,7 @@ export function ObjectForm({ object }: { object?: MemoryObject }) {
         <View style={s.preview}>
           <Pressable accessibilityRole="button" accessibilityLabel={currentPhoto ? 'Cambiar la foto del objeto' : 'Añadir una foto del objeto'} onPress={async () => { const asset = await pickPhoto(Alert, 'Foto del objeto'); if (asset) { setPhoto(asset); setPhotoRemoved(false); } }}
             style={({ pressed }) => [s.cover, { backgroundColor: tone.bg }, pressed && { opacity: 0.8 }]}>
-            {currentPhoto ? <Image source={{ uri: currentPhoto }} style={s.coverImage} /> : <Ionicons name={objectIcons.find((o) => o.key === effectiveIcon)?.icon ?? 'cube-outline'} size={42} color={tone.fg} />}
+            {currentPhoto ? <Image source={{ uri: currentPhoto }} style={s.coverImage} /> : <Ionicons name={objectIcon(effectiveIcon, name)} size={42} color={tone.fg} />}
             <View style={s.coverBadge}><Ionicons name="camera" size={16} color="#fff" /></View>
           </Pressable>
           <View style={{ flex: 1, gap: space.sm }}>
