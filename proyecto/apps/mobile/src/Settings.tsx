@@ -185,7 +185,7 @@ export function Settings({ name, onNameChange, onImported, onShowTutorial, theme
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <ScrollView pointerEvents={busy ? 'none' : 'auto'} accessibilityElementsHidden={busy} importantForAccessibility={busy ? 'no-hide-descendants' : 'auto'} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingBottom: Math.max(insets.bottom, 24) + space.xl }]}>
       <Section title="Tu perfil" icon="person-circle-outline">
-        <TextField ref={nameInput} label="Nombre" value={draft} maxLength={60} editable={!saving} autoCapitalize="words" hint="Solo se usa para saludarte. Se guarda en este teléfono y no es una cuenta."
+        <TextField ref={nameInput} label="Nombre" value={draft} maxLength={60} editable={!saving} autoCapitalize="words" flush
           error={nameError ? 'Escribe tu nombre para continuar.' : undefined} onChangeText={(value) => { setDraft(value); if (value.trim()) setNameError(false); }} style={{ marginBottom: 0 }} />
         {draft !== name && <View style={styles.row}>
           <Button label={saving ? 'Guardando…' : 'Guardar nombre'} icon="checkmark" loading={saving} disabled={!draft.trim()} onPress={() => void saveName()} style={{ flex: 1 }} />
@@ -194,17 +194,16 @@ export function Settings({ name, onNameChange, onImported, onShowTutorial, theme
       </Section>
 
       <Section title="Apariencia" icon="color-palette-outline">
-        <Text style={styles.hint}>Elige cómo se ve MemoraTag. No cambia el modo de tu teléfono.</Text>
         <View accessibilityRole="radiogroup" style={{ gap: space.sm }}>
           {themeOptions.map((option) => {
             const selected = themeMode === option.mode;
-            return <Pressable key={option.mode} accessibilityRole="radio" accessibilityState={{ checked: selected }} accessibilityLabel={`${option.label}. ${option.detail}`}
+            return <Pressable key={option.mode} accessibilityRole="radio" accessibilityState={{ checked: selected }} accessibilityLabel={option.detail ? `${option.label}. ${option.detail}` : option.label}
               onPress={() => { if (!selected) void onThemeMode(option.mode).catch(() => Alert.error('No se pudo guardar la preferencia', 'El tema se aplicó, pero volverá al anterior al reiniciar la app.')); }}
               style={({ pressed }) => [styles.themeOption, selected && { borderColor: c.primary, borderWidth: 2, backgroundColor: c.primarySoft }, pressed && { opacity: 0.75 }]}>
               <Ionicons name={option.icon} size={22} color={selected ? c.onPrimarySoft : c.ink} />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.label, selected && { color: c.onPrimarySoft }]}>{option.label}</Text>
-                <Text style={[styles.hint, selected && { color: c.onPrimarySoft }]}>{option.detail}</Text>
+                {!!option.detail && <Text style={[styles.hint, selected && { color: c.onPrimarySoft }]}>{option.detail}</Text>}
               </View>
               <Ionicons name={selected ? 'radio-button-on' : 'radio-button-off'} size={22} color={selected ? c.onPrimarySoft : c.muted} />
             </Pressable>;
@@ -222,7 +221,6 @@ export function Settings({ name, onNameChange, onImported, onShowTutorial, theme
       </Section>
 
       <Section title="Respaldo" icon="cloud-download-outline">
-        <Text style={styles.hint}>Guarda una copia de tus objetos, eventos, fotos y documentos para recuperarlos en otro teléfono. La copia no está cifrada.</Text>
         <Button label="Exportar respaldo" icon="share-outline" disabled={saving} onPress={exportBackup} />
         <Button label="Importar un respaldo" icon="download-outline" variant="secondary" disabled={saving} onPress={() => void selectBackup()} />
         {prepared && <View style={styles.review}>
@@ -243,7 +241,7 @@ export function Settings({ name, onNameChange, onImported, onShowTutorial, theme
 
       <Section title="Almacenamiento" icon="folder-open-outline">
         {usageError ? <><Text style={styles.hint}>No se pudo consultar el almacenamiento.</Text><Button label="Reintentar" icon="refresh" variant="secondary" onPress={() => void refreshUsage()} /></> : !usage ? <ActivityIndicator color={c.primary} /> : <>
-          <Info label="Fotografías" value={formatBytes(usage.photoBytes)} /><Info label="Documentos" value={formatBytes(usage.documentBytes)} /><Info label="Total" value={formatBytes(usage.photoBytes + usage.documentBytes)} strong />
+          <Info label="Fotografías" value={formatBytes(usage.photoBytes)} />{usage.documentBytes > 0 && <Info label="Documentos" value={formatBytes(usage.documentBytes)} />}<Info label="Total" value={formatBytes(usage.photoBytes + usage.documentBytes)} strong />
           <Text style={styles.hint}>{usage.active} objetos activos · {usage.archived} archivados · {usage.events} eventos</Text>
           {usage.missing > 0 && <Text style={styles.warning}>{usage.missing} archivos no están disponibles y no se incluyen en el tamaño.</Text>}
         </>}
@@ -257,17 +255,17 @@ export function Settings({ name, onNameChange, onImported, onShowTutorial, theme
 
       <Section title="Acerca de MemoraTag" icon="information-circle-outline">
         <Info label="Versión" value={Constants.expoConfig?.version ?? 'No disponible'} />
-        <Text style={styles.hint}>Tus objetos, eventos y archivos se guardan solo en este teléfono. Se perderían si borras los datos de la aplicación o pierdes el teléfono: haz un respaldo de vez en cuando.</Text>
+        <Text style={styles.hint}>Tus datos están solo en este teléfono. Haz un respaldo de vez en cuando.</Text>
       </Section>
     </ScrollView>
     </KeyboardAvoidingView>
   </Screen>;
 }
 
-const themeOptions: { mode: ThemeMode; label: string; detail: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+const themeOptions: { mode: ThemeMode; label: string; detail?: string; icon: keyof typeof Ionicons.glyphMap }[] = [
   { mode: 'system', label: 'Automático', detail: 'Igual que el teléfono', icon: 'phone-portrait-outline' },
-  { mode: 'light', label: 'Claro', detail: 'Fondo claro siempre', icon: 'sunny-outline' },
-  { mode: 'dark', label: 'Oscuro', detail: 'Fondo oscuro siempre; cómodo con poca luz', icon: 'moon-outline' },
+  { mode: 'light', label: 'Claro', icon: 'sunny-outline' },
+  { mode: 'dark', label: 'Oscuro', icon: 'moon-outline' },
 ];
 
 function Section({ title, icon, children }: { title: string; icon: keyof typeof Ionicons.glyphMap; children: React.ReactNode }) {
@@ -279,38 +277,46 @@ function Section({ title, icon, children }: { title: string; icon: keyof typeof 
   </View>;
 }
 
+/** Help topic: only the title shows; tapping it opens the explanation (progressive disclosure). */
 function Help({ icon, title, text }: { icon: keyof typeof Ionicons.glyphMap; title: string; text: string }) {
   const styles = useStyles(makeStyles);
   const { c } = useTheme();
-  return <View style={styles.help} accessible accessibilityLabel={`${title}. ${text}`}>
-    <View style={styles.helpIcon}><Ionicons name={icon} size={18} color={c.onPrimarySoft} /></View>
-    <View style={{ flex: 1 }}><Text style={styles.label}>{title}</Text><Text style={styles.hint}>{text}</Text></View>
+  const [open, setOpen] = useState(false);
+  return <View>
+    <Pressable accessibilityRole="button" accessibilityLabel={title} accessibilityState={{ expanded: open }} accessibilityHint={open ? 'Oculta la explicación' : 'Muestra la explicación'}
+      onPress={() => setOpen((value) => !value)} style={({ pressed }) => [styles.help, pressed && { opacity: 0.7 }]}>
+      <View style={styles.helpIcon}><Ionicons name={icon} size={18} color={c.onPrimarySoft} /></View>
+      <Text style={[styles.label, { flex: 1 }]}>{title}</Text>
+      <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={20} color={c.muted} />
+    </Pressable>
+    {open && <Text accessibilityLiveRegion="polite" style={styles.helpText}>{text}</Text>}
   </View>;
 }
 
 function Info({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
   const styles = useStyles(makeStyles);
-  return <View style={styles.info}><Text style={styles.rowLabel}>{label}</Text><Text style={[styles.rowValue, strong && { fontWeight: '800' }]}>{value}</Text></View>;
+  return <View style={styles.info}><Text style={styles.rowLabel}>{label}</Text><Text style={styles.rowValue}>{value}</Text></View>;
 }
 
 const makeStyles = (c: Palette) => ({
   content: { paddingHorizontal: space.xl, paddingTop: space.sm },
   progress: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginHorizontal: space.xl, marginBottom: space.md, padding: space.md, borderRadius: radius.md, backgroundColor: c.primarySoft },
-  progressText: { ...type.caption, color: c.onPrimarySoft, flex: 1 },
+  progressText: { ...type.secondary, color: c.onPrimarySoft, flex: 1 },
   section: { marginBottom: space.xxl },
   sectionHead: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginBottom: space.md },
-  sectionTitle: { ...type.headline, color: c.ink },
+  sectionTitle: { ...type.section, color: c.ink },
   card: { backgroundColor: c.surface, borderWidth: 1, borderColor: c.line, borderRadius: radius.lg, padding: space.lg, gap: space.md },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.md },
   label: { ...type.label, color: c.ink },
-  hint: { ...type.caption, fontSize: 14, lineHeight: 20, color: c.muted },
-  warning: { ...type.caption, fontSize: 14, lineHeight: 20, color: c.warning },
+  hint: { ...type.secondary, color: c.muted },
+  warning: { ...type.secondary, color: c.warning },
   review: { gap: space.sm, paddingTop: space.md, borderTopWidth: 1, borderTopColor: c.line },
   choice: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: space.md },
-  rowLabel: { ...type.body, fontSize: 15, color: c.ink },
-  rowValue: { ...type.body, fontSize: 15, color: c.ink, fontWeight: '600' },
+  rowLabel: { ...type.body, color: c.ink },
+  rowValue: { ...type.card, color: c.ink },
   info: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: space.md },
-  help: { flexDirection: 'row', gap: space.md, alignItems: 'flex-start' },
+  help: { minHeight: 48, flexDirection: 'row', gap: space.md, alignItems: 'center' },
+  helpText: { ...type.secondary, color: c.muted, marginLeft: 34 + space.md, paddingBottom: space.sm },
   themeOption: { minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.md, paddingVertical: space.sm, borderRadius: radius.md, borderWidth: 1, borderColor: c.line, backgroundColor: c.surface },
   helpIcon: { width: 34, height: 34, borderRadius: 11, backgroundColor: c.primarySoft, alignItems: 'center', justifyContent: 'center' },
 } as const);

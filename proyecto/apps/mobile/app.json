@@ -36,10 +36,10 @@
           "image": "./assets/splash-icon.png",
           "imageWidth": 180,
           "resizeMode": "contain",
-          "backgroundColor": "#F7F6F2",
+          "backgroundColor": "#F7F3EC",
           "dark": {
             "image": "./assets/logo-dark.png",
-            "backgroundColor": "#0F1A1D"
+            "backgroundColor": "#1B1916"
           }
         }
       ]
@@ -50,7 +50,7 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "monochromeImage": "./assets/monochrome-icon.png",
-        "backgroundColor": "#0E5A6B"
+        "backgroundColor": "#2F4BB8"
       }
     },
     "orientation": "portrait",

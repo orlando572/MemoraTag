@@ -7,7 +7,7 @@ import { SafeAreaView, useSafeAreaInsets, type Edge } from 'react-native-safe-ar
 import { photoUri } from '../object-photos';
 import { objectIcon } from '../objects/icons';
 import { useStyles, useTheme } from './theme';
-import { radius, space, type, type Palette } from './tokens';
+import { fonts, radius, space, type, type Palette } from './tokens';
 
 export type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -32,7 +32,7 @@ export function NavBar({ title, onBack, right, disabled, onDark }: { title?: str
 }
 const navStyles = (c: Palette) => ({
   nav: { minHeight: 64, paddingHorizontal: space.lg, flexDirection: 'row', alignItems: 'center', gap: space.md },
-  title: { flex: 1, textAlign: 'center', color: c.ink, ...type.headline },
+  title: { flex: 1, textAlign: 'center', color: c.ink, ...type.section },
   spacer: { width: 48 },
 } as const);
 
@@ -55,7 +55,7 @@ const buttonStyles = (c: Palette) => ({
   secondary: { backgroundColor: c.surface, borderWidth: 1, borderColor: c.inputBorder },
   ghost: { backgroundColor: 'transparent' },
   danger: { backgroundColor: c.dangerSoft },
-  text: { ...type.label, fontWeight: '700' },
+  text: { ...type.label },
   dim: { opacity: 0.6 },
 } as const);
 
@@ -67,7 +67,7 @@ export function IconButton({ icon, label, onPress, disabled, tone = 'surface', b
   return <Pressable accessibilityRole="button" accessibilityLabel={label} disabled={disabled} onPress={onPress} hitSlop={4}
     style={({ pressed }) => [{ width: 48, height: 48, borderRadius: radius.md, backgroundColor: bg, alignItems: 'center', justifyContent: 'center', borderWidth: tone === 'surface' ? 1 : 0, borderColor: c.line }, (pressed || disabled) && { opacity: 0.6 }]}>
     <Ionicons name={icon} size={22} color={fg} />
-    {badge && <View style={{ position: 'absolute', top: 10, right: 10, width: 9, height: 9, borderRadius: 5, backgroundColor: c.accent }} />}
+    {badge && <View style={{ position: 'absolute', top: 10, right: 10, width: 9, height: 9, borderRadius: 5, backgroundColor: c.warning }} />}
   </Pressable>;
 }
 
@@ -79,19 +79,19 @@ export function Chip({ label, selected, onPress, icon, color, count }: { label: 
     style={({ pressed }) => [{ minHeight: 44, paddingHorizontal: space.md, borderRadius: radius.pill, flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1.5, borderColor: selected ? tint : c.line, backgroundColor: selected ? c.surfaceAlt : c.surface }, pressed && { opacity: 0.7 }]}>
     {icon && <Ionicons name={icon} size={17} color={tint} />}
     <Text style={{ ...type.label, color: selected ? c.ink : c.muted }}>{label}</Text>
-    {count !== undefined && <Text style={{ ...type.caption, color: c.muted }}>{count}</Text>}
+    {count !== undefined && <Text style={{ ...type.secondary, color: c.muted }}>{count}</Text>}
     {selected && <Ionicons name="checkmark" size={16} color={tint} />}
   </Pressable>;
 }
 
 /** Small status label. Colour is never the only cue: it always carries text and, optionally, an icon. */
-export function Badge({ label, tone = 'neutral', icon }: { label: string; tone?: 'neutral' | 'primary' | 'danger' | 'success' | 'warning' | 'accent'; icon?: IconName }) {
+export function Badge({ label, tone = 'neutral', icon }: { label: string; tone?: 'neutral' | 'primary' | 'danger' | 'success' | 'warning'; icon?: IconName }) {
   const { c } = useTheme();
-  const map = { neutral: [c.surfaceAlt, c.muted], primary: [c.primarySoft, c.onPrimarySoft], danger: [c.dangerSoft, c.danger], success: [c.successSoft, c.success], warning: [c.warningSoft, c.warning], accent: [c.accentSoft, c.onAccentSoft] } as const;
+  const map = { neutral: [c.surfaceAlt, c.muted], primary: [c.primarySoft, c.onPrimarySoft], danger: [c.dangerSoft, c.danger], success: [c.successSoft, c.success], warning: [c.warningSoft, c.warning] } as const;
   const [bg, fg] = map[tone];
   return <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', backgroundColor: bg, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4 }}>
     {icon && <Ionicons name={icon} size={14} color={fg} />}
-    <Text style={{ ...type.caption, fontWeight: '700', color: fg }}>{label}</Text>
+    <Text style={{ ...type.mini, color: fg }}>{label}</Text>
   </View>;
 }
 
@@ -105,8 +105,8 @@ export function Card({ children, style, onPress, accessibilityLabel, accessibili
 export function SectionHeader({ title, detail, right }: { title: string; detail?: string; right?: ReactNode }) {
   const { c } = useTheme();
   return <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.md, marginBottom: space.md }}>
-    <Text accessibilityRole="header" style={{ ...type.headline, color: c.ink, flexShrink: 1 }}>{title}</Text>
-    {right ?? (detail ? <Text style={{ ...type.caption, color: c.muted }}>{detail}</Text> : null)}
+    <Text accessibilityRole="header" style={{ ...type.section, color: c.ink, flexShrink: 1 }}>{title}</Text>
+    {right ?? (detail ? <Text style={{ ...type.secondary, color: c.muted }}>{detail}</Text> : null)}
   </View>;
 }
 
@@ -115,23 +115,23 @@ export function EmptyState({ icon, title, text, action }: { icon: IconName; titl
   const { c } = useTheme();
   return <View style={{ alignItems: 'center', paddingHorizontal: space.xxl, paddingVertical: space.xxxl }}>
     <View style={{ width: 76, height: 76, borderRadius: 26, backgroundColor: c.primarySoft, alignItems: 'center', justifyContent: 'center', marginBottom: space.lg }}><Ionicons name={icon} size={32} color={c.onPrimarySoft} /></View>
-    <Text accessibilityRole="header" style={{ ...type.headline, color: c.ink, textAlign: 'center' }}>{title}</Text>
-    <Text style={{ ...type.body, fontSize: 15, color: c.muted, textAlign: 'center', marginTop: space.sm }}>{text}</Text>
+    <Text accessibilityRole="header" style={{ ...type.section, color: c.ink, textAlign: 'center' }}>{title}</Text>
+    <Text style={{ ...type.body, color: c.muted, textAlign: 'center', marginTop: space.sm }}>{text}</Text>
     {action && <Button label={action.label} icon={action.icon} variant="secondary" onPress={action.onPress} style={{ marginTop: space.xl }} />}
   </View>;
 }
 
-type FieldProps = TextInputProps & { label: string; optional?: boolean; error?: string; hint?: string };
+type FieldProps = TextInputProps & { label: string; optional?: boolean; error?: string; hint?: string; /** No space below the field, for a field that is alone in its card. */ flush?: boolean };
 
 /** Labelled input; errors are shown next to the field, in text, and announced. */
-export const TextField = forwardRef<TextInput, FieldProps>(function TextField({ label, optional, error, hint, style, ...input }, ref) {
+export const TextField = forwardRef<TextInput, FieldProps>(function TextField({ label, optional, error, hint, flush, style, ...input }, ref) {
   const { c } = useTheme();
-  return <View style={{ marginBottom: space.xl }}>
-    <Text style={{ ...type.label, color: c.ink, marginBottom: space.sm }}>{label}{optional && <Text style={{ color: c.muted, fontWeight: '400' }}> · opcional</Text>}</Text>
+  return <View style={{ marginBottom: flush ? 0 : space.xl }}>
+    <Text style={{ ...type.label, color: c.ink, marginBottom: space.sm }}>{label}{optional && <Text style={{ color: c.muted, fontFamily: fonts.body }}> · opcional</Text>}</Text>
     <TextInput ref={ref} accessibilityLabel={label} accessibilityHint={error ?? hint} placeholderTextColor={c.muted}
       style={[{ minHeight: 54, backgroundColor: c.surface, borderWidth: error ? 2 : 1, borderColor: error ? c.danger : c.inputBorder, borderRadius: radius.md, paddingHorizontal: space.lg, color: c.ink, ...type.body }, style]} {...input} />
-    {error ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}><Ionicons name="alert-circle" size={16} color={c.danger} /><Text accessibilityLiveRegion="polite" style={{ ...type.caption, color: c.danger }}>{error}</Text></View>
-      : hint ? <Text style={{ ...type.caption, color: c.muted, marginTop: 6 }}>{hint}</Text> : null}
+    {error ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}><Ionicons name="alert-circle" size={16} color={c.danger} /><Text accessibilityLiveRegion="polite" style={{ ...type.secondary, color: c.danger }}>{error}</Text></View>
+      : hint ? <Text style={{ ...type.secondary, color: c.muted, marginTop: 6 }}>{hint}</Text> : null}
   </View>;
 });
 
