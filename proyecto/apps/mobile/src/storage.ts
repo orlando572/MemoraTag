@@ -3,7 +3,7 @@ import * as Crypto from 'expo-crypto';
 import { removePhoto } from './object-photos';
 import { removeDocument } from './event-document';
 
-export type MemoryObject = { id: string; name: string; description: string; created_at: string; cover_image: string | null; color: string; icon?: string | null; nfc_written_at?: string | null; open_issues?: number; last_maintenance?: string | null; latest_event_title?: string | null; latest_event_date?: string | null; latest_event_type?: EventType | null };
+export type MemoryObject = { id: string; name: string; description: string; created_at: string; cover_image: string | null; color: string; icon?: string | null; nfc_written_at?: string | null; open_issues?: number; last_maintenance?: string | null; latest_event_title?: string | null; latest_event_date?: string | null; latest_event_type?: EventType | null; latest_event_resolved_at?: string | null };
 export type EventType = 'note' | 'issue' | 'maintenance';
 export type MemoryEvent = { id: string; object_id: string; title: string; description: string; created_at: string; type: EventType; event_date: string; photo: string | null; document_file: string | null; document_name: string | null; resolved_at?: string | null };
 
@@ -112,11 +112,17 @@ function newId() {
   return Crypto.randomUUID();
 }
 
-export async function listObjects() {
-  return (await openDatabase()).getAllAsync<MemoryObject>(`SELECT objects.*,
+// The most recent event of an object (by date) and its state, shown on the home cards. `resolved_at` lets a
+// card show a resolved incident as resolved, the same way the object screen does.
+const LATEST_EVENT = `
     (SELECT title FROM events WHERE events.object_id = objects.id ORDER BY event_date DESC, created_at DESC, id DESC LIMIT 1) AS latest_event_title,
     (SELECT event_date FROM events WHERE events.object_id = objects.id ORDER BY event_date DESC, created_at DESC, id DESC LIMIT 1) AS latest_event_date,
     (SELECT type FROM events WHERE events.object_id = objects.id ORDER BY event_date DESC, created_at DESC, id DESC LIMIT 1) AS latest_event_type,
+    (SELECT resolved_at FROM events WHERE events.object_id = objects.id ORDER BY event_date DESC, created_at DESC, id DESC LIMIT 1) AS latest_event_resolved_at,`;
+
+export async function listObjects() {
+  return (await openDatabase()).getAllAsync<MemoryObject>(`SELECT objects.*,
+    ${LATEST_EVENT}
     (SELECT count(*) FROM events WHERE events.object_id = objects.id AND type = 'issue' AND resolved_at IS NULL) AS open_issues,
     (SELECT max(event_date) FROM events WHERE events.object_id = objects.id AND type = 'maintenance') AS last_maintenance
     FROM objects WHERE archived_at IS NULL ORDER BY created_at DESC`);
@@ -124,9 +130,7 @@ export async function listObjects() {
 
 export async function listArchivedObjects() {
   return (await openDatabase()).getAllAsync<MemoryObject>(`SELECT objects.*,
-    (SELECT title FROM events WHERE events.object_id = objects.id ORDER BY event_date DESC, created_at DESC, id DESC LIMIT 1) AS latest_event_title,
-    (SELECT event_date FROM events WHERE events.object_id = objects.id ORDER BY event_date DESC, created_at DESC, id DESC LIMIT 1) AS latest_event_date,
-    (SELECT type FROM events WHERE events.object_id = objects.id ORDER BY event_date DESC, created_at DESC, id DESC LIMIT 1) AS latest_event_type,
+    ${LATEST_EVENT}
     (SELECT count(*) FROM events WHERE events.object_id = objects.id AND type = 'issue' AND resolved_at IS NULL) AS open_issues,
     (SELECT max(event_date) FROM events WHERE events.object_id = objects.id AND type = 'maintenance') AS last_maintenance
     FROM objects WHERE archived_at IS NOT NULL ORDER BY archived_at DESC`);
@@ -176,6 +180,36 @@ export async function archiveObject(id: string) {
 export async function restoreObject(id: string) {
   const result = await (await openDatabase()).runAsync('UPDATE objects SET archived_at = NULL WHERE id = ? AND archived_at IS NOT NULL', id);
   if (result.changes !== 1) throw new Error('Object not found or not archived');
+}
+
+/** Permanently deletes an archived object, its events and their files. Cannot be undone. */
+export async function deleteArchivedObject(id: string) {
+  const db = await openDatabase();
+  let photos: string[] = [];
+  let documents: string[] = [];
+  await db.withExclusiveTransactionAsync(async (tx) => {
+    const object = await tx.getFirstAsync<{ cover_image: string | null }>('SELECT cover_image FROM objects WHERE id = ? AND archived_at IS NOT NULL', id);
+    if (!object) throw new Error('Object not found or not archived');
+    const events = await tx.getAllAsync<{ photo: string | null; document_file: string | null }>('SELECT photo, document_file FROM events WHERE object_id = ?', id);
+    photos = [object.cover_image, ...events.map((e) => e.photo)].filter((v): v is string => !!v);
+    documents = events.map((e) => e.document_file).filter((v): v is string => !!v);
+    await tx.runAsync('DELETE FROM events WHERE object_id = ?', id);
+    const result = await tx.runAsync('DELETE FROM objects WHERE id = ? AND archived_at IS NOT NULL', id);
+    if (result.changes !== 1) throw new Error('Object not found');
+  });
+  // Cleanup is best-effort and must never change the result of a committed deletion.
+  for (const photo of new Set(photos)) {
+    try {
+      const used = await db.getFirstAsync<{ used: number }>('SELECT 1 AS used WHERE EXISTS (SELECT 1 FROM events WHERE photo = ?) OR EXISTS (SELECT 1 FROM objects WHERE cover_image = ?)', photo, photo);
+      if (!used) await removePhoto(photo);
+    } catch { /* Keep orphaned files when cleanup cannot be confirmed. */ }
+  }
+  for (const document of new Set(documents)) {
+    try {
+      const used = await db.getFirstAsync<{ used: number }>('SELECT 1 AS used WHERE EXISTS (SELECT 1 FROM events WHERE document_file = ?)', document);
+      if (!used) await removeDocument(document);
+    } catch { /* Cleanup can be retried separately. */ }
+  }
 }
 
 export async function createEvent(objectId: string, title: string, description: string, type: EventType, eventDate: string, photo: string | null, documentFile: string | null, documentName: string | null) {

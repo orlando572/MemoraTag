@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MemoraTag · Pantalla del objeto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600&family=Fraunces:wght@600&display=swap" rel="stylesheet">
+<style>
+  :root { --page:#EDE8DE; --pageInk:#1F1B16; --pageMuted:#5B5348; --pageLine:#D6CDBD; --card:#FBF9F4; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--page); color:var(--pageInk); font:400 16px/24px 'DM Sans',system-ui,sans-serif; }
+  main { max-width:1180px; margin:0 auto; padding:32px 16px 96px; }
+  h1,h2,h3 { font-family:'Fraunces',Georgia,serif; font-weight:600; margin:0; } h1 { font-size:34px; line-height:41px; } h2 { font-size:24px; line-height:30px; margin:48px 0 8px; } h3 { font-size:19px; line-height:26px; margin:24px 0 8px; }
+  p { margin:8px 0; max-width:74ch; } .muted { color:var(--pageMuted); } .small { font-size:14px; line-height:20px; }
+  .badge { display:inline-block; font:600 12px/16px 'DM Sans',sans-serif; padding:3px 10px; border-radius:999px; background:#2F4BB8; color:#fff; }
+  code { background:#E4DCCF; padding:1px 6px; border-radius:6px; font-size:13px; }
+  table { border-collapse:collapse; width:100%; background:var(--card); border:1px solid var(--pageLine); border-radius:12px; overflow:hidden; font-size:14px; line-height:20px; margin:8px 0; }
+  th,td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--pageLine); vertical-align:top; } th { background:#E4DCCF; font-weight:600; }
+  .pair { display:flex; gap:20px; flex-wrap:wrap; align-items:flex-start; margin:12px 0; } .col { flex:none; } .col > .cap { font:600 13px/18px 'DM Sans',sans-serif; margin:0 0 8px; }
+  .tag { display:inline-block; font:600 12px/16px 'DM Sans',sans-serif; padding:2px 8px; border-radius:999px; margin-right:6px; background:#F8EDD7; color:#6B4300; }
+
+  /* ===== Teléfono 360 x 760 dp (lo que se ve sin desplazar) ===== */
+  .phone { width:360px; height:760px; border-radius:26px; background:var(--canvas); color:var(--ink); border:1px solid var(--line); overflow:hidden; display:flex; flex-direction:column; position:relative; }
+  .scroll { flex:1; overflow:hidden; }
+  .hero { position:relative; border-bottom-left-radius:24px; border-bottom-right-radius:24px; overflow:hidden; background:linear-gradient(160deg,#3b3f45,#101214); display:flex; flex-direction:column; justify-content:space-between; }
+  .bar { display:flex; justify-content:space-between; padding:36px 20px 0; } .rb { width:48px; height:48px; border-radius:14px; background:rgba(0,0,0,.45); color:#fff; display:flex; align-items:center; justify-content:center; font-size:20px; }
+  .cap2 { background:rgba(0,0,0,.62); color:#fff; padding:16px 20px 24px; display:flex; align-items:flex-end; gap:12px; } .cap2 .t { flex:1; min-width:0; } .nm { font:600 24px/30px 'Fraunces',serif; } .ds { font:400 16px/24px 'DM Sans',sans-serif; margin-top:6px; opacity:.92; }
+  .expand { width:48px; height:48px; border-radius:14px; background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.55); display:flex; align-items:center; justify-content:center; font-size:20px; flex:none; }
+  .body { padding:20px 20px 0; }
+  .quick { display:flex; gap:12px; margin-bottom:12px; } .tile { flex:1; min-width:0; background:var(--surface); border:1px solid var(--line); border-radius:18px; padding:12px; display:flex; gap:8px; align-items:center; }
+  .tile .i { font-size:22px; color:var(--primary); } .tile .a { font:600 14px/20px 'DM Sans',sans-serif; } .tile .b { font:400 14px/20px 'DM Sans',sans-serif; color:var(--muted); }
+  .status { background:var(--surface); border:1px solid var(--line); border-radius:18px; padding:16px; display:flex; flex-direction:column; gap:12px; margin-bottom:24px; }
+  .row { display:flex; gap:12px; align-items:center; font:600 14px/20px 'DM Sans',sans-serif; }
+  .hh { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px; } .hh .t { font:600 19px/26px 'Fraunces',serif; } .hh .n { font:400 14px/20px 'DM Sans',sans-serif; color:var(--muted); }
+  .chips { display:flex; gap:8px; margin-bottom:16px; overflow:hidden; white-space:nowrap; } .chip { flex:none; min-height:44px; padding:0 16px; border-radius:999px; display:inline-flex; align-items:center; gap:6px; font:600 14px/20px 'DM Sans',sans-serif; border:1.5px solid var(--inputBorder); background:var(--surface); color:var(--ink); }
+  .chip.on { background:var(--surfaceAlt); border-color:var(--primary); } .chip .n { font-weight:400; color:var(--muted); }
+  .month { font:600 12px/16px 'DM Sans',sans-serif; text-transform:uppercase; letter-spacing:.6px; color:var(--muted); margin:8px 0 12px; }
+  .ev { display:flex; gap:12px; } .rail { width:40px; display:flex; flex-direction:column; align-items:center; } .dot { width:40px; height:40px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:18px; flex:none; }
+  .line { width:2px; flex:1; background:var(--line); margin:4px 0; }
+  .ecard { flex:1; min-width:0; background:var(--surface); border:1px solid var(--line); border-radius:18px; padding:8px 16px 16px; margin-bottom:12px; }
+  .etop { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-right:-8px; } .meta { font:600 12px/16px 'DM Sans',sans-serif; }
+  .pen { width:48px; height:48px; border-radius:14px; border:1px solid var(--line); background:var(--surface); display:flex; align-items:center; justify-content:center; font-size:18px; }
+  .et { font:600 16px/22px 'DM Sans',sans-serif; } .ex { font:400 16px/24px 'DM Sans',sans-serif; color:var(--muted); margin-top:4px; }
+  .irow { display:flex; justify-content:space-between; align-items:center; margin-top:12px; gap:8px; } .bd { display:inline-flex; gap:4px; align-items:center; padding:4px 10px; border-radius:999px; font:600 12px/16px 'DM Sans',sans-serif; }
+  .bd.danger { background:var(--dangerSoft); color:var(--danger); } .bd.success { background:var(--successSoft); color:var(--success); } .act { min-height:44px; display:inline-flex; align-items:center; gap:6px; font:600 14px/20px 'DM Sans',sans-serif; color:var(--primary); padding:0 8px; }
+  .foot { border-top:1px solid var(--line); padding:16px; background:var(--canvas); } .btn { min-height:52px; border-radius:14px; display:flex; align-items:center; justify-content:center; gap:8px; font:600 14px/20px 'DM Sans',sans-serif; background:var(--primary); color:var(--onPrimary); }
+  .fold { position:absolute; left:0; right:0; bottom:88px; height:2px; background:transparent; }
+  .red { outline:2px dashed #AD3520; outline-offset:2px; border-radius:6px; }
+</style>
+</head>
+<body>
+<main>
+  <span class="badge">Propuesta · no aplicada al código</span>
+  <h1 style="margin-top:12px">Pantalla del objeto: auditoría y propuesta</h1>
+  <p class="muted">Etapa 3 del rediseño (etapa 1: colores y tipografía; etapa 2: inicio). Solo la <b>pantalla del objeto</b>. Archivo local, no se sube a GitHub. Rama: <code>feature/mobile-bitacora-design-system</code>. Los teléfonos se dibujan a 360 × 760 dp con el pie fijo, para ver lo que aparece <b>sin desplazar</b>.</p>
+
+  <h2>1. Auditoría de la pantalla actual</h2>
+  <table>
+    <tr><th>#</th><th>Hallazgo (verificado en el código y en tu teléfono)</th><th>Principio que incumple</th></tr>
+    <tr><td>1</td><td>La cabecera con foto ocupa <b>320 dp</b> (~40 % de la pantalla). El propósito de la app es <b>registrar y recuperar eventos</b>, pero con una incidencia abierta el primer evento apenas asoma por encima del botón «Registrar evento»: hay que desplazar para leer lo principal.</td><td><b>Nielsen H1</b> y <b>H8</b>; <b>Shneiderman 2</b> (tareas frecuentes); diseño centrado en la tarea; <b>Fitts</b></td></tr>
+    <tr><td>2</td><td>Los filtros de la historia se muestran siempre, aunque haya <b>un solo evento</b> o falten tipos: «Notas 0», «Mantenimientos 0» llevan a un vacío. La fila se corta en el borde («Incidenci…»).</td><td><b>Nielsen H8</b>, <b>Ley de Hick</b> (opciones que no llevan a nada)</td></tr>
+    <tr><td>3</td><td>«Sin mantenimientos registrados» lleva la llave en <b>ámbar</b>, el color de «cuidado no urgente». Se colorea un estado que no existe.</td><td><b>Nielsen H4</b> y regla del sistema de diseño; <b>WCAG 1.4.1</b> (el color debe significar algo)</td></tr>
+    <tr><td>4</td><td>La foto de la cabecera se abre a pantalla completa al tocarla, pero <b>nada lo indica</b> (solo lo anuncia TalkBack).</td><td><b>Norman</b> (significantes, <i>affordance</i>); <b>Nielsen H6</b></td></tr>
+  </table>
+  <p class="small muted"><b>Lo que ya está bien y no se toca:</b> «Registrar evento» fijo abajo (zona del pulgar, 52 dp), Deshacer en las acciones reversibles, la línea de tiempo agrupada por mes, el estado de la incidencia con texto + icono + color, «Marcar resuelta» como acción de texto (44 dp), el menú «⋯» con Editar y Archivar, y los estados de carga, error, archivado y vacío.</p>
+
+  <h2>2. Antes y después</h2>
+  <p class="small muted">Las áreas punteadas en rojo marcan los problemas de «Hoy». Caso A: el objeto de tu teléfono, con 1 evento (una incidencia abierta). Caso B: un objeto con varios eventos de los tres tipos.</p>
+  <div id="pairs"></div>
+
+  <h2>3. Cambios propuestos y su justificación</h2>
+  <table>
+    <tr><th>Cambio</th><th>Principios del curso</th><th>Criterio comprobable</th></tr>
+    <tr><td><b>A. Cabecera más baja.</b> La foto pasa de 320 a <b>220 dp</b>; el nombre y la descripción siguen sobre la foto. Sin foto no cambia (ya es baja).</td><td>H1, H8, Shneiderman 2, centrado en la tarea, Gestalt (jerarquía: lo principal arriba)</td><td>Con una incidencia abierta se ven el título y la descripción del primer evento sin desplazar, en un teléfono de 360 × 760 dp (el botón «Marcar resuelta» queda justo debajo).</td></tr>
+    <tr><td><b>B. Filtros solo cuando sirven.</b> Se muestran únicamente los tipos que tienen eventos y la fila solo aparece si hay <b>al menos dos tipos</b>.</td><td>H8, Hick</td><td>Con 1 evento no hay fila; con varios tipos no aparece ningún chip con «0». Con los tres tipos la fila sigue desplazándose de lado: el corte en el borde indica que hay más.</td></tr>
+    <tr><td><b>C. La llave solo es ámbar si hay mantenimiento.</b> Sin mantenimientos, en gris (texto secundario).</td><td>H4, WCAG 1.4.1, regla de color del sistema</td><td>El ámbar solo aparece con un mantenimiento real.</td></tr>
+    <tr><td><b>D. Botón visible para ver la foto.</b> Un botón de «ampliar» (48 dp) en el pie de la foto, con nombre accesible. Tocar la foto sigue funcionando.</td><td>Norman (significantes), H6, H7, WCAG 2.5.8 (objetivo ≥ 24; aquí 48)</td><td>El gesto se descubre sin leer la ayuda; sin foto no hay botón.</td></tr>
+  </table>
+  <h3>Decisiones opcionales (no incluidas en la vista previa)</h3>
+  <table>
+    <tr><th>Opción</th><th>Ventaja</th><th>Riesgo / costo</th></tr>
+    <tr><td><span class="tag">E</span> Que «1 incidencia abierta» sea tocable y filtre la historia por incidencias.</td><td>Atajo (<b>H7</b>) coherente con el filtro del inicio.</td><td>Con un solo tipo de evento sería redundante; añade lógica de desplazamiento.</td></tr>
+    <tr><td><span class="tag">F</span> Cambiar el azul de «NFC vinculada» por otro significado.</td><td>El azul es solo de acción; aquí marca un estado.</td><td>Hace falta decidir un color para «hecho»; el verde está reservado a «resuelto».</td></tr>
+  </table>
+
+  <h2>4. Qué no cambia (alcance)</h2>
+  <p>Los mosaicos de QR y NFC, el resumen de estado, la tarjeta del evento (incluida la edición con el lápiz), «Registrar evento», el menú «⋯», los textos y el resto de pantallas. Tampoco cambian colores ni tipografía.</p>
+
+  <h2>5. Cómo lo comprobaré</h2>
+  <ol class="small">
+    <li><code>typecheck</code> y pruebas en verde; <code>check:contrast</code> sin fallos.</li>
+    <li>Capturas en el teléfono, con y sin foto, con 1 evento y con varios; el primer evento visible sin desplazar.</li>
+    <li>Pendiente de tu parte: letra del sistema al máximo y TalkBack.</li>
+  </ol>
+</main>
+
+<script>
+const LIGHT = {canvas:'#F7F3EC',surface:'#FFFFFF',surfaceAlt:'#EFE9DF',ink:'#1F1B16',muted:'#6B6258',line:'#E4DCCF',inputBorder:'#8C8274',primary:'#2F4BB8',onPrimary:'#FFFFFF',danger:'#AD3520',dangerSoft:'#FBE6E1',success:'#25692F',successSoft:'#E2F1E4',warning:'#8A5A00',warningSoft:'#F8EDD7'};
+const DARK  = {canvas:'#1B1916',surface:'#262320',surfaceAlt:'#302B26',ink:'#F2ECE3',muted:'#A89E91',line:'#3A352F',inputBorder:'#7A7064',primary:'#8FA8FF',onPrimary:'#0F1A3D',danger:'#FF8A73',dangerSoft:'#3A221C',success:'#7FCB8A',successSoft:'#1F3324',warning:'#E8B964',warningSoft:'#3A2E17'};
+const vars = P => Object.entries(P).map(([k,v])=>`--${k}:${v}`).join(';');
+const K = {issue:{ico:'⚠',c:'danger',s:'dangerSoft',l:'Incidencia'}, issueDone:{ico:'✓',c:'success',s:'successSoft',l:'Incidencia resuelta'}, maintenance:{ico:'🔧',c:'warning',s:'warningSoft',l:'Mantenimiento'}, note:{ico:'📝',c:'muted',s:'surfaceAlt',l:'Nota'}};
+const CASES = {
+  A: { name:'Laptop Lenovo', desc:'Memoria ram 16 GB', open:1, maint:null, events:[{k:'issue',when:'Hoy',title:'Pantalla',text:'Tiene una mancha en la pantalla',open:true}] },
+  B: { name:'Bicicleta de ruta', desc:'Mi compañera de rutas urbanas.', open:1, maint:'hace 3 días', events:[
+      {k:'issue',when:'Hoy',title:'La cadena hace ruido',text:'Se escucha al cambiar de marcha.',open:true},
+      {k:'maintenance',when:'Hace 3 días',title:'Ajusté el freno delantero',text:'Quedó mucho más firme.'},
+      {k:'note',when:'Hace 2 semanas',title:'Primera salida del mes',text:'Ruta de 30 km sin problemas.'}] },
+};
+function evCard(e, last) {
+  const k = K[e.k]; const done = e.k==='issue' && e.done;
+  return `<div class="ev"><div class="rail"><div class="dot" style="background:var(--${k.s});color:var(--${k.c})">${k.ico}</div>${last?'':'<div class="line"></div>'}</div>
+   <div class="ecard"><div class="etop"><span class="meta" style="color:var(--${k.c})">${k.l} · ${e.when}</span><span class="pen">✎</span></div>
+   <div class="et">${e.title}</div><div class="ex">${e.text}</div>
+   ${e.k==='issue'?`<div class="irow"><span class="bd danger">⚠ Abierta</span><span class="act">✓ Marcar resuelta</span></div>`:''}</div></div>`;
+}
+function phone(m, caseId, v) {
+  const P = m==='light' ? LIGHT : DARK, d = CASES[caseId], hoy = v==='hoy';
+  const types = [...new Set(d.events.map(e=>e.k))];
+  const counts = {all:d.events.length}; d.events.forEach(e=>counts[e.k]=(counts[e.k]||0)+1);
+  const all = [['all','Todos'],['note','📝 Notas'],['issue','⚠ Incidencias'],['maintenance','🔧 Mantenimientos']];
+  const shown = hoy ? all : all.filter(([k])=>k==='all' || counts[k]);
+  const showRow = hoy ? true : types.length >= 2;
+  const chips = showRow ? `<div class="chips">${shown.map(([k,l],i)=>`<span class="chip ${i===0?'on':''} ${hoy&&counts[k]===undefined&&k!=='all'?'red':''}">${l} <span class="n">${counts[k]||0}</span>${i===0?' ✓':''}</span>`).join('')}</div>` : '';
+  const heroH = hoy ? 320 : 220;
+  const maint = d.maint ? `<span style="color:var(--warning)">🔧</span><span>Último mantenimiento: ${d.maint}</span>` : `<span class="${hoy?'red':''}" style="color:var(${hoy?'--warning':'--muted'})">🔧</span><span>Sin mantenimientos registrados</span>`;
+  const status = `<div class="status"><div class="row"><span style="color:var(--danger)">⚠</span><span style="color:var(--danger)">${d.open} incidencia abierta</span></div><div class="row">${maint}</div></div>`;
+  const hero = `<div class="hero" style="height:${heroH}px"><div class="bar"><span class="rb">←</span><span class="rb">⋯</span></div><div class="cap2"><div class="t"><div class="nm">${d.name}</div><div class="ds">${d.desc}</div></div>${hoy?'':'<span class="expand" title="Ver la foto">⤢</span>'}</div></div>`;
+  const ev = d.events.map((e,i)=>evCard(e, i===d.events.length-1)).join('');
+  const foot = `<div class="foot"><div class="btn">＋ Registrar evento</div></div>`;
+  return `<div class="phone" style="${vars(P)}"><div class="scroll">${hero}<div class="body"><div class="quick"><div class="tile"><span class="i">▦</span><div><div class="a">Código QR</div><div class="b">Ver e imprimir</div></div></div><div class="tile"><span class="i">◉</span><div><div class="a">Etiqueta NFC</div><div class="b">Sin vincular</div></div></div></div>${status}<div class="hh"><span class="t">Historia</span><span class="n">${d.events.length} ${d.events.length===1?'evento':'eventos'}</span></div>${chips}<div class="month">Noviembre de 2026</div>${ev}</div></div>${foot}</div>`;
+}
+const blocks = [['A','light','Caso A · modo claro (1 evento)'],['A','dark','Caso A · modo oscuro (1 evento)'],['B','light','Caso B · modo claro (varios eventos)']];
+document.getElementById('pairs').innerHTML = blocks.map(([c,m,t]) => `<h3>${t}</h3><div class="pair"><div class="col"><div class="cap">Hoy</div>${phone(m,c,'hoy')}</div><div class="col"><div class="cap">Propuesta (A + B + C + D)</div>${phone(m,c,'prop')}</div></div>`).join('');
+</script>
+</body>
+</html>

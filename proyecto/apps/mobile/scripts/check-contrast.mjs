@@ -1,5 +1,5 @@
 // Validates the design tokens against WCAG 2.2 AA contrast. Run: node --experimental-strip-types scripts/check-contrast.mjs
-import { contrastPairs, dark, light, objectColors } from '../src/ui/tokens.ts';
+import { brandPairs, contrastPairs, dark, light, objectColors } from '../src/ui/tokens.ts';
 
 function luminance(hex) {
   const value = hex.replace('#', '');
@@ -21,6 +21,13 @@ for (const [themeName, palette] of [['claro', light], ['oscuro', dark]]) {
     if (!ok) failures++;
     rows.push(`${ok ? '✔' : '✖'} ${themeName.padEnd(6)} ${value.toFixed(2).padStart(5)} (mín. ${min}) ${name}`);
   }
+}
+// Brand graphics (logo, icon, splash) only need 3:1 because they are not text.
+for (const [name, fg, bg, min] of brandPairs()) {
+  const value = ratio(fg, bg);
+  const ok = value >= min;
+  if (!ok) failures++;
+  rows.push(`${ok ? '✔' : '✖'} marca  ${value.toFixed(2).padStart(5)} (mín. ${min}) ${name}`);
 }
 console.log(rows.join('\n'));
 console.log(failures ? `\n${failures} combinaciones no cumplen WCAG AA.` : '\nTodas las combinaciones cumplen WCAG AA.');

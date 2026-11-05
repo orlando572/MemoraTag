@@ -15,7 +15,7 @@ import { useFeedback } from '../ui/feedback/FeedbackProvider';
 import { haptic } from '../ui/feedback/haptics';
 import { formatDate, localDate, relativeDate } from '../ui/format';
 import { useStyles, useTheme } from '../ui/theme';
-import { radius, space, type, type Palette } from '../ui/tokens';
+import { fonts, radius, space, type, type Palette } from '../ui/tokens';
 import { pickDocument, pickPhoto, saveErrors } from './attachments';
 import { useUnsavedGuard } from './useUnsavedGuard';
 
@@ -95,7 +95,8 @@ export function EventForm({ objectId, objectName, event }: { objectId: string; o
 
   return <Screen>
     <NavBar title={event ? 'Editar evento' : 'Registrar evento'} disabled={saving} right={event ? <IconButton icon="trash-outline" label="Eliminar evento" onPress={remove} disabled={saving} /> : undefined} />
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    {/* Android is edge-to-edge: without padding the keyboard covers the save button. */}
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={s.content}>
         <Text style={s.context}><Ionicons name="pricetag-outline" size={14} color={c.muted} /> {objectName}</Text>
         <Text style={s.label}>¿Qué tipo de evento es?</Text>
@@ -107,13 +108,13 @@ export function EventForm({ objectId, objectName, event }: { objectId: string; o
             return <Pressable key={key} accessibilityRole="radio" accessibilityState={{ checked: selected }} accessibilityLabel={info.label} accessibilityHint={info.hint} onPress={() => { haptic.tap(); setKind(key); }}
               style={({ pressed }) => [s.type, selected && { borderColor: color, borderWidth: 2, backgroundColor: info.soft(c) }, pressed && { opacity: 0.75 }]}>
               <Ionicons name={info.icon} size={24} color={color} />
-              <Text style={[s.typeText, selected && { color: c.ink, fontWeight: '700' }]}>{info.label}</Text>
+              <Text style={s.typeText}>{info.label}</Text>
+              <View style={[s.radio, selected && { borderColor: color }]}>{selected && <View style={[s.radioDot, { backgroundColor: color }]} />}</View>
             </Pressable>;
           })}
         </View>
-        <Text style={s.typeHint}>{eventTypes[kind].hint}</Text>
 
-        <TextField ref={titleInput} label="Título" value={title} maxLength={120} placeholder={kind === 'issue' ? 'Ej. La rueda trasera pierde aire' : kind === 'maintenance' ? 'Ej. Cambio de cadena' : 'Ej. Primer viaje a la playa'}
+        <TextField ref={titleInput} label="Título" value={title} maxLength={120} returnKeyType="done" onSubmitEditing={() => void save()} placeholder={kind === 'issue' ? 'Ej. La rueda trasera pierde aire' : kind === 'maintenance' ? 'Ej. Cambio de cadena' : 'Ej. Primer viaje a la playa'}
           error={titleError ? 'Escribe el título del evento.' : undefined} onChangeText={(value) => { setTitle(value); if (value.trim()) setTitleError(false); }} />
         <TextField label="Detalles" optional value={description} onChangeText={setDescription} multiline textAlignVertical="top" placeholder="Añade lo que quieras recordar" style={{ minHeight: 100, paddingTop: space.md }} />
 
@@ -137,7 +138,7 @@ export function EventForm({ objectId, objectName, event }: { objectId: string; o
           <View style={{ flex: 1 }}><Text style={s.fieldText} numberOfLines={2}>{currentDocument}</Text><Text style={s.attachmentDetail}>Documento</Text></View>
           <IconButton icon="close" label="Quitar documento" onPress={() => { setDocument(null); setDocumentRemoved(true); }} />
         </View> : <Button label="Adjuntar documento (PDF, XLS)" icon="attach-outline" variant="secondary" onPress={async () => { const asset = await pickDocument(Alert); if (asset) { setDocument(asset); setDocumentRemoved(false); } }} />}
-        <Text style={[s.typeHint, { marginBottom: 0 }]}>Hasta 5 MB por archivo. Se guardan solo en este teléfono.</Text>
+        <Text style={[s.typeHint, { marginBottom: 0 }]}>Hasta 5 MB por archivo.</Text>
       </ScrollView>
       <Footer><Button label={saving ? 'Guardando…' : event ? 'Guardar cambios' : 'Guardar evento'} icon="checkmark" loading={saving} onPress={() => void save()} style={{ flex: 1 }} /></Footer>
     </KeyboardAvoidingView>
@@ -146,17 +147,19 @@ export function EventForm({ objectId, objectName, event }: { objectId: string; o
 
 const makeStyles = (c: Palette) => ({
   content: { paddingHorizontal: space.xl, paddingTop: space.sm, paddingBottom: space.xxxl },
-  context: { ...type.caption, color: c.muted, marginBottom: space.lg },
+  context: { ...type.secondary, color: c.muted, marginBottom: space.lg },
   label: { ...type.label, color: c.ink, marginBottom: space.sm },
-  optional: { color: c.muted, fontWeight: '400' },
-  types: { flexDirection: 'row', gap: space.sm },
-  type: { flex: 1, minHeight: 76, borderRadius: radius.md, borderWidth: 1, borderColor: c.line, backgroundColor: c.surface, alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 4 },
-  typeText: { ...type.caption, color: c.muted, textAlign: 'center' },
-  typeHint: { ...type.caption, color: c.muted, marginTop: space.sm, marginBottom: space.xl },
+  optional: { color: c.muted, fontFamily: fonts.body },
+  types: { gap: space.sm, marginBottom: space.xl },
+  type: { minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.lg, borderRadius: radius.md, borderWidth: 1, borderColor: c.line, backgroundColor: c.surface },
+  typeText: { ...type.label, color: c.ink, flex: 1 },
+  radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: c.inputBorder, alignItems: 'center', justifyContent: 'center' },
+  radioDot: { width: 10, height: 10, borderRadius: 5 },
+  typeHint: { ...type.secondary, color: c.muted, marginTop: space.sm, marginBottom: space.xl },
   field: { minHeight: 54, flexDirection: 'row', alignItems: 'center', gap: space.md, backgroundColor: c.surface, borderWidth: 1, borderColor: c.inputBorder, borderRadius: radius.md, paddingHorizontal: space.lg },
   fieldText: { ...type.body, color: c.ink, flexShrink: 1 },
-  fieldDetail: { ...type.caption, color: c.muted, marginLeft: 'auto' },
+  fieldDetail: { ...type.secondary, color: c.muted, marginLeft: 'auto' },
   attachment: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.sm, paddingLeft: space.sm, borderRadius: radius.md, borderWidth: 1, borderColor: c.line, backgroundColor: c.surface, marginBottom: space.md },
-  attachmentDetail: { ...type.caption, color: c.muted },
+  attachmentDetail: { ...type.secondary, color: c.muted },
   thumb: { width: 56, height: 56, borderRadius: radius.sm },
 } as const);

@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MemoraTag · Formularios</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600&family=Fraunces:wght@600&display=swap" rel="stylesheet">
+<style>
+  :root { --page:#EDE8DE; --pageInk:#1F1B16; --pageMuted:#5B5348; --pageLine:#D6CDBD; --card:#FBF9F4; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--page); color:var(--pageInk); font:400 16px/24px 'DM Sans',system-ui,sans-serif; }
+  main { max-width:1180px; margin:0 auto; padding:32px 16px 96px; }
+  h1,h2,h3 { font-family:'Fraunces',Georgia,serif; font-weight:600; margin:0; } h1 { font-size:34px; line-height:41px; } h2 { font-size:24px; line-height:30px; margin:48px 0 8px; } h3 { font-size:19px; line-height:26px; margin:24px 0 8px; }
+  p { margin:8px 0; max-width:74ch; } .muted { color:var(--pageMuted); } .small { font-size:14px; line-height:20px; }
+  .badge { display:inline-block; font:600 12px/16px 'DM Sans',sans-serif; padding:3px 10px; border-radius:999px; background:#2F4BB8; color:#fff; }
+  code { background:#E4DCCF; padding:1px 6px; border-radius:6px; font-size:13px; }
+  table { border-collapse:collapse; width:100%; background:var(--card); border:1px solid var(--pageLine); border-radius:12px; overflow:hidden; font-size:14px; line-height:20px; margin:8px 0; }
+  th,td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--pageLine); vertical-align:top; } th { background:#E4DCCF; font-weight:600; }
+  .pair { display:flex; gap:20px; flex-wrap:wrap; align-items:flex-start; margin:12px 0; } .col { flex:none; } .col > .cap { font:600 13px/18px 'DM Sans',sans-serif; margin:0 0 8px; }
+  .tag { display:inline-block; font:600 12px/16px 'DM Sans',sans-serif; padding:2px 8px; border-radius:999px; margin-right:6px; background:#F8EDD7; color:#6B4300; }
+
+  /* ===== Teléfono 360 x 760 dp ===== */
+  .phone { width:360px; height:760px; border-radius:26px; background:var(--canvas); color:var(--ink); border:1px solid var(--line); overflow:hidden; display:flex; flex-direction:column; position:relative; }
+  .nav { min-height:64px; padding:28px 16px 0; display:flex; align-items:center; gap:12px; } .nav .t { flex:1; text-align:center; font:600 19px/26px 'Fraunces',serif; } .ib { width:48px; height:48px; border-radius:14px; background:var(--surface); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; }
+  .scroll { flex:1; overflow:hidden; padding:8px 20px 0; position:relative; }
+  .intro { color:var(--muted); margin:0 0 20px; }
+  .lab { font:600 14px/20px 'DM Sans',sans-serif; margin-bottom:8px; } .lab .o { font-weight:400; color:var(--muted); } .hint { font:400 14px/20px 'DM Sans',sans-serif; color:var(--muted); margin-bottom:12px; }
+  .inp { min-height:54px; background:var(--surface); border:1px solid var(--inputBorder); border-radius:14px; padding:12px 16px; color:var(--muted); margin-bottom:20px; } .inp.on { border-width:2px; border-color:var(--primary); color:var(--ink); }
+  .grid { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:24px; } .ic { min-height:72px; border-radius:14px; border:1px solid var(--line); background:var(--surface); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:0 4px; flex-grow:1; min-width:0; }
+  .ic .g { font-size:22px; } .ic .l { font:600 12px/16px 'DM Sans',sans-serif; color:var(--muted); max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ic.sel { border:2px solid var(--primary); background:var(--primarySoft); } .ic.sel .l { color:var(--onPrimarySoft); }
+  .cols { display:flex; flex-wrap:wrap; gap:12px; } .sw { width:52px; height:52px; border-radius:26px; border:1px solid var(--line); display:flex; align-items:center; justify-content:center; } .sw.sel { border:3px solid var(--primary); }
+  .copt { min-height:84px; border-radius:14px; border:1px solid var(--line); background:var(--surface); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; padding:0 4px; min-width:0; flex-grow:1; } .copt .d { width:34px; height:34px; border-radius:17px; border:1px solid var(--line); flex:none; display:flex; align-items:center; justify-content:center; font-size:16px; }
+  .copt .l { font:600 12px/16px 'DM Sans',sans-serif; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; } .copt.sel { border:2px solid var(--primary); background:var(--primarySoft); } .copt.sel .l { color:var(--onPrimarySoft); }
+  .foot { border-top:1px solid var(--line); padding:16px; background:var(--canvas); } .btn { min-height:52px; border-radius:14px; display:flex; align-items:center; justify-content:center; gap:8px; font:600 14px/20px 'DM Sans',sans-serif; background:var(--primary); color:var(--onPrimary); }
+  .kb { background:#2B2926; height:300px; flex:none; display:grid; grid-template-columns:repeat(10,1fr); gap:6px; padding:10px 6px; align-content:start; } .kb i { height:44px; border-radius:6px; background:#3C3A36; display:block; } .kb i.w { grid-column:span 4; }
+  .over { position:absolute; left:0; right:0; bottom:0; } .hid { outline:2px dashed #AD3520; outline-offset:-2px; }
+  .types3 { display:flex; gap:8px; } .t3 { flex:1; min-height:76px; border-radius:14px; border:1px solid var(--line); background:var(--surface); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; padding:0 4px; font:400 14px/20px 'DM Sans',sans-serif; color:var(--muted); text-align:center; overflow-wrap:anywhere; }
+  .t3.sel { border:2px solid var(--ink); color:var(--ink); font-weight:600; } .t3 .g { font-size:22px; } .red { outline:2px dashed #AD3520; outline-offset:2px; border-radius:6px; }
+  .trow { min-height:64px; border-radius:14px; border:1px solid var(--line); background:var(--surface); display:flex; align-items:center; gap:12px; padding:8px 14px; margin-bottom:8px; } .trow .g { font-size:22px; width:28px; text-align:center; flex:none; } .trow .n { font:600 14px/20px 'DM Sans',sans-serif; } .trow .h { font:400 14px/20px 'DM Sans',sans-serif; color:var(--muted); }
+  .trow .r { margin-left:auto; width:22px; height:22px; border-radius:11px; border:2px solid var(--inputBorder); flex:none; } .trow.sel { border-width:2px; } .trow.sel .r { border-color:var(--primary); background:radial-gradient(var(--primary) 45%, transparent 50%); }
+</style>
+</head>
+<body>
+<main>
+  <span class="badge">Propuesta · no aplicada al código</span>
+  <h1 style="margin-top:12px">Formularios: auditoría y propuesta</h1>
+  <p class="muted">Etapa 4 del rediseño: los formularios de <b>objeto</b> (crear y editar) y de <b>evento</b> (registrar y editar). Archivo local, no se sube a GitHub. Rama: <code>feature/mobile-bitacora-design-system</code>. Teléfonos a 360 × 760 dp.</p>
+
+  <h2>1. Auditoría de los formularios actuales</h2>
+  <table>
+    <tr><th>#</th><th>Hallazgo (verificado en el código y en tu teléfono)</th><th>Principio que incumple</th></tr>
+    <tr><td>1</td><td><b>Con el teclado abierto, el botón principal («Crear objeto», «Guardar evento») queda oculto detrás del teclado.</b> El formulario no se ajusta al teclado en Android, así que para guardar hay que cerrar el teclado antes. Pasa en los dos formularios.</td><td><b>Nielsen H1</b> y <b>H7</b>; <b>Fitts</b>; <b>WCAG 2.4.11</b> (el foco no debe quedar tapado); Shneiderman 3 (retroalimentación) y 8 (carga de memoria)</td></tr>
+    <tr><td>2</td><td>En la cuadrícula de iconos del objeto, tres etiquetas se cortan: «Instrume…», «Electróni…» y «Herramie…». Con letra grande, más.</td><td><b>Nielsen H1/H6</b> (reconocer antes que recordar); <b>WCAG 1.4.4</b> (cambio de tamaño del texto)</td></tr>
+    <tr><td>3</td><td>Los 6 colores se reparten en 5 + 1: queda un círculo huérfano en una segunda fila. Los nombres de los colores solo los lee TalkBack; a la vista son círculos sin nombre.</td><td><b>Gestalt</b> (alineación y cierre); <b>Nielsen H6</b>; <b>WCAG 1.4.1</b> (no depender solo del color)</td></tr>
+    <tr><td>4</td><td>En el tipo de evento, «Mantenimiento» se parte a mitad de palabra: «Mantenimient / o». La explicación de cada tipo solo se ve del que está seleccionado.</td><td><b>Nielsen H1/H2</b> (lenguaje legible); <b>WCAG 1.4.4</b>; <b>Norman</b> (retroalimentación y correspondencia)</td></tr>
+    <tr><td>5</td><td>La tecla «hecho» del teclado, en el campo de nombre o de título, no guarda: solo cierra el teclado.</td><td><b>Nielsen H7</b> (atajos); <b>Shneiderman 2</b></td></tr>
+  </table>
+  <p class="small muted"><b>Lo que ya está bien y no se toca:</b> aviso de «¿Descartar los cambios?» al salir (H5), validación junto al campo con icono + texto + vibración (H9, WCAG 1.4.1), botón principal siempre al pie (Fitts), «opcional» marcado en los campos que no son obligatorios, ejemplo adaptado en el título según el tipo, fecha que no admite futuro, adjuntos con límite explícito de 5 MB, y la papelera con «Deshacer» al editar un evento.</p>
+
+  <h2>2. Antes y después</h2>
+  <p class="small muted">Las áreas punteadas en rojo marcan los problemas de «Hoy». El teclado se dibuja como una zona gris de 300 dp (sus teclas son solo ilustrativas).</p>
+  <div id="pairs"></div>
+
+  <h2>3. Cambios propuestos y su justificación</h2>
+  <table>
+    <tr><th>Cambio</th><th>Principios del curso</th><th>Criterio comprobable</th></tr>
+    <tr><td><b>A. El botón principal siempre visible.</b> El formulario se ajusta al teclado en Android, de modo que «Crear objeto» y «Guardar evento» quedan justo encima del teclado. La tecla «hecho» del teclado en el campo de nombre o título también guarda.</td><td>H1, H7, Fitts, WCAG 2.4.11</td><td>Con el teclado abierto se ve y se puede pulsar el botón principal, en los dos formularios.</td></tr>
+    <tr><td><b>B. Iconos en 3 columnas.</b> Cada etiqueta se lee completa («Instrumento», «Electrónica», «Herramientas»).</td><td>H1, H6, WCAG 1.4.4, Gestalt (semejanza)</td><td>Ninguna etiqueta cortada en el teléfono de 360 dp.</td></tr>
+    <tr><td><b>C. Colores como opciones con nombre.</b> En 3 columnas, igual que los iconos: la muestra de color y, debajo, su nombre visible («Petróleo», «Ámbar»…). Sin círculos huérfanos.</td><td>H4, H6, WCAG 1.4.1, Gestalt</td><td>Los 6 colores con su nombre visible; la opción elegida se marca con borde azul y check.</td></tr>
+    <tr><td><b>D. Tipo de evento como lista de 3 opciones</b> en vertical, cada una con su icono, nombre y explicación. Se acaba la palabra partida y se ven los tres significados a la vez.</td><td>H1, H2, H6, Norman (correspondencia y retroalimentación), WCAG 1.4.4</td><td>«Mantenimiento» se lee completo; con letra grande no se parte; las 3 explicaciones visibles.</td></tr>
+  </table>
+  <h3>Decisiones opcionales (no incluidas en la vista previa)</h3>
+  <table>
+    <tr><th>Opción</th><th>Ventaja</th><th>Riesgo / costo</th></tr>
+    <tr><td><span class="tag">E</span> Abrir «Registrar evento» con el cursor ya en el título.</td><td>Menos toques para el caso más frecuente (<b>H7</b>, <b>Fitts</b>).</td><td>El teclado tapa antes los tipos de evento; conviene validarlo con usuarios.</td></tr>
+    <tr><td><span class="tag">F</span> Títulos de sección (Fraunces) para «Apariencia» y «Adjuntos».</td><td>Jerarquía visual (<b>Gestalt</b>, proximidad).</td><td>Más altura; el cambio es solo estético.</td></tr>
+  </table>
+
+  <h2>4. Qué no cambia (alcance)</h2>
+  <p>La lógica de guardado, la validación, el aviso de descartar, los adjuntos, la fecha, los textos de ayuda y el resto de pantallas. Tampoco cambian colores ni tipografía.</p>
+
+  <h2>5. Cómo lo comprobaré</h2>
+  <ol class="small">
+    <li><code>typecheck</code> y pruebas en verde; <code>check:contrast</code> sin fallos.</li>
+    <li>En el teléfono: con el teclado abierto, el botón principal visible y pulsable en objeto y evento; etiquetas completas; «Mantenimiento» sin partir. Sin guardar datos de prueba (o borrándolos).</li>
+    <li>Pendiente de tu parte: letra del sistema al máximo y TalkBack.</li>
+  </ol>
+</main>
+
+<script>
+const LIGHT = {canvas:'#F7F3EC',surface:'#FFFFFF',surfaceAlt:'#EFE9DF',ink:'#1F1B16',muted:'#6B6258',line:'#E4DCCF',inputBorder:'#8C8274',primary:'#2F4BB8',onPrimary:'#FFFFFF',primarySoft:'#E6EAF8',onPrimarySoft:'#233A94',danger:'#AD3520',dangerSoft:'#FBE6E1',success:'#25692F',warning:'#8A5A00',warningSoft:'#F8EDD7'};
+const DARK  = {canvas:'#1B1916',surface:'#262320',surfaceAlt:'#302B26',ink:'#F2ECE3',muted:'#A89E91',line:'#3A352F',inputBorder:'#7A7064',primary:'#8FA8FF',onPrimary:'#0F1A3D',primarySoft:'#232A45',onPrimarySoft:'#B3C3FF',danger:'#FF8A73',dangerSoft:'#3A221C',success:'#7FCB8A',warning:'#E8B964',warningSoft:'#3A2E17'};
+const vars = P => Object.entries(P).map(([k,v])=>`--${k}:${v}`).join(';');
+const ICONS = [['📦','General'],['🚲','Bicicleta'],['🚗','Vehículo'],['🎵','Instrumento'],['📷','Cámara'],['💻','Electrónica'],['🏠','Hogar'],['🛠','Herramientas'],['📖','Libro'],['🌿','Planta'],['👕','Ropa'],['🎁','Recuerdo']];
+const COLORS = { light:[['Petróleo','#D9E4E6','#2E5560'],['Ámbar','#EBE0C8','#6E5522'],['Salvia','#DCE5D6','#44603C'],['Lavanda','#E2DDEA','#55497A'],['Coral','#EBDAD4','#7A4A3E'],['Pizarra','#E1E1E0','#4A4F55']], dark:[['Petróleo','#22323A','#A9CBD3'],['Ámbar','#35301F','#D8C28A'],['Salvia','#28332A','#B5CDAA'],['Lavanda','#302B3D','#C9BFE0'],['Coral','#382B27','#E0B5A8'],['Pizarra','#2B2D30','#C3C7CB']] };
+const nav = t => `<div class="nav"><span class="ib">←</span><span class="t">${t}</span><span style="width:48px"></span></div>`;
+const foot = t => `<div class="foot"><div class="btn">✓ ${t}</div></div>`;
+const keyboard = () => `<div class="kb">${Array.from({length:30}).map(()=>'<i></i>').join('')}<i class="w"></i></div>`;
+
+function iconGrid(v) {
+  const cols = v==='hoy' ? 4 : 3;
+  return `<div class="lab">Icono</div><div class="grid">${ICONS.map(([g,l],i)=>`<div class="ic ${i===0?'sel':''}" style="flex-basis:calc(${100/cols}% - 8px)"><span class="g">${g}</span><span class="l">${l}</span></div>`).join('')}</div>`;
+}
+function colorBlock(m, v) {
+  const list = COLORS[m];
+  if (v==='hoy') return `<div class="lab">Color</div><div class="cols">${list.map(([n,bg,fg],i)=>`<div class="sw ${i===0?'sel':''} ${i===5?'red':''}" style="background:${bg};color:${fg}">${i===0?'✓':''}</div>`).join('')}</div>`;
+  return `<div class="lab">Color</div><div class="grid">${list.map(([n,bg,fg],i)=>`<div class="copt ${i===0?'sel':''}" style="flex-basis:calc(33.333% - 8px)"><span class="d" style="background:${bg};color:${fg}">${i===0?'✓':''}</span><span class="l">${n}</span></div>`).join('')}</div>`;
+}
+function objectBottom(m, v) { // parte baja del formulario de objeto
+  return `<div class="phone" style="${vars(m==='light'?LIGHT:DARK)}">${nav('Nuevo objeto')}<div class="scroll" style="padding-top:0"><div style="height:8px"></div>${iconGrid(v)}${colorBlock(m,v)}</div>${foot('Crear objeto')}</div>`;
+}
+function objectKeyboard(m, v) { // teclado abierto
+  const top = `<div class="intro">Empieza con lo esencial: el nombre. Lo demás es opcional.</div><div class="lab">Nombre</div><div class="inp on">Laptop|</div><div class="lab">Descripción <span class="o">· opcional</span></div><div class="inp" style="min-height:100px">¿Qué lo hace especial? Marca, modelo, dónde está…</div><div class="lab">Apariencia</div><div class="hint">Ayuda a reconocerlo de un vistazo en tu lista.</div>`;
+  if (v==='hoy') return `<div class="phone" style="${vars(m==='light'?LIGHT:DARK)}">${nav('Nuevo objeto')}<div class="scroll">${top}<div class="inp" style="min-height:104px"></div></div><div class="over">${keyboard()}</div><div class="over hid" style="bottom:300px;height:0"></div><div class="over" style="bottom:300px;left:12px;right:12px;font:600 12px/16px 'DM Sans';color:#AD3520;background:#FFF;border:1px solid #AD3520;border-radius:8px;padding:6px 8px;text-align:center">El botón «Crear objeto» queda oculto bajo el teclado</div></div>`;
+  return `<div class="phone" style="${vars(m==='light'?LIGHT:DARK)}">${nav('Nuevo objeto')}<div class="scroll">${top}</div>${foot('Crear objeto')}${keyboard()}</div>`;
+}
+function eventTypes(m, v) {
+  const T = [['📝','Nota','Un recuerdo o dato que quieras guardar.','muted'],['⚠','Incidencia','Algo que falla o hay que revisar.','danger'],['🔧','Mantenimiento','Una revisión, limpieza o reparación.','warning']];
+  const head = `<div style="font:400 14px/20px 'DM Sans';color:var(--muted);margin-bottom:16px">🏷 Laptop Lenovo</div><div class="lab">¿Qué tipo de evento es?</div>`;
+  const body = v==='hoy'
+    ? `<div class="types3">${T.map(([g,n],i)=>`<div class="t3 ${i===1?'sel':''}" style="${i===1?'border-color:var(--danger);background:var(--dangerSoft)':''}"><span class="g">${g}</span><span class="${i===2?'red':''}">${n}</span></div>`).join('')}</div><div class="hint" style="margin-top:8px">Algo que falla o hay que revisar.</div>`
+    : T.map(([g,n,h,c],i)=>`<div class="trow ${i===1?'sel':''}" style="${i===1?'border-color:var(--danger);background:var(--dangerSoft)':''}"><span class="g" style="color:var(--${c})">${g}</span><div><div class="n">${n}</div><div class="h">${h}</div></div><span class="r"></span></div>`).join('');
+  return `<div class="phone" style="${vars(m==='light'?LIGHT:DARK)}">${nav('Registrar evento')}<div class="scroll">${head}${body}<div class="lab" style="margin-top:${v==='hoy'?'20px':'12px'}">Título</div><div class="inp">Ej. La rueda trasera pierde aire</div><div class="lab">Detalles <span class="o">· opcional</span></div><div class="inp" style="min-height:100px">Añade lo que quieras recordar</div></div>${foot('Guardar evento')}</div>`;
+}
+const blocks = [
+  ['Formulario de objeto · iconos y colores · modo claro', objectBottom, 'light'],
+  ['Formulario de objeto · iconos y colores · modo oscuro', objectBottom, 'dark'],
+  ['Teclado abierto · formulario de objeto (en el de evento ocurre igual)', objectKeyboard, 'light'],
+  ['Tipo de evento · modo claro', eventTypes, 'light'],
+];
+document.getElementById('pairs').innerHTML = blocks.map(([t,fn,m]) => `<h3>${t}</h3><div class="pair"><div class="col"><div class="cap">Hoy</div>${fn(m,'hoy')}</div><div class="col"><div class="cap">Propuesta (A + B + C + D)</div>${fn(m,'prop')}</div></div>`).join('');
+</script>
+</body>
+</html>

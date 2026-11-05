@@ -11,11 +11,13 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "typecheck": "tsc --noEmit",
-    "test:ui": "node --experimental-strip-types --test tests/format.test.mjs",
+    "test:ui": "node --experimental-strip-types --test tests/format.test.mjs tests/home-filter.test.mjs tests/event-appearance.test.mjs tests/history-filter.test.mjs",
     "check:contrast": "node --experimental-strip-types scripts/check-contrast.mjs",
     "icons": "python3 scripts/generate-icons.py"
   },
   "dependencies": {
+    "@expo-google-fonts/dm-sans": "^0.4.2",
+    "@expo-google-fonts/fraunces": "^0.4.1",
     "@expo/vector-icons": "^15.1.1",
     "@react-native-community/datetimepicker": "9.1.0",
     "expo": "^57.0.26",
@@ -25,6 +27,7 @@
     "expo-dev-client": "~57.0.20",
     "expo-document-picker": "~57.0.3",
     "expo-file-system": "~57.0.7",
+    "expo-font": "~57.0.4",
     "expo-haptics": "~57.0.3",
     "expo-image-picker": "~57.0.20",
     "expo-intent-launcher": "~57.0.1",

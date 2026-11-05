@@ -23,13 +23,13 @@ export function Scanner() {
 
   async function resolveQr(data: string) {
     const id = objectIdFromQr(data);
-    if (!id) { haptic.error(); setProblem({ text: 'Este código no es de MemoraTag. Apunta al QR que imprimiste desde un objeto.' }); return; }
+    if (!id) { haptic.error(); setProblem({ text: 'Este código no es de MemoraTag.' }); return; }
     try {
       const object = await findActiveObject(id);
       if (!object) {
         haptic.warning();
         const state = await objectState(id).catch(() => 'missing' as const);
-        setProblem(state === 'archived' ? { text: 'Este objeto está archivado. Restáuralo para ver su historia.', archived: true } : { text: 'Este objeto no está guardado en este teléfono. Puede haberse creado en otro dispositivo.' });
+        setProblem(state === 'archived' ? { text: 'Este objeto está archivado. Restáuralo para ver su historia.', archived: true } : { text: 'Este objeto no está en este teléfono.' });
         return;
       }
       haptic.success();
@@ -51,7 +51,7 @@ export function Scanner() {
       const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1 });
       if (result.canceled) { locked.current = false; return; }
       const codes = await scanFromURLAsync(result.assets[0].uri, ['qr']);
-      if (codes.length === 0) { haptic.error(); setProblem({ text: 'No se encontró un código QR en esta imagen. Prueba con otra más nítida.' }); return; }
+      if (codes.length === 0) { haptic.error(); setProblem({ text: 'No hay un código QR en esta imagen.' }); return; }
       // Prefer a MemoraTag QR when an image contains several codes.
       const code = codes.find((item) => objectIdFromQr(item.data)) ?? codes[0];
       await resolveQr(code.data);
@@ -77,10 +77,9 @@ export function Scanner() {
         {problem.archived && <Button label="Ver objetos archivados" icon="archive-outline" onPress={() => router.replace('/archived')} />}
         <Button label="Escanear de nuevo" icon="scan-outline" variant="secondary" onPress={retry} />
       </View> : !cameraReady ? <Button label={permission && !permission.canAskAgain ? 'Abrir ajustes del teléfono' : 'Permitir la cámara'} icon="camera-outline" style={{ marginTop: space.xl }} onPress={() => { if (permission && !permission.canAskAgain) void Linking.openSettings(); else void requestPermission(); }} />
-        : <Text style={s.hint}>Encuadra el código QR del objeto dentro del recuadro.</Text>}
+        : <Text style={s.hint}>Encuadra el código QR del objeto.</Text>}
 
       {!problem && <View style={s.alternatives}>
-        <Text style={s.or}>O también</Text>
         {Platform.OS === 'android' && <Button label="Leer etiqueta NFC" icon="radio-outline" variant="secondary" onPress={() => router.replace('/scan-nfc')} disabled={busy} />}
         <Button label={busy ? 'Leyendo imagen…' : 'Elegir una foto del QR'} icon="images-outline" variant="secondary" onPress={() => void chooseImage()} disabled={busy} />
       </View>}
@@ -94,7 +93,7 @@ const makeStyles = (c: Palette) => ({
   placeholder: { alignItems: 'center', padding: space.xxxl, gap: space.lg },
   cameraText: { ...type.body, color: c.onScanner, textAlign: 'center' },
   frame: { width: '68%', aspectRatio: 1 },
-  corner: { position: 'absolute', width: 38, height: 38, borderColor: c.accent },
+  corner: { position: 'absolute', width: 38, height: 38, borderColor: c.onScanner },
   tl: { top: 0, left: 0, borderTopWidth: 4, borderLeftWidth: 4, borderTopLeftRadius: 16 },
   tr: { top: 0, right: 0, borderTopWidth: 4, borderRightWidth: 4, borderTopRightRadius: 16 },
   bl: { bottom: 0, left: 0, borderBottomWidth: 4, borderLeftWidth: 4, borderBottomLeftRadius: 16 },
@@ -103,5 +102,4 @@ const makeStyles = (c: Palette) => ({
   problem: { alignItems: 'stretch', gap: space.md, marginTop: space.xl },
   problemText: { ...type.body, color: c.onScanner, textAlign: 'center' },
   alternatives: { gap: space.md, marginTop: space.xxl },
-  or: { ...type.caption, color: c.scannerMuted, textAlign: 'center', textTransform: 'uppercase', letterSpacing: 1 },
 } as const);

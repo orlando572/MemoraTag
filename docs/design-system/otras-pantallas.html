@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MemoraTag · NFC, QR, archivados y objeto no disponible</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600&family=Fraunces:wght@600&display=swap" rel="stylesheet">
+<style>
+  :root { --page:#EDE8DE; --pageInk:#1F1B16; --pageMuted:#5B5348; --pageLine:#D6CDBD; --card:#FBF9F4; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--page); color:var(--pageInk); font:400 16px/24px 'DM Sans',system-ui,sans-serif; }
+  main { max-width:1180px; margin:0 auto; padding:32px 16px 96px; }
+  h1,h2,h3 { font-family:'Fraunces',Georgia,serif; font-weight:600; margin:0; } h1 { font-size:34px; line-height:41px; } h2 { font-size:24px; line-height:30px; margin:48px 0 8px; } h3 { font-size:19px; line-height:26px; margin:24px 0 8px; }
+  p { margin:8px 0; max-width:74ch; } .muted { color:var(--pageMuted); } .small { font-size:14px; line-height:20px; }
+  .badge { display:inline-block; font:600 12px/16px 'DM Sans',sans-serif; padding:3px 10px; border-radius:999px; background:#2F4BB8; color:#fff; }
+  code { background:#E4DCCF; padding:1px 6px; border-radius:6px; font-size:13px; }
+  table { border-collapse:collapse; width:100%; background:var(--card); border:1px solid var(--pageLine); border-radius:12px; overflow:hidden; font-size:14px; line-height:20px; margin:8px 0; }
+  th,td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--pageLine); vertical-align:top; } th { background:#E4DCCF; font-weight:600; }
+  .pair { display:flex; gap:20px; flex-wrap:wrap; align-items:flex-start; margin:12px 0; } .col { flex:none; } .col > .cap { font:600 13px/18px 'DM Sans',sans-serif; margin:0 0 8px; }
+  .tag { display:inline-block; font:600 12px/16px 'DM Sans',sans-serif; padding:2px 8px; border-radius:999px; margin-right:6px; background:#F8EDD7; color:#6B4300; }
+  .stats { display:flex; gap:12px; flex-wrap:wrap; margin:12px 0; } .stat { background:var(--card); border:1px solid var(--pageLine); border-radius:12px; padding:10px 16px; } .stat b { font:600 22px/28px 'Fraunces',serif; display:block; }
+
+  /* ===== Teléfono 360 x 760 dp, modo oscuro ===== */
+  .phone { --canvas:#1B1916; --surface:#262320; --surfaceAlt:#302B26; --ink:#F2ECE3; --muted:#A89E91; --line:#3A352F; --inputBorder:#7A7064; --primary:#8FA8FF; --onPrimary:#0F1A3D; --primarySoft:#232A45; --onPrimarySoft:#B3C3FF; --danger:#FF8A73; --dangerSoft:#3A221C;
+    width:360px; height:760px; border-radius:26px; background:var(--canvas); color:var(--ink); border:1px solid var(--line); overflow:hidden; display:flex; flex-direction:column; position:relative; }
+  .nav { min-height:64px; padding:28px 16px 0; display:flex; align-items:center; gap:12px; } .nav .t { flex:1; text-align:center; font:600 19px/26px 'Fraunces',serif; } .ib { width:48px; height:48px; border-radius:14px; background:var(--surface); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; } .nav .sp { width:48px; }
+  .scroll { flex:1; overflow:hidden; padding:8px 20px 0; display:flex; flex-direction:column; }
+  .sysnav { position:absolute; left:0; right:0; bottom:0; height:48px; background:rgba(26,24,22,.97); display:flex; align-items:center; justify-content:space-around; color:#777; z-index:5; }
+  .foot { border-top:1px solid var(--line); padding:16px 20px 64px; background:var(--canvas); }
+  .btn { min-height:52px; border-radius:14px; display:flex; align-items:center; justify-content:center; gap:8px; font:600 14px/20px 'DM Sans',sans-serif; background:var(--primary); color:var(--onPrimary); } .btn.s { background:var(--surface); color:var(--primary); border:1px solid var(--inputBorder); } .btn.sm { min-height:48px; padding:0 14px; }
+  .note { display:flex; gap:8px; align-items:flex-start; color:var(--muted); font:400 14px/20px 'DM Sans',sans-serif; } .note i { font-style:normal; flex:none; }
+  .red { outline:2px dashed #FF8A73; outline-offset:2px; border-radius:6px; }
+  /* QR */
+  .qr { align-self:center; background:#fff; border-radius:24px; padding:16px 16px 20px; text-align:center; color:#1F1B16; border:1px solid var(--line); } .qr canvas { display:block; } .qr .n { font:600 16px/22px 'DM Sans',sans-serif; margin-top:8px; } .qr .b { font:600 12px/16px 'DM Sans',sans-serif; color:#2F4BB8; letter-spacing:1px; margin-top:2px; }
+  .step { display:flex; gap:12px; align-items:center; margin-top:12px; font:400 16px/24px 'DM Sans',sans-serif; } .step i { width:40px; height:40px; border-radius:13px; background:var(--primarySoft); display:flex; align-items:center; justify-content:center; flex:none; font-style:normal; }
+  /* NFC / vacíos */
+  .illus { width:136px; height:136px; border-radius:48px; background:var(--primarySoft); display:flex; align-items:center; justify-content:center; margin:12px auto 20px; font-size:48px; } .illus.err { background:var(--dangerSoft); color:var(--danger); }
+  .ttl { text-align:center; font:600 24px/30px 'Fraunces',serif; } .dsc { text-align:center; color:var(--muted); margin-top:8px; font:400 16px/24px 'DM Sans',sans-serif; padding:0 6px; }
+  .stt { display:flex; gap:12px; align-items:center; margin-top:20px; padding:16px; border-radius:18px; font:400 16px/24px 'DM Sans',sans-serif; background:var(--dangerSoft); } .stt b { width:24px; height:24px; border-radius:12px; background:var(--danger); color:#1B1916; display:flex; align-items:center; justify-content:center; font-size:14px; flex:none; }
+  .es { text-align:center; padding:40px 24px; } .es .ic { width:76px; height:76px; border-radius:26px; background:var(--primarySoft); display:flex; align-items:center; justify-content:center; margin:0 auto 16px; font-size:30px; } .es .h { font:600 19px/26px 'Fraunces',serif; } .es .p { color:var(--muted); margin-top:8px; font:400 16px/24px 'DM Sans',sans-serif; } .es .btn { margin:20px auto 0; width:max-content; padding:0 20px; }
+  /* archivados */
+  .acard { background:var(--surface); border:1px solid var(--line); border-radius:18px; padding:16px; display:flex; flex-direction:column; gap:12px; } .row { display:flex; align-items:center; gap:12px; } .cov { width:56px; height:56px; border-radius:16px; background:#22323A; color:#A9CBD3; display:flex; align-items:center; justify-content:center; font-size:24px; flex:none; }
+  .nm { font:600 16px/22px 'DM Sans',sans-serif; } .ds { font:400 14px/20px 'DM Sans',sans-serif; color:var(--muted); } .intro { color:var(--muted); font:400 16px/24px 'DM Sans',sans-serif; margin:8px 0 16px; }
+  .acard.compact { flex-direction:row; align-items:center; gap:12px; padding:12px; } .acard.compact .grow { flex:1; min-width:0; }
+</style>
+</head>
+<body>
+<main>
+  <span class="badge">Propuesta · no aplicada al código</span>
+  <h1 style="margin-top:12px">NFC, código QR, archivados y objeto no disponible</h1>
+  <p class="muted">Etapa 6 del rediseño: las cuatro pantallas que faltaban. Archivo local, no se sube a GitHub. Rama: <code>feature/mobile-bitacora-design-system</code>. Teléfonos a 360 × 760 dp en modo oscuro, como se ven en tu teléfono. Textos cortos, como pediste.</p>
+
+  <h2>1. Auditoría</h2>
+  <table>
+    <tr><th>#</th><th>Pantalla</th><th>Hallazgo (verificado en el código y en tu teléfono)</th><th>Principio</th></tr>
+    <tr><td>1</td><td>NFC</td><td><b>Demasiado texto:</b> una descripción de 3 líneas, una nota final de 4 líneas y un diálogo de confirmación de 5 líneas. La nota repite que «solo guarda un enlace», ya dicho en el tutorial y en el QR.</td><td>Nielsen H8; Hick; Shneiderman 8</td></tr>
+    <tr><td>2</td><td>NFC</td><td><b>En un teléfono sin NFC, el error ofrece «Reintentar»,</b> que no puede funcionar. Además, la comprobación tarda unos 10 segundos con «Comprobando NFC…» antes de decir que no hay NFC (en la compilación de desarrollo).</td><td>Nielsen H9 (recuperarse de errores) y H1 (estado del sistema)</td></tr>
+    <tr><td>3</td><td>Código QR</td><td><b>Tres pasos de 2 o 3 líneas cada uno</b> y una nota de 3 líneas: casi todo el texto repite lo que el usuario ya sabe al estar aquí.</td><td>Nielsen H8; Hick</td></tr>
+    <tr><td>4</td><td>Código QR</td><td>«Compartir o imprimir», la acción principal, va <b>dentro del desplazamiento</b>, no fija al pie como en el resto de las pantallas, y la última línea queda pegada a la barra del teléfono.</td><td>Nielsen H4 (consistencia); Fitts</td></tr>
+    <tr><td>5</td><td>Archivados</td><td>Un texto de introducción de 3 líneas, la frase «Sin descripción» cuando no hay descripción, y <b>un botón «Restaurar» de ancho completo en cada objeto</b>, que duplica la altura de cada fila.</td><td>Nielsen H8; Hick; Gestalt (repetición)</td></tr>
+    <tr><td>6</td><td>Objeto no disponible</td><td>Mensaje de 4 líneas («…Puede haberse creado en otro dispositivo; los datos no se comparten entre teléfonos.»), más largo que el del escáner para la misma situación.</td><td>Nielsen H4 (mismo caso, mismo mensaje) y H8</td></tr>
+  </table>
+  <p class="small muted"><b>Lo que ya está bien y no se toca:</b> el QR siempre negro sobre blanco, también en modo oscuro (lo lee cualquier escáner), el diálogo de confirmación antes de escribir una etiqueta (prevención de errores, H5), la advertencia accesible mientras se escribe, «Cancelar» durante la lectura, el botón «Ver objetos archivados», y los títulos claros de las pantallas vacías.</p>
+  <p class="small muted"><b>No incluido a propósito:</b> ocultar o desactivar NFC en teléfonos sin NFC. Ya decidiste que NFC se queda visible.</p>
+
+  <h2>2. Antes y después</h2>
+  <div class="stats" id="stats"></div>
+  <div id="pairs"></div>
+
+  <h2>3. Cambios propuestos</h2>
+  <table>
+    <tr><th>Cambio</th><th>Principios</th><th>Criterio comprobable</th></tr>
+    <tr><td><b>A. NFC con textos cortos.</b> Descripción: «Graba el enlace de este objeto en una etiqueta NFC.». Nota: «Solo guarda un enlace, no la historia. Usa etiquetas NTAG213 o NTAG215.» Diálogo: «Se reemplazará el contenido de la etiqueta.». Sin «Reintentar» cuando el teléfono no admite NFC.</td><td>H8, H9, Hick</td><td>Texto reducido a la mitad; el error de «no admite NFC» no ofrece una acción que no puede funcionar.</td></tr>
+    <tr><td><b>B. Código QR más limpio.</b> Los 3 pasos pasan a una línea: «Imprímelo y pégalo en el objeto.». La nota queda en «El código solo contiene un enlace, no la historia.». «Compartir o imprimir» pasa a un botón fijo al pie.</td><td>H8, H4, Fitts</td><td>Botón visible sin desplazar y en la misma posición que en los demás formularios.</td></tr>
+    <tr><td><b>C. Archivados más compactos.</b> Sin texto de introducción largo («Conservan toda su historia.»), sin «Sin descripción», y «Restaurar» como botón compacto a la derecha de cada objeto. El estado vacío: «Aquí aparecerán los objetos que archives.».</td><td>H8, Hick, Gestalt</td><td>Cada objeto ocupa la mitad de altura; «Restaurar» sigue con 48 dp de alto.</td></tr>
+    <tr><td><b>D. Objeto no disponible, mensaje corto.</b> «Este objeto no está en este teléfono.», igual que en el escáner. Si está archivado: «Restáuralo para verlo.».</td><td>H4, H8</td><td>El mismo mensaje en todas las pantallas para el mismo caso.</td></tr>
+  </table>
+  <h3>Decisiones opcionales (no incluidas en la vista previa)</h3>
+  <table>
+    <tr><th>Opción</th><th>Ventaja</th><th>Riesgo / costo</th></tr>
+    <tr><td><span class="tag">E</span> Comprobar el NFC al abrir la pantalla y mostrar el estado de inmediato, en lugar de esperar a pulsar «Escribir etiqueta».</td><td>Menos espera y más claridad (H1).</td><td>Cambia cuándo se carga el módulo NFC; la lentitud puede deberse a la compilación de desarrollo.</td></tr>
+    <tr><td><span class="tag">F</span> Poder abrir un objeto archivado para ver su historia sin restaurarlo.</td><td>Coherente con «conservan toda su historia».</td><td>Es una función nueva, no un cambio de diseño.</td></tr>
+  </table>
+
+  <h2>4. Qué no cambia</h2>
+  <p>La lógica de NFC (lectura, escritura y verificación), el diálogo de confirmación, el QR y su compartir, restaurar un objeto, los estados de error y las demás pantallas. Colores y tipografía tampoco cambian.</p>
+
+  <h2>5. Cómo lo comprobaré</h2>
+  <ol class="small">
+    <li><code>typecheck</code> y pruebas en verde.</li>
+    <li>En el teléfono: el QR con el botón fijo, la pantalla de NFC con el error de «no admite NFC» sin «Reintentar» y el diálogo, los archivados (con un objeto) y el objeto no disponible. NFC con etiquetas reales no se puede probar en tu teléfono.</li>
+    <li>Pendiente de tu parte: modo claro y letra del sistema al máximo.</li>
+  </ol>
+</main>
+
+<script>
+const sysnav = '<div class="sysnav"><span>☰</span><span>▢</span><span>◁</span></div>';
+const nav = t => `<div class="nav"><span class="ib">←</span><span class="t">${t}</span><span class="sp"></span></div>`;
+const foot = (label, icon) => `<div class="foot"><div class="btn">${icon||''} ${label}</div></div>`;
+const phone = (inner, f) => `<div class="phone">${inner}${f||''}${sysnav}</div>`;
+
+/* QR pseudo-aleatorio fijo, solo ilustrativo */
+function qrSvg() {
+  const n = 21, s = 9; let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647; let r = '';
+  const finder = (x, y) => `<rect x="${x*s}" y="${y*s}" width="${7*s}" height="${7*s}" fill="#000"/><rect x="${(x+1)*s}" y="${(y+1)*s}" width="${5*s}" height="${5*s}" fill="#fff"/><rect x="${(x+2)*s}" y="${(y+2)*s}" width="${3*s}" height="${3*s}" fill="#000"/>`;
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) { const inF = (x < 8 && y < 8) || (x > 12 && y < 8) || (x < 8 && y > 12); if (!inF && rnd() > 0.52) r += `<rect x="${x*s}" y="${y*s}" width="${s}" height="${s}" fill="#000"/>`; }
+  return `<svg width="${n*s}" height="${n*s}" viewBox="0 0 ${n*s} ${n*s}">${r}${finder(0,0)}${finder(14,0)}${finder(0,14)}</svg>`;
+}
+
+/* ---------- textos ---------- */
+const T = {
+  qr_hoy: ['Código QR','Laptop Lenovo','MEMORATAG','Compártelo para imprimirlo o guardarlo como imagen.','Pégalo en el objeto, en un lugar visible y plano.','Escanéalo con MemoraTag o con la cámara del teléfono para abrir su historia.','Compartir o imprimir','El código solo contiene un enlace. La historia sigue guardada en este teléfono; en otro dispositivo no se podrá abrir.'],
+  qr_prop: ['Código QR','Laptop Lenovo','MEMORATAG','Imprímelo y pégalo en el objeto.','Compartir o imprimir','El código solo contiene un enlace, no la historia.'],
+  nfc_hoy: ['Vincular etiqueta NFC','Laptop Lenovo','Graba en una etiqueta NFC el enlace a este objeto. Después, al acercarla, se abrirá su historia.','Escribir etiqueta','La etiqueta solo guarda un enlace, nunca la historia. Funciona en este teléfono, donde están los datos. Usa etiquetas NTAG213 o NTAG215.'],
+  nfc_prop: ['Vincular etiqueta NFC','Laptop Lenovo','Graba el enlace de este objeto en una etiqueta NFC.','Escribir etiqueta','Solo guarda un enlace, no la historia. Usa etiquetas NTAG213 o NTAG215.'],
+  dlg_hoy: '¿Escribir etiqueta NFC? Se reemplazará todo el contenido actual de la etiqueta. Usa una etiqueta de prueba y mantenla cerca hasta completar la verificación.',
+  dlg_prop: '¿Escribir etiqueta NFC? Se reemplazará el contenido de la etiqueta.',
+  arc_hoy: ['Objetos archivados','Los objetos archivados no aparecen en tu lista, pero conservan toda su historia. Restáuralos cuando quieras.','Audífonos QCY','Sin descripción','Restaurar'],
+  arc_prop: ['Objetos archivados','Conservan toda su historia.','Audífonos QCY','Restaurar'],
+  vac_hoy: ['No hay objetos archivados','Cuando archives un objeto aparecerá aquí, con toda su historia intacta.'],
+  vac_prop: ['No hay objetos archivados','Aquí aparecerán los objetos que archives.'],
+  nd_hoy: ['Objeto no disponible','Este objeto no está guardado en este teléfono. Puede haberse creado en otro dispositivo; los datos no se comparten entre teléfonos.','Ir al inicio'],
+  nd_prop: ['Objeto no disponible','Este objeto no está en este teléfono.','Ir al inicio'],
+};
+const words = a => [a].flat(3).join(' ').split(/\s+/).filter(Boolean).length;
+document.getElementById('stats').innerHTML = [
+  ['Código QR', 'qr'], ['NFC (pantalla)', 'nfc'], ['NFC (diálogo)', 'dlg'], ['Archivados con un objeto', 'arc'], ['Archivados vacío', 'vac'], ['Objeto no disponible', 'nd'],
+].map(([n,k]) => `<div class="stat"><b>${words(T[k+'_hoy'])} → ${words(T[k+'_prop'])}</b>palabras · ${n}</div>`).join('');
+
+/* ---------- pantallas ---------- */
+function qr(v) {
+  const hoy = v==='hoy';
+  const label = `<div class="qr">${qrSvg()}<div class="n">Laptop Lenovo</div><div class="b">MEMORATAG</div></div>`;
+  if (hoy) return phone(`${nav('Código QR')}<div class="scroll">${label}
+    <div class="step"><i>🖨</i><span>${T.qr_hoy[3]}</span></div><div class="step"><i>🏷</i><span>${T.qr_hoy[4]}</span></div><div class="step"><i>▢</i><span>${T.qr_hoy[5]}</span></div>
+    <div class="btn red" style="margin-top:20px">⇪ Compartir o imprimir</div>
+    <div class="note" style="margin-top:20px"><i>🔒</i><span>${T.qr_hoy[7]}</span></div></div>`);
+  return phone(`${nav('Código QR')}<div class="scroll">${label}<div class="dsc" style="margin-top:20px">${T.qr_prop[3]}</div><div class="note" style="margin-top:16px;justify-content:center"><i>🔒</i><span>${T.qr_prop[5]}</span></div></div>`, foot('Compartir o imprimir','⇪'));
+}
+function nfc(v) {
+  const hoy = v==='hoy', t = hoy ? T.nfc_hoy : T.nfc_prop;
+  return phone(`${nav('Vincular etiqueta NFC')}<div class="scroll"><div class="illus">◉</div><div class="ttl">${t[1]}</div><div class="dsc">${t[2]}</div><div class="btn" style="margin-top:24px">◉ ${t[3]}</div><div class="note" style="margin-top:24px"><i>🔒</i><span>${t[4]}</span></div></div>`);
+}
+function nfcErr(v) {
+  const hoy = v==='hoy';
+  return phone(`${nav('Vincular etiqueta NFC')}<div class="scroll"><div class="illus err">!</div><div class="ttl">Laptop Lenovo</div><div class="dsc">${hoy?T.nfc_hoy[2]:T.nfc_prop[2]}</div><div class="stt"><b>!</b><span>Este dispositivo no admite NFC.</span></div>${hoy?'<div class="btn red" style="margin-top:16px">◉ Reintentar</div>':''}<div class="note" style="margin-top:24px"><i>🔒</i><span>${hoy?T.nfc_hoy[4]:T.nfc_prop[4]}</span></div></div>`);
+}
+function arch(v) {
+  const hoy = v==='hoy';
+  if (hoy) return phone(`${nav('Objetos archivados')}<div class="scroll"><div class="intro red">${T.arc_hoy[1]}</div><div class="acard"><div class="row"><div class="cov">📦</div><div><div class="nm">Audífonos QCY</div><div class="ds red">Sin descripción</div></div></div><div class="btn s">↻ Restaurar</div></div></div>`);
+  return phone(`${nav('Objetos archivados')}<div class="scroll"><div class="intro">${T.arc_prop[1]}</div><div class="acard compact"><div class="cov">📦</div><div class="grow"><div class="nm">Audífonos QCY</div></div><div class="btn s sm">↻ Restaurar</div></div></div>`);
+}
+function vacio(v) {
+  const t = v==='hoy' ? T.vac_hoy : T.vac_prop;
+  return phone(`${nav('Objetos archivados')}<div class="scroll"><div class="es" style="margin-top:80px"><div class="ic">🗄</div><div class="h">${t[0]}</div><div class="p ${v==='hoy'?'red':''}">${t[1]}</div></div></div>`);
+}
+function nd(v) {
+  const t = v==='hoy' ? T.nd_hoy : T.nd_prop;
+  return phone(`<div class="nav"><span class="ib">←</span></div><div class="scroll"><div class="es" style="margin-top:40px"><div class="ic">📱</div><div class="h">${t[0]}</div><div class="p ${v==='hoy'?'red':''}">${t[1]}</div><div class="btn s">⌂ ${t[2]}</div></div></div>`);
+}
+const blocks = [['Código QR', qr], ['NFC · pantalla para escribir', nfc], ['NFC · teléfono sin NFC', nfcErr], ['Objetos archivados (con un objeto)', arch], ['Objetos archivados (vacío)', vacio], ['Objeto no disponible', nd]];
+document.getElementById('pairs').innerHTML = blocks.map(([t,fn]) => `<h3>${t}</h3><div class="pair"><div class="col"><div class="cap">Hoy</div>${fn('hoy')}</div><div class="col"><div class="cap">Propuesta</div>${fn('prop')}</div></div>`).join('');
+</script>
+</body>
+</html>

@@ -6,7 +6,7 @@ type Info = { label: string; plural: string; icon: keyof typeof Ionicons.glyphMa
 
 // Each type has its own icon, colour and name, so it is never identified by colour alone.
 export const eventTypes: Record<EventType, Info> = {
-  note: { label: 'Nota', plural: 'Notas', icon: 'document-text-outline', color: (c) => c.primary, soft: (c) => c.primarySoft, hint: 'Un recuerdo o dato que quieras guardar.' },
+  note: { label: 'Nota', plural: 'Notas', icon: 'document-text-outline', color: (c) => c.muted, soft: (c) => c.surfaceAlt, hint: 'Un recuerdo o dato que quieras guardar.' },
   issue: { label: 'Incidencia', plural: 'Incidencias', icon: 'alert-circle-outline', color: (c) => c.danger, soft: (c) => c.dangerSoft, hint: 'Algo que falla o hay que revisar. Podrás marcarla como resuelta.' },
   maintenance: { label: 'Mantenimiento', plural: 'Mantenimientos', icon: 'build-outline', color: (c) => c.warning, soft: (c) => c.warningSoft, hint: 'Una revisión, limpieza o reparación realizada.' },
 };

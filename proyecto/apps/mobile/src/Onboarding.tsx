@@ -4,17 +4,17 @@ import { AccessibilityInfo, Animated, BackHandler, findNodeHandle, Platform, Pre
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Screen } from './ui/components';
 import { useStyles, useTheme } from './ui/theme';
-import { radius, space, type, type Palette } from './ui/tokens';
+import { space, type, type Palette } from './ui/tokens';
 
-type Step = { icon: keyof typeof Ionicons.glyphMap; title: string; body: string; tip?: string };
+type Step = { icon: keyof typeof Ionicons.glyphMap; title: string; body: string };
 
 const steps: Step[] = [
-  { icon: 'time-outline', title: 'Una historia para cada objeto', body: 'Registra notas, incidencias y mantenimientos con fotos y documentos. Todo queda ordenado en su línea de tiempo.', tip: 'Ejemplo: la bici, la guitarra o la caldera de casa.' },
-  { icon: 'alert-circle-outline', title: 'Sigue lo que hay que arreglar', body: 'Las incidencias quedan abiertas hasta que las marcas como resueltas, y cada objeto te muestra cuántas tiene pendientes y su último mantenimiento.', tip: 'Si te equivocas al archivar o borrar, toca «Deshacer».' },
+  { icon: 'time-outline', title: 'Una historia para cada objeto', body: 'Anota lo que pasa y míralo en su línea de tiempo.' },
+  { icon: 'alert-circle-outline', title: 'Sigue lo que hay que arreglar', body: 'Las incidencias siguen abiertas hasta que las marcas como resueltas.' },
   Platform.OS === 'android'
-    ? { icon: 'scan-outline', title: 'Ábrelo con QR o NFC', body: 'Imprime su código QR o graba una etiqueta NFC desde el objeto. Después, escanéalo o acerca la etiqueta a la parte trasera del teléfono para abrir su historia, incluso con la app cerrada.', tip: 'Busca «Código QR» y «Vincular NFC» dentro de cada objeto.' }
-    : { icon: 'qr-code-outline', title: 'Ábrelo con su código QR', body: 'Imprime el código QR de cada objeto y pégalo en él. Escanéalo con la cámara para abrir su historia al instante.', tip: 'Busca «Código QR» dentro de cada objeto.' },
-  { icon: 'phone-portrait-outline', title: 'Tus datos se quedan contigo', body: 'Todo se guarda en este teléfono, sin cuenta ni conexión. El QR y la etiqueta solo contienen un enlace, nunca la historia.', tip: 'Haz un respaldo desde Ajustes para no perder nada.' },
+    ? { icon: 'scan-outline', title: 'Ábrelo con QR o NFC', body: 'Escanea su código o acerca la etiqueta para abrir su historia.' }
+    : { icon: 'qr-code-outline', title: 'Ábrelo con su código QR', body: 'Escanéalo con la cámara para abrir su historia.' },
+  { icon: 'phone-portrait-outline', title: 'Tus datos se quedan contigo', body: 'Todo se guarda en este teléfono. Haz un respaldo desde Ajustes.' },
 ];
 
 /** Short skippable tutorial shown after the first name entry, and on demand from Settings. */
@@ -52,7 +52,6 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
         <View style={styles.art} accessibilityElementsHidden importantForAccessibility="no-hide-descendants"><View style={styles.artInner}><Ionicons name={step.icon} size={46} color={c.primary} /></View></View>
         <Text ref={titleRef} accessible accessibilityRole="header" style={styles.title}>{step.title}</Text>
         <Text style={styles.body}>{step.body}</Text>
-        {step.tip && <View style={styles.tip}><Ionicons name="bulb-outline" size={19} color={c.onAccentSoft} /><Text style={styles.tipText}>{step.tip}</Text></View>}
       </Animated.View>
     </ScrollView>
     <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
@@ -67,15 +66,13 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
 
 const makeStyles = (c: Palette) => ({
   top: { minHeight: 64, paddingHorizontal: space.xxl, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  counter: { ...type.caption, color: c.muted, fontWeight: '700' },
-  skip: { minHeight: 48, justifyContent: 'center', paddingHorizontal: space.sm }, skipText: { ...type.label, color: c.primary, fontWeight: '700' },
+  counter: { ...type.mini, color: c.muted },
+  skip: { minHeight: 48, justifyContent: 'center', paddingHorizontal: space.sm }, skipText: { ...type.label, color: c.primary },
   content: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 28, paddingVertical: space.xxl },
   art: { width: 170, height: 170, borderRadius: 56, backgroundColor: c.primarySoft, alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: 36 },
   artInner: { width: 96, height: 96, borderRadius: 32, backgroundColor: c.surface, alignItems: 'center', justifyContent: 'center' },
-  title: { ...type.title, fontSize: 28, lineHeight: 35, color: c.ink, textAlign: 'center' },
-  body: { ...type.body, color: c.muted, lineHeight: 25, textAlign: 'center', marginTop: 14 },
-  tip: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', backgroundColor: c.accentSoft, borderRadius: radius.md, padding: space.lg, marginTop: 28 },
-  tipText: { flex: 1, ...type.caption, fontSize: 14, lineHeight: 21, color: c.onAccentSoft },
+  title: { ...type.display, color: c.ink, textAlign: 'center' },
+  body: { ...type.body, color: c.muted, textAlign: 'center', marginTop: 14 },
   footer: { paddingHorizontal: space.xxl, paddingTop: space.md, gap: 18 },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: space.sm }, dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: c.line }, dotActive: { width: 24, backgroundColor: c.primary },
   actions: { flexDirection: 'row', gap: space.md },

@@ -1,3 +1,8 @@
+// One import per weight, so Metro bundles only these three font files and not the whole family.
+import { DMSans_400Regular } from '@expo-google-fonts/dm-sans/400Regular';
+import { DMSans_600SemiBold } from '@expo-google-fonts/dm-sans/600SemiBold';
+import { Fraunces_600SemiBold } from '@expo-google-fonts/fraunces/600SemiBold';
+import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
@@ -18,9 +23,13 @@ export default function Layout() {
 function RootStack() {
   const { c } = useTheme();
   const profile = useProfile();
-  useEffect(() => { if (!profile.loading) void SplashScreen.hideAsync().catch(() => {}); }, [profile.loading]);
+  // Fraunces and DM Sans are separate files per weight; see `fonts` in src/ui/tokens.ts.
+  const [fontsLoaded, fontError] = useFonts({ Fraunces_600SemiBold, DMSans_400Regular, DMSans_600SemiBold });
+  // If a font fails to load the app still opens, with the system font instead of a blank screen.
+  const ready = !profile.loading && (fontsLoaded || !!fontError);
+  useEffect(() => { if (ready) void SplashScreen.hideAsync().catch(() => {}); }, [ready]);
 
-  if (profile.loading) return null; // The splash screen stays visible.
+  if (!ready) return null; // The splash screen stays visible until the data and the fonts are ready.
   if (profile.error) return <Screen><ErrorMessage text="No se pudo cargar tu información." onRetry={() => void profile.reload()} /></Screen>;
 
   const task = { animation: 'slide_from_bottom' as const };

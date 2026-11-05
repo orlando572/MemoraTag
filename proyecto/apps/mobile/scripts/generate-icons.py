@@ -1,23 +1,24 @@
 """Generates MemoraTag's identity assets (app icon, Android adaptive/monochrome icon, splash, logo).
 
-The mark is a luggage-style tag (the physical object) whose eyelet is an amber "memory" ring,
-with a small timeline drawn on it (the object's history).
+The mark is a luggage-style tag (the physical object) whose eyelet is a "memory" ring, with a small
+timeline drawn on it (the object's history). Colours follow the «Bitácora» palette (see src/ui/tokens.ts).
 
-Run from apps/mobile:  python3 scripts/generate-icons.py
+Run from apps/mobile:  python scripts/generate-icons.py   (python3 on macOS/Linux; needs Pillow)
 """
 from pathlib import Path
 from PIL import Image, ImageDraw
 
-PETROL = (14, 90, 107, 255)       # #0E5A6B
-PETROL_DARK = (10, 66, 80, 255)   # #0A4250
-AMBER = (227, 163, 59, 255)       # #E3A33B
-CREAM = (247, 246, 242, 255)      # #F7F6F2
+BLUE = (47, 75, 184, 255)         # #2F4BB8  primary (light)
+BLUE_DARK = (35, 58, 148, 255)    # #233A94
+BLUE_LIGHT = (143, 168, 255, 255) # #8FA8FF  primary (dark)
+PAPER = (247, 243, 236, 255)      # #F7F3EC
+INK = (27, 25, 22, 255)           # #1B1916
 SIZE = 1024
 SS = 4  # supersampling factor for smooth edges
 OUT = Path(__file__).resolve().parent.parent / 'assets'
 
 
-def mark(body=CREAM, ring=AMBER, line=PETROL, scale=1.0, mono=False):
+def mark(body=PAPER, ring=BLUE_DARK, line=BLUE, scale=1.0, mono=False):
     """Draws the tag on a transparent canvas. `scale` shrinks it to fit Android's safe zone."""
     n = SIZE * SS
     layer = Image.new('RGBA', (n, n), (0, 0, 0, 0))
@@ -27,7 +28,7 @@ def mark(body=CREAM, ring=AMBER, line=PETROL, scale=1.0, mono=False):
     d.rounded_rectangle([s(400), s(318), s(842), s(706)], radius=s(70), fill=body)
     d.polygon([(s(470), s(318)), (s(470), s(706)), (s(236), s(560)), (s(236), s(464))], fill=body)
     d.ellipse([s(206), s(452), s(266), s(572)], fill=body)  # rounds the tip
-    # Eyelet: amber ring with a see-through hole.
+    # Eyelet: a ring (a different blue from the body and the background) with a see-through hole.
     d.ellipse([s(282), s(456), s(394), s(568)], fill=ring)
     d.ellipse([s(310), s(484), s(366), s(540)], fill=(0, 0, 0, 0))
     # Timeline: a vertical line with three moments and their entries.
@@ -60,17 +61,17 @@ def mark(body=CREAM, ring=AMBER, line=PETROL, scale=1.0, mono=False):
 
 def main():
     OUT.mkdir(exist_ok=True)
-    # iOS / legacy icon: full-bleed petrol background.
-    icon = Image.new('RGBA', (SIZE, SIZE), PETROL)
+    # iOS / legacy icon: full-bleed blue background.
+    icon = Image.new('RGBA', (SIZE, SIZE), BLUE)
     icon.alpha_composite(mark(scale=0.86))
     icon.convert('RGB').save(OUT / 'icon.png')
     # Android adaptive icon: foreground inside the 66% safe zone; background colour set in app.json.
     mark(scale=0.62).save(OUT / 'adaptive-icon.png')
     mark(scale=0.62, mono=True).save(OUT / 'monochrome-icon.png')
-    # Splash and in-app logo: petrol tag on transparent so it works on light and dark backgrounds.
-    mark(body=PETROL, ring=AMBER, line=CREAM).save(OUT / 'splash-icon.png')
-    mark(body=PETROL, ring=AMBER, line=CREAM).resize((512, 512), Image.LANCZOS).save(OUT / 'logo.png')
-    mark(body=(95, 179, 196, 255), ring=(240, 183, 90, 255), line=(15, 26, 29, 255)).resize((512, 512), Image.LANCZOS).save(OUT / 'logo-dark.png')
+    # Splash and in-app logo on transparent: blue tag for light mode, light-blue tag for dark mode.
+    mark(body=BLUE, ring=BLUE_LIGHT, line=PAPER).save(OUT / 'splash-icon.png')
+    mark(body=BLUE, ring=BLUE_LIGHT, line=PAPER).resize((512, 512), Image.LANCZOS).save(OUT / 'logo.png')
+    mark(body=BLUE_LIGHT, ring=BLUE, line=INK).resize((512, 512), Image.LANCZOS).save(OUT / 'logo-dark.png')
     print('Generated:', ', '.join(sorted(p.name for p in OUT.glob('*.png'))))
 
 

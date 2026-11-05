@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MemoraTag · Bienvenida, tutorial y escáner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600&family=Fraunces:wght@600&display=swap" rel="stylesheet">
+<style>
+  :root { --page:#EDE8DE; --pageInk:#1F1B16; --pageMuted:#5B5348; --pageLine:#D6CDBD; --card:#FBF9F4; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--page); color:var(--pageInk); font:400 16px/24px 'DM Sans',system-ui,sans-serif; }
+  main { max-width:1180px; margin:0 auto; padding:32px 16px 96px; }
+  h1,h2,h3 { font-family:'Fraunces',Georgia,serif; font-weight:600; margin:0; } h1 { font-size:34px; line-height:41px; } h2 { font-size:24px; line-height:30px; margin:48px 0 8px; } h3 { font-size:19px; line-height:26px; margin:24px 0 8px; }
+  p { margin:8px 0; max-width:74ch; } .muted { color:var(--pageMuted); } .small { font-size:14px; line-height:20px; }
+  .badge { display:inline-block; font:600 12px/16px 'DM Sans',sans-serif; padding:3px 10px; border-radius:999px; background:#2F4BB8; color:#fff; }
+  code { background:#E4DCCF; padding:1px 6px; border-radius:6px; font-size:13px; }
+  table { border-collapse:collapse; width:100%; background:var(--card); border:1px solid var(--pageLine); border-radius:12px; overflow:hidden; font-size:14px; line-height:20px; margin:8px 0; }
+  th,td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--pageLine); vertical-align:top; } th { background:#E4DCCF; font-weight:600; }
+  .pair { display:flex; gap:20px; flex-wrap:wrap; align-items:flex-start; margin:12px 0; } .col { flex:none; } .col > .cap { font:600 13px/18px 'DM Sans',sans-serif; margin:0 0 8px; }
+  .tag { display:inline-block; font:600 12px/16px 'DM Sans',sans-serif; padding:2px 8px; border-radius:999px; margin-right:6px; background:#F8EDD7; color:#6B4300; }
+  .stats { display:flex; gap:12px; flex-wrap:wrap; margin:12px 0; } .stat { background:var(--card); border:1px solid var(--pageLine); border-radius:12px; padding:10px 16px; } .stat b { font:600 22px/28px 'Fraunces',serif; display:block; }
+
+  /* ===== Teléfono 360 x 760 dp, modo oscuro (como se ve en tu teléfono) ===== */
+  .phone { --canvas:#1B1916; --surface:#262320; --ink:#F2ECE3; --muted:#A89E91; --line:#3A352F; --inputBorder:#7A7064; --primary:#8FA8FF; --onPrimary:#0F1A3D; --primarySoft:#232A45; --onPrimarySoft:#B3C3FF; --warning:#E8B964; --warningSoft:#3A2E17; --danger:#FF8A73;
+    width:360px; height:760px; border-radius:26px; background:var(--canvas); color:var(--ink); border:1px solid var(--line); overflow:hidden; display:flex; flex-direction:column; position:relative; }
+  .phone.scan { --canvas:#0E0D0B; }
+  .scr { flex:1; padding:28px 24px 24px; display:flex; flex-direction:column; overflow:hidden; }
+  .sysnav { position:absolute; left:0; right:0; bottom:0; height:48px; background:rgba(232,232,232,.95); display:flex; align-items:center; justify-content:space-around; color:#666; font-size:16px; z-index:5; }
+  .brand { display:flex; align-items:center; gap:12px; } .brand b { font:600 21px/26px 'Fraunces',serif; color:var(--primary); } .lg { width:56px; height:56px; border-radius:16px; background:var(--primarySoft); display:flex; align-items:center; justify-content:center; font-size:26px; }
+  .h { font:600 28px/34px 'Fraunces',serif; } .cp { color:var(--muted); margin-top:12px; font:400 16px/24px 'DM Sans',sans-serif; }
+  .pts { display:flex; flex-direction:column; gap:12px; margin-top:24px; } .pt { display:flex; align-items:center; gap:12px; font:600 14px/20px 'DM Sans',sans-serif; } .pt i { width:34px; height:34px; border-radius:11px; background:var(--primarySoft); display:flex; align-items:center; justify-content:center; font-style:normal; flex:none; }
+  .lab { font:600 14px/20px 'DM Sans',sans-serif; margin-bottom:8px; } .inp { min-height:54px; background:var(--surface); border:1px solid var(--inputBorder); border-radius:14px; padding:12px 16px; color:var(--muted); } .inp.on { border:2px solid var(--primary); color:var(--ink); }
+  .hint { font:400 14px/20px 'DM Sans',sans-serif; color:var(--muted); margin-top:6px; }
+  .btn { min-height:52px; border-radius:14px; display:flex; align-items:center; justify-content:center; gap:8px; font:600 14px/20px 'DM Sans',sans-serif; background:var(--primary); color:var(--onPrimary); } .btn.s { background:var(--surface); color:var(--primary); border:1px solid var(--inputBorder); }
+  .foot { border-top:1px solid var(--line); padding:16px 24px; background:var(--canvas); } .foot.nav { padding-bottom:64px; }
+  .kb { position:absolute; left:0; right:0; bottom:0; height:300px; background:#2B2926; display:grid; grid-template-columns:repeat(10,1fr); gap:6px; padding:10px 6px; align-content:start; z-index:6; } .kb i { height:44px; border-radius:6px; background:#3C3A36; display:block; } .kb i.w { grid-column:span 4; }
+  .red { outline:2px dashed #FF8A73; outline-offset:2px; border-radius:6px; }
+  /* tutorial */
+  .top { display:flex; justify-content:space-between; align-items:center; min-height:48px; } .top .c { font:600 12px/16px 'DM Sans',sans-serif; color:var(--muted); } .top .sk { font:600 14px/20px 'DM Sans',sans-serif; color:var(--primary); }
+  .tbody { flex:1; display:flex; flex-direction:column; justify-content:center; text-align:center; } .art { width:170px; height:170px; border-radius:56px; background:var(--primarySoft); display:flex; align-items:center; justify-content:center; margin:0 auto 36px; } .art i { width:96px; height:96px; border-radius:32px; background:var(--surface); display:flex; align-items:center; justify-content:center; font-style:normal; font-size:40px; }
+  .tt { font:600 28px/34px 'Fraunces',serif; } .tp { color:var(--muted); margin-top:14px; font:400 16px/24px 'DM Sans',sans-serif; }
+  .tip { display:flex; gap:10px; align-items:flex-start; background:var(--warningSoft); color:var(--warning); border-radius:14px; padding:16px; margin-top:28px; text-align:left; font:400 14px/20px 'DM Sans',sans-serif; }
+  .dots { display:flex; justify-content:center; gap:8px; margin-bottom:16px; } .dots i { width:8px; height:8px; border-radius:4px; background:var(--line); } .dots i.on { width:24px; background:var(--primary); }
+  .acts { display:flex; gap:12px; } .acts .btn { flex:1; } .acts .btn.s { flex:none; padding:0 20px; }
+  /* escáner */
+  .cam { aspect-ratio:1; border-radius:24px; background:#050505; position:relative; margin-top:8px; } .cam .f { position:absolute; inset:16%; } .cam .f i { position:absolute; width:38px; height:38px; border:4px solid #fff; } .cam .f i:nth-child(1){top:0;left:0;border-right:0;border-bottom:0;border-top-left-radius:16px} .cam .f i:nth-child(2){top:0;right:0;border-left:0;border-bottom:0;border-top-right-radius:16px} .cam .f i:nth-child(3){bottom:0;left:0;border-right:0;border-top:0;border-bottom-left-radius:16px} .cam .f i:nth-child(4){bottom:0;right:0;border-left:0;border-top:0;border-bottom-right-radius:16px}
+  .snav { display:flex; align-items:center; gap:12px; min-height:56px; } .snav .ib { width:48px; height:48px; border-radius:14px; background:rgba(255,255,255,.14); display:flex; align-items:center; justify-content:center; } .snav .t { flex:1; text-align:center; font:600 19px/26px 'Fraunces',serif; } .snav .sp { width:48px; }
+  .shint { text-align:center; color:#F2ECE3; margin-top:20px; font:400 16px/24px 'DM Sans',sans-serif; } .or { text-align:center; color:#F2ECE3; font:600 12px/16px 'DM Sans',sans-serif; letter-spacing:1px; text-transform:uppercase; }
+  .alts { display:flex; flex-direction:column; gap:12px; margin-top:24px; } .prob { display:flex; flex-direction:column; gap:12px; margin-top:20px; } .prob p { text-align:center; margin:0; color:#fff; }
+</style>
+</head>
+<body>
+<main>
+  <span class="badge">Propuesta · no aplicada al código</span>
+  <h1 style="margin-top:12px">Bienvenida, tutorial y escáner QR</h1>
+  <p class="muted">Etapa 5 del rediseño. Archivo local, no se sube a GitHub. Rama: <code>feature/mobile-bitacora-design-system</code>. Teléfonos a 360 × 760 dp en modo oscuro, como se ven hoy en tu teléfono. Textos cortos, como pediste.</p>
+
+  <h2>1. Auditoría</h2>
+  <table>
+    <tr><th>#</th><th>Pantalla</th><th>Hallazgo (verificado en el código y en tu teléfono)</th><th>Principio</th></tr>
+    <tr><td>1</td><td>Bienvenida</td><td><b>El botón «Empezar» queda cortado por la barra de navegación</b> del teléfono: el contenido llega al borde inferior sin respetar ese margen. Además, al escribir el nombre el teclado puede taparlo, como pasaba en los formularios.</td><td>Nielsen H1 y H7; Fitts; WCAG 2.4.11</td></tr>
+    <tr><td>2</td><td>Bienvenida</td><td><b>Mucho texto antes de la única tarea</b> (escribir el nombre): un párrafo de 3 líneas, tres puntos con icono y una pista. Los puntos repiten lo que dice el tutorial justo después.</td><td>Nielsen H8; ley de Hick; Shneiderman 8 (carga de memoria)</td></tr>
+    <tr><td>3</td><td>Tutorial</td><td><b>Cada paso lleva un párrafo de 3 o 4 líneas y además una caja de consejo.</b> Es un segundo bloque de texto que repite o añade ruido, en una pantalla pensada para leerse en segundos.</td><td>Nielsen H8; Hick; WCAG 3.1.5 (lectura sencilla)</td></tr>
+    <tr><td>4</td><td>Tutorial</td><td>El paso 3 dice «Vincular NFC», pero en el objeto el mosaico se llama <b>«Etiqueta NFC»</b>.</td><td>Nielsen H4 (consistencia) y H2 (lenguaje del sistema)</td></tr>
+    <tr><td>5</td><td>Escáner</td><td>El rótulo «O también» antes de los dos botones no aporta: los botones ya dicen lo que hacen. Los mensajes de error son de dos frases («Este código no es de MemoraTag. Apunta al QR que imprimiste desde un objeto.»).</td><td>Nielsen H8 y H9 (error claro y breve)</td></tr>
+  </table>
+  <p class="small muted"><b>Lo que ya está bien y no se toca:</b> «Saltar» y «Anterior» en el tutorial (control del usuario), el contador «Paso 1 de 4» y los puntos de progreso, el foco accesible al título en cada paso, el recuadro del escáner con esquinas blancas (contraste ≥ 3:1), el botón «Permitir la cámara» cuando falta el permiso, la vibración de éxito y error al escanear, y el aviso «Este objeto está archivado» con su botón para verlo.</p>
+  <p class="small muted"><b>No incluido a propósito:</b> ocultar «Leer etiqueta NFC» en teléfonos sin NFC. Ya decidiste que NFC se queda visible.</p>
+
+  <h2>2. Antes y después</h2>
+  <div class="stats" id="stats"></div>
+  <div id="pairs"></div>
+
+  <h2>3. Cambios propuestos</h2>
+  <table>
+    <tr><th>Cambio</th><th>Principios</th><th>Criterio comprobable</th></tr>
+    <tr><td><b>A. Bienvenida mínima.</b> Logotipo, título, una línea («Guarda la historia de lo que cuidas.»), el campo del nombre y «Empezar». Sin los tres puntos y sin «Solo lo usamos para saludarte». El botón va fijo al pie, por encima de la barra del teléfono y del teclado.</td><td>H8, Hick, H1, H7, Fitts, WCAG 2.4.11</td><td>«Empezar» visible y pulsable con y sin teclado; menos de la mitad de palabras en pantalla.</td></tr>
+    <tr><td><b>B. Tutorial en una frase por paso.</b> Título + una frase corta; se quitan las cajas de consejo. «Haz un respaldo desde Ajustes» pasa a la frase del paso 4, que es información necesaria. Desaparece «Vincular NFC».</td><td>H8, H4, H2, Hick</td><td>Máximo una línea o dos de texto bajo el título; ninguna caja de consejo.</td></tr>
+    <tr><td><b>C. Escáner más corto.</b> Se quita «O también». La instrucción pasa a «Encuadra el código QR del objeto.» y cada error a una frase («Este código no es de MemoraTag.», «Este objeto no está en este teléfono.», «No hay un código QR en esta imagen.»).</td><td>H8, H9</td><td>Cada error cabe en una línea o dos; mismos botones y la misma función.</td></tr>
+  </table>
+  <h3>Decisiones opcionales (no incluidas en la vista previa)</h3>
+  <table>
+    <tr><th>Opción</th><th>Ventaja</th><th>Riesgo / costo</th></tr>
+    <tr><td><span class="tag">D</span> Permitir seguir <b>sin escribir el nombre</b> (con un saludo genérico).</td><td>Menos fricción en el primer uso (H3, H7).</td><td>Cambia la lógica: hoy sin nombre se vuelve a la bienvenida.</td></tr>
+    <tr><td><span class="tag">E</span> Acortar el tutorial a <b>3 pasos</b> (unir «historia» e «incidencias»).</td><td>Menos pantallas que leer.</td><td>Menos separación de ideas.</td></tr>
+  </table>
+
+  <h2>4. Qué no cambia</h2>
+  <p>La lógica de guardar el nombre, los 4 pasos y sus iconos, «Saltar», «Anterior» y «Siguiente», el permiso de cámara, las funciones del escáner (cámara, foto del QR, NFC) y los textos de las demás pantallas. Colores y tipografía tampoco cambian.</p>
+
+  <h2>5. Cómo lo comprobaré</h2>
+  <ol class="small">
+    <li><code>typecheck</code> y pruebas en verde.</li>
+    <li>En el teléfono: «Empezar» completo y con teclado abierto; los 4 pasos del tutorial; el escáner normal y con un código ajeno. La bienvenida la abriré con una ruta temporal que borraré, sin tocar tu nombre.</li>
+    <li>Pendiente de tu parte: modo claro y letra del sistema al máximo.</li>
+  </ol>
+</main>
+
+<script>
+const kb = () => `<div class="kb">${Array.from({length:30}).map(()=>'<i></i>').join('')}<i class="w"></i></div>`;
+const sysnav = '<div class="sysnav"><span>☰</span><span>▢</span><span>◁</span></div>';
+
+/* --- textos (para contar palabras) --- */
+const T = {
+  w_hoy: ['MemoraTag','La memoria de tus objetos, a un toque.','Guarda la historia de lo que cuidas —notas, incidencias, mantenimientos y documentos— y ábrela al escanear su QR o acercar su etiqueta NFC.','Una línea de tiempo por objeto','Acceso con QR y NFC','Sin cuenta: todo se queda en tu teléfono','¿Cómo te llamas?','Tu nombre','Solo lo usamos para saludarte.','Empezar'],
+  w_prop: ['MemoraTag','La memoria de tus objetos, a un toque.','Guarda la historia de lo que cuidas.','¿Cómo te llamas?','Tu nombre','Empezar'],
+  t_hoy: [['Una historia para cada objeto','Registra notas, incidencias y mantenimientos con fotos y documentos. Todo queda ordenado en su línea de tiempo.','Ejemplo: la bici, la guitarra o la caldera de casa.'],['Sigue lo que hay que arreglar','Las incidencias quedan abiertas hasta que las marcas como resueltas, y cada objeto te muestra cuántas tiene pendientes y su último mantenimiento.','Si te equivocas al archivar o borrar, toca «Deshacer».'],['Ábrelo con QR o NFC','Imprime su código QR o graba una etiqueta NFC desde el objeto. Después, escanéalo o acerca la etiqueta a la parte trasera del teléfono para abrir su historia, incluso con la app cerrada.','Busca «Código QR» y «Vincular NFC» dentro de cada objeto.'],['Tus datos se quedan contigo','Todo se guarda en este teléfono, sin cuenta ni conexión. El QR y la etiqueta solo contienen un enlace, nunca la historia.','Haz un respaldo desde Ajustes para no perder nada.']],
+  t_prop: [['Una historia para cada objeto','Anota lo que pasa y míralo en su línea de tiempo.'],['Sigue lo que hay que arreglar','Las incidencias siguen abiertas hasta que las marcas como resueltas.'],['Ábrelo con QR o NFC','Escanea su código o acerca la etiqueta para abrir su historia.'],['Tus datos se quedan contigo','Todo se guarda en este teléfono. Haz un respaldo desde Ajustes.']],
+  s_hoy: ['Escanear objeto','Encuadra el código QR del objeto dentro del recuadro.','O también','Leer etiqueta NFC','Elegir una foto del QR'],
+  s_prop: ['Escanear objeto','Encuadra el código QR del objeto.','Leer etiqueta NFC','Elegir una foto del QR'],
+  e_hoy: 'Este código no es de MemoraTag. Apunta al QR que imprimiste desde un objeto.', e_prop: 'Este código no es de MemoraTag.',
+};
+const words = a => a.flat(3).join(' ').split(/\s+/).filter(Boolean).length;
+const wHoy = words(T.w_hoy), wProp = words(T.w_prop);
+const tHoy = words(T.t_hoy), tProp = words(T.t_prop);
+const sHoy = words(T.s_hoy), sProp = words(T.s_prop);
+document.getElementById('stats').innerHTML = [
+  ['Bienvenida', wHoy, wProp], ['Tutorial (4 pasos)', tHoy, tProp], ['Escáner', sHoy, sProp],
+].map(([n,a,b]) => `<div class="stat"><b>${a} → ${b}</b>palabras · ${n}</div>`).join('') + `<div class="stat"><b>${words([T.e_hoy])} → ${words([T.e_prop])}</b>palabras · error de código ajeno</div>`;
+
+/* --- bienvenida --- */
+function welcome(v, keyboard) {
+  const hoy = v==='hoy';
+  const brand = `<div class="brand"><div class="lg">🏷</div><b>MemoraTag</b></div>`;
+  const body = hoy
+    ? `<div style="margin-top:56px"><div class="h">La memoria de tus objetos, a un toque.</div><div class="cp">Guarda la historia de lo que cuidas —notas, incidencias, mantenimientos y documentos— y ábrela al escanear su QR o acercar su etiqueta NFC.</div><div class="pts"><div class="pt"><i>🕑</i>Una línea de tiempo por objeto</div><div class="pt"><i>▢</i>Acceso con QR y NFC</div><div class="pt"><i>🔒</i>Sin cuenta: todo se queda en tu teléfono</div></div></div>`
+    : `<div style="margin-top:96px"><div class="h">La memoria de tus objetos, a un toque.</div><div class="cp">Guarda la historia de lo que cuidas.</div></div>`;
+  const field = `<div style="margin-top:${hoy?'auto':'40px'}"><div class="lab">¿Cómo te llamas?</div><div class="inp ${keyboard?'on':''}">${keyboard?'Evelyn|':'Tu nombre'}</div>${hoy?'<div class="hint">Solo lo usamos para saludarte.</div>':''}</div>`;
+  if (hoy) return `<div class="phone"><div class="scr">${brand}${body}${field}<div class="btn ${keyboard?'':'red'}" style="margin-top:20px">→ Empezar</div></div>${keyboard?kb():sysnav}</div>`;
+  return `<div class="phone"><div style="flex:1;display:flex;flex-direction:column;min-height:0;margin-bottom:${keyboard?300:0}px"><div class="scr">${brand}${body}${field}</div><div class="foot ${keyboard?'':'nav'}"><div class="btn">→ Empezar</div></div></div>${keyboard?kb():sysnav}</div>`;
+}
+
+/* --- tutorial --- */
+const ICONS = ['🕑','⚠','▢','📱'];
+function tutorial(v, i) {
+  const hoy = v==='hoy', last = i===3;
+  const s = hoy ? T.t_hoy[i] : T.t_prop[i];
+  const tip = hoy ? `<div class="tip"><span>💡</span><span class="${i===2?'red':''}">${s[2]}</span></div>` : '';
+  return `<div class="phone"><div class="scr" style="padding-top:20px;padding-bottom:72px"><div class="top"><span class="c">Paso ${i+1} de 4</span>${last?'':'<span class="sk">Saltar</span>'}</div>
+   <div class="tbody"><div class="art"><i>${ICONS[i]}</i></div><div class="tt">${s[0]}</div><div class="tp">${s[1]}</div>${tip}</div>
+   <div class="dots">${[0,1,2,3].map(k=>`<i class="${k===i?'on':''}"></i>`).join('')}</div>
+   <div class="acts">${i>0?'<div class="btn s">Anterior</div>':''}<div class="btn">${last?'✓ Empezar':'→ Siguiente'}</div></div></div>${sysnav}</div>`;
+}
+
+/* --- escáner --- */
+function scanner(v, error) {
+  const hoy = v==='hoy';
+  const cam = `<div class="cam"><div class="f"><i></i><i></i><i></i><i></i></div></div>`;
+  const alts = `<div class="alts">${hoy?'<div class="or '+'red'+'">O también</div>':''}<div class="btn s">⌁ Leer etiqueta NFC</div><div class="btn s">🖼 Elegir una foto del QR</div></div>`;
+  const hint = `<div class="shint">${hoy?'Encuadra el código QR del objeto dentro del recuadro.':'Encuadra el código QR del objeto.'}</div>`;
+  const prob = `<div class="prob"><div style="text-align:center;font-size:26px">⚠</div><p class="${hoy?'':''}">${hoy?T.e_hoy:T.e_prop}</p><div class="btn s">⌖ Escanear de nuevo</div></div>`;
+  return `<div class="phone scan"><div class="scr" style="padding-top:24px"><div class="snav"><span class="ib">←</span><span class="t">Escanear objeto</span><span class="sp"></span></div>${cam}${error?prob:hint+alts}</div>${sysnav}</div>`;
+}
+
+const blocks = [
+  ['Bienvenida', (v)=>welcome(v,false)],
+  ['Bienvenida con el teclado abierto', (v)=>welcome(v,true)],
+  ['Tutorial · paso 2 (el más largo)', (v)=>tutorial(v,1)],
+  ['Tutorial · paso 3', (v)=>tutorial(v,2)],
+  ['Tutorial · paso 4', (v)=>tutorial(v,3)],
+  ['Escáner', (v)=>scanner(v,false)],
+  ['Escáner · código de otra app', (v)=>scanner(v,true)],
+];
+document.getElementById('pairs').innerHTML = blocks.map(([t,fn]) => `<h3>${t}</h3><div class="pair"><div class="col"><div class="cap">Hoy</div>${fn('hoy')}</div><div class="col"><div class="cap">Propuesta</div>${fn('prop')}</div></div>`).join('');
+</script>
+</body>
+</html>
