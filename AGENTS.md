@@ -5,3 +5,4 @@
 - Antes de configurar el monorepositorio, elegir una solución que no modifique el `package.json` del prototipo ni altere su ejecución. Si una tarea requiere cambiar el prototipo, solicitar autorización expresa.
 - Mantener el backend como monolito modular con arquitectura hexagonal, sin microservicios.
 - Distinguir en la documentación las funcionalidades implementadas de las previstas.
+- Para compilar e instalar la app móvil en un teléfono Android por USB, seguir `docs/guia-compilacion-para-agentes.md` (las variables `JAVA_HOME`/`ANDROID_HOME` deben exportarse en cada comando).
