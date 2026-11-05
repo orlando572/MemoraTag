@@ -131,8 +131,8 @@ export default function ObjectScreen() {
 
       <View style={s.body}>
         <View style={s.quick}>
-          <QuickAction icon="qr-code-outline" title="Código QR" detail="Ver e imprimir" onPress={() => router.push(`/object/${object.id}/qr`)} />
-          <QuickAction icon={object.nfc_written_at ? 'checkmark-circle' : 'radio-outline'} title="Etiqueta NFC" detail={nfcLabel} done={!!object.nfc_written_at} onPress={() => router.push(`/object/${object.id}/nfc`)} />
+          <QuickAction icon="qr-code-outline" title="Código QR" onPress={() => router.push(`/object/${object.id}/qr`)} />
+          <QuickAction icon="radio-outline" title="Etiqueta NFC" status={object.nfc_written_at ? 'ok' : 'missing'} statusLabel={nfcLabel} done={!!object.nfc_written_at} onPress={() => router.push(`/object/${object.id}/nfc`)} />
         </View>
 
         <Card style={s.status}>
@@ -167,13 +167,17 @@ export default function ObjectScreen() {
   </View>;
 }
 
-function QuickAction({ icon, title, detail, onPress, done }: { icon: keyof typeof Ionicons.glyphMap; title: string; detail: string; onPress: () => void; done?: boolean }) {
+/** `status` paints the centre of the icon green or red; `statusLabel` says the same to screen readers. */
+function QuickAction({ icon, title, detail, onPress, done, status, statusLabel }: { icon: keyof typeof Ionicons.glyphMap; title: string; detail?: string; onPress: () => void; done?: boolean; status?: 'ok' | 'missing'; statusLabel?: string }) {
   const { c } = useTheme();
-  return <Card onPress={onPress} accessibilityLabel={`${title}. ${detail}`} style={{ flex: 1, padding: space.md, flexDirection: 'row', alignItems: 'center', gap: space.sm, backgroundColor: done ? c.primarySoft : c.surface, borderColor: done ? c.primarySoft : c.line }}>
-    <Ionicons name={icon} size={24} color={done ? c.onPrimarySoft : c.primary} />
+  return <Card onPress={onPress} accessibilityLabel={[title, statusLabel, detail].filter(Boolean).join('. ')} style={{ flex: 1, padding: space.md, flexDirection: 'row', alignItems: 'center', gap: space.sm, backgroundColor: done ? c.primarySoft : c.surface, borderColor: done ? c.primarySoft : c.line }}>
+    <View style={{ width: 24, height: 24, alignItems: 'center', justifyContent: 'center' }}>
+      <Ionicons name={icon} size={24} color={done ? c.onPrimarySoft : c.primary} />
+      {status && <View style={{ position: 'absolute', width: 5, height: 5, borderRadius: 2.5, backgroundColor: status === 'ok' ? c.success : c.danger }} />}
+    </View>
     <View style={{ flex: 1 }}>
       <Text style={{ ...type.label, color: done ? c.onPrimarySoft : c.ink }} numberOfLines={1}>{title}</Text>
-      <Text style={{ ...type.secondary, color: done ? c.onPrimarySoft : c.muted }} numberOfLines={2}>{detail}</Text>
+      {!!detail && <Text style={{ ...type.secondary, color: done ? c.onPrimarySoft : c.muted }} numberOfLines={2}>{detail}</Text>}
     </View>
   </Card>;
 }
@@ -192,7 +196,7 @@ function EventItem({ event, last, onEdit, onToggle, onPhoto, onDocument }: { eve
     <Card style={s.eventCard}>
       <View style={s.eventTop}>
         <Text style={[s.eventMeta, { color: look.color }]} accessibilityLabel={`${look.label}, ${formatDate(event.event_date)}`}>{look.label} · {relativeDate(event.event_date)}</Text>
-        <IconButton icon="pencil-outline" label={`Editar evento ${event.title}`} onPress={onEdit} />
+        <IconButton size="sm" icon="pencil-outline" label={`Editar evento ${event.title}`} onPress={onEdit} />
       </View>
       <Text style={s.eventTitle}>{event.title}</Text>
       {!!event.description && <Text style={s.eventText}>{event.description}</Text>}
@@ -201,7 +205,7 @@ function EventItem({ event, last, onEdit, onToggle, onPhoto, onDocument }: { eve
         <Ionicons name="document-attach-outline" size={20} color={c.primary} /><Text numberOfLines={2} style={s.docText}>{event.document_name || 'Documento adjunto'}</Text><Ionicons name="open-outline" size={18} color={c.muted} />
       </Pressable>}
       {isIssue && <View style={s.issueRow}>
-        <Badge tone={event.resolved_at ? 'success' : 'danger'} icon={event.resolved_at ? 'checkmark-circle' : 'alert-circle'} label={event.resolved_at ? `Resuelta ${relativeDate(dayOf(event.resolved_at)).toLowerCase()}` : 'Abierta'} />
+        <Badge style={{ alignSelf: 'center' }} tone={event.resolved_at ? 'success' : 'danger'} icon={event.resolved_at ? 'checkmark-circle' : 'alert-circle'} label={event.resolved_at ? `Resuelta ${relativeDate(dayOf(event.resolved_at)).toLowerCase()}` : 'Abierta'} />
         <Button label={event.resolved_at ? 'Reabrir' : 'Marcar resuelta'} icon={event.resolved_at ? 'refresh' : 'checkmark'} variant="ghost" onPress={onToggle} style={{ minHeight: 44, paddingHorizontal: space.sm }} accessibilityLabel={event.resolved_at ? `Reabrir incidencia ${event.title}` : `Marcar como resuelta la incidencia ${event.title}`} />
       </View>}
     </Card>

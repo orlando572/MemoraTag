@@ -20,6 +20,7 @@ export default function Home() {
   const [objects, setObjects] = useState<MemoryObject[] | null>(null);
   const [error, setError] = useState(false);
   const [query, setQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
   const [chosenFilter, setFilter] = useState<ObjectFilter>('all');
 
   const reload = useReload(async () => {
@@ -38,7 +39,9 @@ export default function Home() {
   if (!profile.onboardingDone) return <Redirect href="/onboarding" />;
 
   const searching = !!query.trim() || filter === 'issues';
-  const clearSearch = () => { setQuery(''); setFilter('all'); };
+  const clearSearch = () => { setQuery(''); setFilter('all'); setSearchOpen(false); };
+  // Closing the bar also clears the text, so no invisible filter stays applied.
+  const toggleSearch = () => { if (searchOpen) { setQuery(''); setSearchOpen(false); } else setSearchOpen(true); };
 
   const header = <View>
     <View style={s.header}>
@@ -49,14 +52,17 @@ export default function Home() {
           <Text accessibilityRole="header" style={s.title}>Tus objetos</Text>
         </View>
       </View>
-      <IconButton icon="settings-outline" label="Ajustes y ayuda" onPress={() => router.push('/settings')} />
+      <View style={s.actions}>
+        {!!objects?.length && <IconButton icon={searchOpen ? 'close' : 'search'} label={searchOpen ? 'Cerrar búsqueda' : 'Buscar objetos'} onPress={toggleSearch} />}
+        <IconButton icon="settings-outline" label="Ajustes y ayuda" onPress={() => router.push('/settings')} />
+      </View>
     </View>
     {!!objects?.length && <>
-      <View style={s.search}>
+      {searchOpen && <View style={s.search}>
         <Ionicons name="search" size={20} color={c.muted} />
-        <TextInput accessibilityLabel="Buscar objetos" placeholder="Buscar por nombre o descripción" placeholderTextColor={c.muted} value={query} onChangeText={setQuery} style={s.searchInput} returnKeyType="search" />
+        <TextInput accessibilityLabel="Buscar objetos" placeholder="Buscar por nombre o descripción" placeholderTextColor={c.muted} value={query} onChangeText={setQuery} style={s.searchInput} returnKeyType="search" autoFocus />
         {!!query && <Pressable accessibilityRole="button" accessibilityLabel="Borrar búsqueda" hitSlop={12} onPress={() => setQuery('')}><Ionicons name="close-circle" size={22} color={c.muted} /></Pressable>}
-      </View>
+      </View>}
       {withIssues > 0 && <View style={s.filters}>
         <Chip label="Todos" count={objects.length} selected={filter === 'all'} onPress={() => { haptic.tap(); setFilter('all'); }} />
         <Chip label="Con incidencias" icon="alert-circle-outline" color={c.danger} count={withIssues} selected={filter === 'issues'} onPress={() => { haptic.tap(); setFilter('issues'); }} />
@@ -65,20 +71,12 @@ export default function Home() {
     </>}
   </View>;
 
-  const archivedLink = objects !== null && <Pressable accessibilityRole="button" accessibilityLabel="Objetos archivados" accessibilityHint="Abre la lista de objetos archivados" onPress={() => router.push('/archived')}
-    style={({ pressed }) => [s.archived, pressed && { opacity: 0.75 }]}>
-    <Ionicons name="archive-outline" size={20} color={c.muted} />
-    <Text style={s.archivedText}>Objetos archivados</Text>
-    <Ionicons name="chevron-forward" size={20} color={c.muted} />
-  </Pressable>;
-
   return <Screen>
     {objects === null && !error ? <Loading /> : error ? <ErrorMessage text="No se pudieron cargar tus objetos." onRetry={() => { setError(false); setObjects(null); reload(); }} /> :
       <FlatList
         data={visible}
         keyExtractor={(item) => item.id}
         ListHeaderComponent={header}
-        ListFooterComponent={archivedLink || null}
         contentContainerStyle={s.list}
         keyboardShouldPersistTaps="handled"
         ItemSeparatorComponent={() => <View style={{ height: space.md }} />}
@@ -130,6 +128,7 @@ const makeStyles = (c: Palette) => ({
   brand: { flexDirection: 'row', alignItems: 'center', gap: space.md, flex: 1 },
   logo: { width: 46, height: 46 },
   headerText: { flex: 1 },
+  actions: { flexDirection: 'row', gap: space.sm },
   // Blue means action (design system), so the greeting is plain secondary text.
   greeting: { ...type.label, color: c.muted },
   title: { ...type.title, color: c.ink },
@@ -137,6 +136,4 @@ const makeStyles = (c: Palette) => ({
   searchInput: { flex: 1, ...type.body, color: c.ink, paddingVertical: space.sm },
   filters: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginBottom: space.lg },
   results: { ...type.secondary, color: c.muted, marginTop: -space.sm, marginBottom: space.md },
-  archived: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.lg, backgroundColor: c.surface, borderRadius: radius.md, borderWidth: 1, borderColor: c.line, marginTop: space.xl },
-  archivedText: { ...type.label, color: c.muted, flex: 1 },
 } as const);

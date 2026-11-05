@@ -36,19 +36,14 @@ export default function QrScreen() {
     <ScrollView contentContainerStyle={s.content}>
       {/* The QR is always black on white, also in dark mode, so every scanner can read it. */}
       <View style={s.label} accessible accessibilityRole="image" accessibilityLabel={`Código QR de ${object.name}`}>
+        <Text style={s.labelBrand}>MemoraTag</Text>
         <QRCode value={objectLink(object.id)} size={232} quietZone={16} color="#000000" backgroundColor="#FFFFFF" getRef={(ref) => { qrRef.current = ref; }} />
         <Text style={s.labelName} numberOfLines={2}>{object.name}</Text>
-        <Text style={s.labelBrand}>MemoraTag</Text>
       </View>
 
       <View style={s.steps}>
-        <Step n={1} icon="print-outline" text="Compártelo para imprimirlo o guardarlo como imagen." />
-        <Step n={2} icon="pricetag-outline" text="Pégalo en el objeto, en un lugar visible y plano." />
-      </View>
-
-      <View style={s.notice}>
-        <Ionicons name="lock-closed-outline" size={18} color={s.noticeText.color} />
-        <Text style={s.noticeText}>El código solo contiene un enlace, no la historia.</Text>
+        <Step n={1} icon="print-outline" text="Compártelo o imprímelo." />
+        <Step n={2} icon="pricetag-outline" text="Pégalo en el objeto." />
       </View>
     </ScrollView>
     <Footer><Button label={sharing ? 'Preparando imagen…' : 'Compartir o imprimir'} icon="share-outline" loading={sharing} onPress={() => void share()} style={{ flex: 1 }} /></Footer>
@@ -67,12 +62,10 @@ const makeStyles = (c: Palette) => ({
   content: { paddingHorizontal: space.xl, paddingTop: space.sm, paddingBottom: space.xxxl, gap: space.xl },
   label: { alignSelf: 'center', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: radius.xl, paddingTop: space.lg, paddingBottom: space.xl, paddingHorizontal: space.lg, borderWidth: 1, borderColor: c.line },
   labelName: { ...type.card, color: '#1F1B16', marginTop: space.sm, textAlign: 'center', maxWidth: 250 },
-  labelBrand: { ...type.mini, color: '#2F4BB8', letterSpacing: 1, textTransform: 'uppercase', marginTop: 2 },
+  labelBrand: { ...type.mini, color: '#2F4BB8', letterSpacing: 1, textTransform: 'uppercase', marginBottom: space.sm },
   steps: { gap: space.md },
   step: { flexDirection: 'row', alignItems: 'center', gap: space.md },
   stepIcon: { width: 40, height: 40, borderRadius: 13, backgroundColor: c.primarySoft, alignItems: 'center', justifyContent: 'center' },
   stepIconText: { color: c.onPrimarySoft },
   stepText: { ...type.body, color: c.ink, flex: 1 },
-  notice: { flexDirection: 'row', gap: space.sm, alignItems: 'flex-start' },
-  noticeText: { ...type.secondary, color: c.muted, flex: 1 },
 } as const);
