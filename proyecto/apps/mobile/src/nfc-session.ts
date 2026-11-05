@@ -12,6 +12,8 @@ export interface NfcAdapter {
   read(): Promise<NfcRecord[]>;
   cancel(): Promise<void>;
 }
+/** Maximum time to wait for a tag to come close. A write already in progress is never cut short. */
+export const NFC_TIMEOUT_MS = 12_000;
 export type NfcPhase = 'checking' | 'waiting' | 'reading' | 'checkingTag' | 'writing' | 'verifying';
 
 export class NfcSession {
@@ -21,7 +23,25 @@ export class NfcSession {
   private inFlightWrite = false;
   private adapter: NfcAdapter;
   private onPhase?: (phase: NfcPhase) => void;
-  constructor(adapter: NfcAdapter, onPhase?: (phase: NfcPhase) => void) { this.adapter = adapter; this.onPhase = onPhase; }
+  private timeoutMs: number;
+  constructor(adapter: NfcAdapter, onPhase?: (phase: NfcPhase) => void, timeoutMs = NFC_TIMEOUT_MS) { this.adapter = adapter; this.onPhase = onPhase; this.timeoutMs = timeoutMs; }
+
+  /** Waits for a tag, giving up with TIMEOUT after `timeoutMs`. */
+  private async waitForTag() {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const request = this.adapter.request();
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        // Reject first so the race settles with TIMEOUT; cancelling the native request then makes
+        // `request` reject too, and that rejection is ignored.
+        request.catch(() => {});
+        reject(new Error('TIMEOUT'));
+        void this.adapter.cancel().catch(() => {});
+      }, this.timeoutMs);
+    });
+    try { await Promise.race([request, timeout]); }
+    finally { clearTimeout(timer); }
+  }
 
   async cancel() {
     if (this.inFlightWrite) return false;
@@ -46,7 +66,7 @@ export class NfcSession {
       if (this.cancelled) throw new Error('CANCELLED');
       this.requesting = true;
       this.onPhase?.('waiting');
-      await this.adapter.request();
+      await this.waitForTag();
       if (this.cancelled) throw new Error('CANCELLED');
       const tag = await this.adapter.tag();
       if (this.cancelled) throw new Error('CANCELLED');

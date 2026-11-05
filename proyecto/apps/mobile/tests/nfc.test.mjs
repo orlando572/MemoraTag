@@ -110,3 +110,11 @@ test('cancelar una solicitud pendiente no escribe y libera la sesión', async ()
   assert.ok(!device.calls.includes('write'));
   assert.ok(device.calls.includes('cancel'));
 });
+
+test('deja de esperar la etiqueta tras el tiempo máximo y libera la sesión', async () => {
+  let rejectRequest;
+  const device = adapter({ request: () => new Promise((_, reject) => { rejectRequest = reject; }), cancel: async () => { device.calls.push('cancel'); rejectRequest?.(new Error('native cancelled')); } });
+  await assert.rejects(new NfcSession(device, undefined, 50).run('write', value), /TIMEOUT/);
+  assert.ok(!device.calls.includes('write'));
+  assert.ok(device.calls.includes('cancel'));
+});
