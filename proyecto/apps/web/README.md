@@ -47,3 +47,7 @@ Scripts: `dev`, `build`, `start`, `lint`, `typecheck`. Necesita el backend (`app
 
 - Previsualización de PDF dentro de la página y progreso de subida por bytes.
 - Selector de varias empresas, recuperación de contraseña, invitaciones a personas sin cuenta.
+
+## Créditos
+
+- Foto del login (`public/login/almacen.webp`, recortada y convertida a WebP): «Tall blue metal shelving units filled with stacked boxes in a warehouse aisle», de Arno Senoner, [Unsplash](https://unsplash.com/photos/yqu6tJkSQ_k), bajo la [Unsplash License](https://unsplash.com/license). El crédito también aparece en la propia página.
