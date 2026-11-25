@@ -33,7 +33,7 @@ function WaitForAdmin({ email }: { email: string }) {
 
   // After the refresh, if this screen is still here the user has no company yet.
   useEffect(() => {
-    if (wasPending.current && !pending) toast('Todavía no te han añadido');
+    if (wasPending.current && !pending) toast('Todavía no te han añadido', 'warning');
     wasPending.current = pending;
   }, [pending, toast]);
 
