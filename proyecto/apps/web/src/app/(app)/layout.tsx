@@ -2,7 +2,7 @@ import { TriangleAlert } from 'lucide-react';
 import { Brand } from '@/components/brand';
 import { Button } from '@/components/ui/button';
 import { SignOutButton } from '@/features/auth/sign-out-button';
-import { CreateOrganization } from '@/features/organization/create-organization';
+import { Welcome } from '@/features/organization/welcome';
 import { getAppContext } from '@/features/organization/session';
 import { AppShell } from '@/features/shell/app-shell';
 
@@ -30,7 +30,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     );
   }
 
-  if (!ctx.organization) return <CreateOrganization />;
+  if (!ctx.organization) return <Welcome email={ctx.email} />;
 
   return (
     <AppShell organizationName={ctx.organization.name} role={ctx.role} email={ctx.email}>

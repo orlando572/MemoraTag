@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
 import { SignOutButton } from '@/features/auth/sign-out-button';
+import { CompanyCard } from '@/features/organization/company-card';
 import { roleInfo } from '@/features/organization/roles';
 import { getAppContext } from '@/features/organization/session';
 import { ThemeToggle } from '@/features/theme/theme-toggle';
@@ -24,16 +25,14 @@ export default async function AjustesPage() {
           </div>
         </Card>
 
+        {account?.organization ? <CompanyCard orgId={account.organization.id} name={account.organization.name} isAdmin={account.role === 'admin'} /> : null}
+
         <Card>
           <CardTitle>Tu cuenta</CardTitle>
           <dl className="mt-6 grid gap-5 sm:grid-cols-2">
             <div>
               <dt className="text-sm text-muted-foreground">Correo</dt>
               <dd className="mt-1 break-all font-semibold">{account?.email || '—'}</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-muted-foreground">Empresa</dt>
-              <dd className="mt-1 font-semibold">{account?.organization?.name ?? '—'}</dd>
             </div>
             <div>
               <dt className="text-sm text-muted-foreground">Rol</dt>

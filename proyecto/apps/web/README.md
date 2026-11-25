@@ -46,6 +46,9 @@ Scripts: `dev`, `build`, `start`, `lint`, `typecheck`. Necesita el backend (`app
 - Resumen: las tarjetas enlazan al inventario (total y por estado); «Incidencias abiertas» salta a la actividad reciente.
 - Inventario: contador de objetos, «Limpiar filtros» y selector Activos/Archivados (`?archived=1`, usa `archived=true` del backend).
 - Ficha: formulario «Registrar evento» plegable, autor y hora en cada evento («Tú» o el correo si el backend lo envía), filtro de la historia por tipo, aviso de objeto archivado y «Restaurar» para admin (`POST /objects/:id/restore`).
+- NFC: indicador con icono (vinculada o sin etiqueta, con tooltip accesible) en la ficha y en el inventario, y filtro «NFC: todas / con / sin» (`?nfc=with|without`). Usa `nfc_written_at` y el filtro `nfc` del backend.
+- Ajustes: tarjeta «Empresa» con edición del nombre para admin (`PATCH /organizations/:orgId`, 1 a 80 caracteres).
+- Bienvenida sin empresa: dos caminos («Crear mi empresa» o «Me van a añadir», con copia del correo y «Ya me añadieron»), guardados en la URL (`?paso=crear|unirme`).
 
 ## Previsto (no implementado)
 

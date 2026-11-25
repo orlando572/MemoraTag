@@ -16,7 +16,8 @@ export default async function InventarioPage({ searchParams }: { searchParams: P
   const orgId = ctx.organization.id;
   const sp = await searchParams;
   const status = InventoryStatusSchema.safeParse(first(sp.status));
-  const filters = { q: first(sp.q), status: status.success ? status.data : undefined, location: first(sp.location), category: first(sp.category) };
+  const nfc = first(sp.nfc) === 'with' || first(sp.nfc) === 'without' ? (first(sp.nfc) as 'with' | 'without') : undefined;
+  const filters = { nfc, q: first(sp.q), status: status.success ? status.data : undefined, location: first(sp.location), category: first(sp.category) };
   const archived = first(sp.archived) === '1';
   const hasFilters = Object.values(filters).some(Boolean);
 

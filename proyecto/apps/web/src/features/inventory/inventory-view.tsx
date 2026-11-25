@@ -1,6 +1,6 @@
 'use client';
 
-import type { InventoryObject, InventoryStatus } from '@memoratag/contracts';
+import type { InventoryStatus } from '@memoratag/contracts';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
@@ -11,16 +11,17 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/ui/page-header';
 import { Select } from '@/components/ui/select';
-import { errorMessage } from '@/lib/api';
+import { errorMessage, type WebObject } from '@/lib/api';
 import { browserApi } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
+import { NfcIndicator } from './nfc-indicator';
 import { ObjectAvatar } from './object-avatar';
 import { ObjectFormDialog } from './object-form-dialog';
 import { inventoryStatuses } from './status';
 import { StatusChip } from './status-chip';
 
 type SortKey = 'name' | 'internal_code' | 'category' | 'location' | 'assignee' | 'status';
-type Props = { orgId: string; isAdmin: boolean; objects: InventoryObject[]; allObjects: InventoryObject[]; openNew: boolean; archived: boolean };
+type Props = { orgId: string; isAdmin: boolean; objects: WebObject[]; allObjects: WebObject[]; openNew: boolean; archived: boolean };
 
 const columns: { key: SortKey; label: string }[] = [
   { key: 'name', label: 'Nombre' },
@@ -42,7 +43,8 @@ export function InventoryView({ orgId, isAdmin, objects, allObjects, openNew, ar
   const status = params.get('status') ?? '';
   const location = params.get('location') ?? '';
   const category = params.get('category') ?? '';
-  const filtering = Boolean(urlQuery || status || location || category);
+  const nfc = params.get('nfc') ?? '';
+  const filtering = Boolean(urlQuery || status || location || category || nfc);
 
   const [search, setSearch] = useState(urlQuery);
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'name', dir: 'asc' });
@@ -118,7 +120,7 @@ export function InventoryView({ orgId, isAdmin, objects, allObjects, openNew, ar
 
   const switchTo = (value: boolean) => {
     setSearch('');
-    update({ archived: value ? '1' : '', q: '', status: '', location: '', category: '' });
+    update({ archived: value ? '1' : '', q: '', status: '', location: '', category: '', nfc: '' });
   };
 
   if (allObjects.length === 0 && archived) {
@@ -203,8 +205,8 @@ export function InventoryView({ orgId, isAdmin, objects, allObjects, openNew, ar
       ) : null}
       {exportError ? <ErrorAlert className="mb-6">{exportError}</ErrorAlert> : null}
 
-      <div className="mb-6 grid gap-3 md:grid-cols-[minmax(0,1fr)_repeat(3,minmax(0,200px))]">
-        <div className="relative">
+      <div className="mb-6 grid grid-cols-2 gap-3 xl:grid-cols-[minmax(0,1fr)_repeat(4,minmax(0,160px))]">
+        <div className="relative col-span-2 xl:col-span-1">
           <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
           <Input type="search" aria-label="Buscar objetos" placeholder="Buscar por nombre, código…" className="pl-11" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
@@ -221,6 +223,11 @@ export function InventoryView({ orgId, isAdmin, objects, allObjects, openNew, ar
           {locations.map((item) => (
             <option key={item}>{item}</option>
           ))}
+        </Select>
+        <Select aria-label="Filtrar por NFC" value={nfc} onChange={(e) => update({ nfc: e.target.value })}>
+          <option value="">NFC: todas</option>
+          <option value="with">NFC: con etiqueta</option>
+          <option value="without">NFC: sin etiqueta</option>
         </Select>
         <Select aria-label="Filtrar por categoría" value={category} onChange={(e) => update({ category: e.target.value })}>
           <option value="">Categoría: todas</option>
@@ -240,7 +247,7 @@ export function InventoryView({ orgId, isAdmin, objects, allObjects, openNew, ar
             size="sm"
             onClick={() => {
               setSearch('');
-              update({ q: '', status: '', location: '', category: '' });
+              update({ q: '', status: '', location: '', category: '', nfc: '' });
             }}
           >
             <FilterX aria-hidden />
@@ -291,10 +298,13 @@ export function InventoryView({ orgId, isAdmin, objects, allObjects, openNew, ar
                 {rows.map((o) => (
                   <tr key={o.id} className="border-b border-border last:border-0 hover:bg-muted/50">
                     <td className="px-5 py-3">
-                      <Link href={`/inventario/${o.id}`} className="flex items-center gap-3 rounded-sm font-semibold hover:text-primary">
-                        <ObjectAvatar color={o.color} />
-                        <span>{o.name}</span>
-                      </Link>
+                      <div className="flex items-center gap-3">
+                        <Link href={`/inventario/${o.id}`} className="flex items-center gap-3 rounded-sm font-semibold hover:text-primary">
+                          <ObjectAvatar color={o.color} />
+                          <span>{o.name}</span>
+                        </Link>
+                        <NfcIndicator writtenAt={o.nfc_written_at} />
+                      </div>
                     </td>
                     <td className="px-5 py-3 text-muted-foreground">{o.internal_code || '—'}</td>
                     <td className="px-5 py-3 text-muted-foreground">{o.category || '—'}</td>
@@ -316,7 +326,10 @@ export function InventoryView({ orgId, isAdmin, objects, allObjects, openNew, ar
                   <div className="flex items-start gap-3">
                     <ObjectAvatar color={o.color} />
                     <div className="min-w-0 flex-1">
-                      <p className="font-semibold">{o.name}</p>
+                      <p className="flex items-center gap-2 font-semibold">
+                        <span className="min-w-0">{o.name}</span>
+                        <NfcIndicator writtenAt={o.nfc_written_at} focusable={false} />
+                      </p>
                       <p className="mt-0.5 text-sm text-muted-foreground">{[o.internal_code, o.category, o.location].filter(Boolean).join(' · ') || 'Sin más datos'}</p>
                       {o.assignee ? <p className="text-sm text-muted-foreground">Responsable: {o.assignee}</p> : null}
                     </div>
