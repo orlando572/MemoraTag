@@ -14,12 +14,16 @@ type Company = {
   org: Organization | null;
   /** True while the organization is being fetched after sign-in. */
   orgLoading: boolean;
+  /** «Modo empresa»: only on with a session and an organization; persisted and switched off on sign-out. */
+  companyMode: boolean;
+  setCompanyMode: (on: boolean) => void;
   signIn: (email: string, password: string) => Promise<string | null>;
   signOut: () => Promise<void>;
   reloadOrg: () => Promise<void>;
 };
 
 const orgKey = 'memoratag.company.org';
+const modeKey = 'memoratag.company.mode';
 const Context = createContext<Company | null>(null);
 
 async function readCachedOrg(): Promise<Organization | null> {
@@ -31,6 +35,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
   const [email, setEmail] = useState<string | null>(null);
   const [org, setOrg] = useState<Organization | null>(null);
   const [orgLoading, setOrgLoading] = useState(false);
+  const [modeStored, setModeStored] = useState(false);
 
   const reloadOrg = useCallback(async () => {
     setOrgLoading(true);
@@ -52,14 +57,14 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       const { data } = await supabase.auth.getSession().catch(() => ({ data: { session: null } }));
       if (!alive) return;
       setEmail(data.session?.user.email ?? null);
-      if (data.session) { setOrg(await readCachedOrg()); setState('signedIn'); void reloadOrg(); }
+      if (data.session) { setOrg(await readCachedOrg()); setModeStored(await SecureStore.getItemAsync(modeKey).then((v) => v === '1').catch(() => false)); setState('signedIn'); void reloadOrg(); }
       else setState('signedOut');
     })();
     // Skip INITIAL_SESSION (handled above); only react to real changes.
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'INITIAL_SESSION') return;
       setEmail(session?.user.email ?? null);
-      if (!session) { setOrg(null); setState('signedOut'); }
+      if (!session) { setOrg(null); setModeStored(false); void SecureStore.deleteItemAsync(modeKey).catch(() => {}); setState('signedOut'); }
       else if (event === 'SIGNED_IN') setState('signedIn');
     });
     return () => { alive = false; sub.subscription.unsubscribe(); };
@@ -79,10 +84,18 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => {
     await supabase?.auth.signOut().catch(() => {});
     await SecureStore.deleteItemAsync(orgKey).catch(() => {});
+    await SecureStore.deleteItemAsync(modeKey).catch(() => {});
+    setModeStored(false);
     setOrg(null); setEmail(null); setState('signedOut');
   }, []);
 
-  const value = useMemo(() => ({ configured: companyConfigured, state, email, org, orgLoading, signIn, signOut, reloadOrg }), [state, email, org, orgLoading, signIn, signOut, reloadOrg]);
+  const companyMode = modeStored && state === 'signedIn' && !!org;
+  const setCompanyMode = useCallback((on: boolean) => {
+    setModeStored(on);
+    void (on ? SecureStore.setItemAsync(modeKey, '1') : SecureStore.deleteItemAsync(modeKey)).catch(() => {});
+  }, []);
+
+  const value = useMemo(() => ({ configured: companyConfigured, state, email, org, orgLoading, companyMode, setCompanyMode, signIn, signOut, reloadOrg }), [state, email, org, orgLoading, companyMode, setCompanyMode, signIn, signOut, reloadOrg]);
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
 

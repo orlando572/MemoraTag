@@ -1,5 +1,6 @@
-import { EventFileSchema, InventoryObjectSchema, ObjectEventSchema, OrganizationSchema, type ChangeStatusInput, type CreateEventInput } from '@memoratag/contracts';
+import { EventFileSchema, InventoryObjectSchema, OrganizationSummarySchema, ObjectEventSchema, OrganizationSchema, type ChangeStatusInput, type CreateEventInput } from '@memoratag/contracts';
 import { CompanyError, kindFromStatus } from './errors';
+import { buildQuery, type CompanyFilters } from './filters';
 import { apiUrl, supabase } from './supabase';
 import { lookupOutcome, type LookupOutcome } from './scan';
 
@@ -33,8 +34,10 @@ async function request<T>(path: string, schema: Schema<T>, init?: { method?: str
 
 export const listOrganizations = () => request('/organizations', OrganizationSchema.array());
 
-export const listObjects = (orgId: string, q: string) =>
-  request(`/organizations/${orgId}/objects${q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ''}`, InventoryObjectSchema.array());
+export const listObjects = (orgId: string, filters: CompanyFilters) =>
+  request(`/organizations/${orgId}/objects${buildQuery(filters)}`, InventoryObjectSchema.array());
+
+export const getSummary = (orgId: string) => request(`/organizations/${orgId}/summary`, OrganizationSummarySchema);
 
 export const getObject = (id: string) => request(`/objects/${id}`, InventoryObjectSchema);
 

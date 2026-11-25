@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, Switch, Text, View } from 'react-native';
 import { Badge, Button, TextField } from '../ui/components';
 import { useFeedback } from '../ui/feedback/FeedbackProvider';
 import { useStyles, useTheme } from '../ui/theme';
@@ -35,6 +35,14 @@ export function AccountSection() {
             <Text style={s.hint}>No se pudo cargar tu empresa. Necesitas conexión, o tu cuenta aún no pertenece a ninguna.</Text>
             <Button label="Reintentar" icon="refresh" variant="ghost" onPress={() => void company.reloadOrg()} />
           </>}
+      <View style={s.row}>
+        <View style={{ flex: 1 }}>
+          <Text style={s.label}>Modo empresa</Text>
+          <Text style={s.hint}>{company.org ? 'Muestra el inventario de la empresa al abrir la app. Tus objetos personales no se tocan.' : 'Disponible cuando tu cuenta pertenezca a una empresa.'}</Text>
+        </View>
+        <Switch accessibilityLabel="Modo empresa" accessibilityState={{ checked: company.companyMode, disabled: !company.org }} disabled={!company.org} value={company.companyMode} onValueChange={company.setCompanyMode}
+          trackColor={{ false: c.inputBorder, true: c.primary }} thumbColor="#FFFFFF" />
+      </View>
       <Button label="Cerrar sesión" icon="log-out-outline" variant="secondary" onPress={() => Alert.alert('¿Cerrar la sesión de empresa?', 'Tus objetos personales no se tocan. Podrás volver a iniciar sesión cuando quieras.', [
         { text: 'Cancelar', style: 'cancel' },
         { text: 'Cerrar sesión', style: 'destructive', onPress: () => void company.signOut() },
