@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { errorMessage } from '@/lib/api';
 import { browserApi } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/features/toast/toast';
 import { objectColorIndex, objectColors } from './colors';
 import { inventoryStatuses } from './status';
 
@@ -34,6 +35,7 @@ export function ObjectFormDialog({ open, onOpenChange, orgId, object }: Props) {
 
 function ObjectForm({ orgId, object, onDone }: { orgId: string; object?: InventoryObject; onDone: () => void }) {
   const router = useRouter();
+  const toast = useToast();
   const editing = Boolean(object);
   const [name, setName] = useState(object?.name ?? '');
   const [description, setDescription] = useState(object?.description ?? '');
@@ -66,6 +68,7 @@ function ObjectForm({ orgId, object, onDone }: { orgId: string; object?: Invento
         const created = await api.objects.create(orgId, { ...fields, status });
         router.push(`/inventario/${created.id}`);
       }
+      toast(object ? 'Cambios guardados' : 'Objeto creado');
       router.refresh();
       onDone();
     } catch (failure) {

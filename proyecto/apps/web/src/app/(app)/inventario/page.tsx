@@ -17,12 +17,13 @@ export default async function InventarioPage({ searchParams }: { searchParams: P
   const sp = await searchParams;
   const status = InventoryStatusSchema.safeParse(first(sp.status));
   const filters = { q: first(sp.q), status: status.success ? status.data : undefined, location: first(sp.location), category: first(sp.category) };
+  const archived = first(sp.archived) === '1';
   const hasFilters = Object.values(filters).some(Boolean);
 
   const api = await serverApi();
   // The unfiltered list feeds the filter options and tells "empty inventory" from "no results".
-  const allObjects = await api.objects.list(orgId);
-  const objects = hasFilters ? await api.objects.list(orgId, filters) : allObjects;
+  const allObjects = await api.objects.list(orgId, archived ? { archived: true } : undefined);
+  const objects = hasFilters ? await api.objects.list(orgId, { ...filters, ...(archived ? { archived: true } : {}) }) : allObjects;
 
-  return <InventoryView orgId={orgId} isAdmin={ctx.role === 'admin'} objects={objects} allObjects={allObjects} openNew={first(sp.nuevo) === '1'} />;
+  return <InventoryView orgId={orgId} isAdmin={ctx.role === 'admin'} objects={objects} allObjects={allObjects} openNew={first(sp.nuevo) === '1'} archived={archived} />;
 }

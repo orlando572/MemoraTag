@@ -42,6 +42,10 @@ Scripts: `dev`, `build`, `start`, `lint`, `typecheck`. Necesita el backend (`app
 - Adjuntos de eventos: fotos (JPG, PNG, WEBP) y documentos (PDF, Excel) de hasta 5 MB. Subida múltiple con validación en cliente, estado por archivo y reintento; miniaturas con visor y URL firmada renovable; documentos con botón «Abrir»; «Quitar archivo» solo para admin.
 - Miembros (admin): alta por correo, cambio de rol y baja, con protección del último admin.
 - Resumen: indicadores, incidencias abiertas y actividad reciente.
+- Avisos (toasts) propios y accesibles tras las acciones de inventario, eventos, archivos y miembros; esqueletos de carga en las pantallas principales; páginas 404 con la marca (global y de objeto); título de pestaña con el nombre del objeto; redirección de `/favicon.ico` al icono SVG.
+- Resumen: las tarjetas enlazan al inventario (total y por estado); «Incidencias abiertas» salta a la actividad reciente.
+- Inventario: contador de objetos, «Limpiar filtros» y selector Activos/Archivados (`?archived=1`, usa `archived=true` del backend).
+- Ficha: formulario «Registrar evento» plegable, autor y hora en cada evento («Tú» o el correo si el backend lo envía), filtro de la historia por tipo, aviso de objeto archivado y «Restaurar» para admin (`POST /objects/:id/restore`).
 
 ## Previsto (no implementado)
 

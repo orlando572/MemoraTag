@@ -16,15 +16,15 @@ import { cn } from '@/lib/utils';
 
 export const metadata: Metadata = { title: 'Resumen' };
 
-function Indicator({ icon: Icon, label, value, tone = 'neutral' }: { icon: LucideIcon; label: string; value: number; tone?: Tone }) {
+function Indicator({ icon: Icon, label, value, tone = 'neutral', href }: { icon: LucideIcon; label: string; value: number; tone?: Tone; href: string }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-6">
+    <Link href={href} className="block rounded-xl border border-border bg-card p-6 transition-colors hover:bg-muted/60">
       <span className={cn('flex size-10 items-center justify-center rounded-md', toneClasses[tone])}>
         <Icon className="size-5" aria-hidden />
       </span>
       <p className="mt-5 font-heading text-5xl font-semibold tracking-[-0.03em]">{value}</p>
       <p className="mt-1 text-sm font-semibold text-muted-foreground">{label}</p>
-    </div>
+    </Link>
   );
 }
 
@@ -64,14 +64,14 @@ export default async function ResumenPage() {
     <>
       <PageHeader title="Resumen" description={description} />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <Indicator icon={Boxes} label="Objetos en total" value={summary.total} />
-        <Indicator icon={inventoryStatuses.in_use.icon} label={inventoryStatuses.in_use.label} value={summary.by_status.in_use ?? 0} tone="success" />
-        <Indicator icon={inventoryStatuses.in_repair.icon} label={inventoryStatuses.in_repair.label} value={summary.by_status.in_repair ?? 0} tone="warning" />
-        <Indicator icon={inventoryStatuses.retired.icon} label={inventoryStatuses.retired.label} value={summary.by_status.retired ?? 0} />
-        <Indicator icon={AlertCircle} label="Incidencias abiertas" value={summary.open_incidents} tone={summary.open_incidents > 0 ? 'danger' : 'neutral'} />
+        <Indicator icon={Boxes} label="Objetos en total" value={summary.total} href="/inventario" />
+        <Indicator icon={inventoryStatuses.in_use.icon} label={inventoryStatuses.in_use.label} value={summary.by_status.in_use ?? 0} tone="success" href="/inventario?status=in_use" />
+        <Indicator icon={inventoryStatuses.in_repair.icon} label={inventoryStatuses.in_repair.label} value={summary.by_status.in_repair ?? 0} tone="warning" href="/inventario?status=in_repair" />
+        <Indicator icon={inventoryStatuses.retired.icon} label={inventoryStatuses.retired.label} value={summary.by_status.retired ?? 0} href="/inventario?status=retired" />
+        <Indicator icon={AlertCircle} label="Incidencias abiertas" value={summary.open_incidents} tone={summary.open_incidents > 0 ? 'danger' : 'neutral'} href="#actividad" />
       </div>
 
-      <Card className="mt-10">
+      <Card id="actividad" className="mt-10 scroll-mt-8">
         <CardTitle>Actividad reciente</CardTitle>
         <CardDescription>Lo último que ha registrado tu equipo.</CardDescription>
         {summary.recent_events.length === 0 ? (

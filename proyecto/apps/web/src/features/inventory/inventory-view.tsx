@@ -4,7 +4,7 @@ import type { InventoryObject, InventoryStatus } from '@memoratag/contracts';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowDown, ArrowUp, ArrowUpDown, Boxes, Download, Plus, Search, SearchX } from 'lucide-react';
+import { Archive, ArrowDown, ArrowUp, ArrowUpDown, Boxes, Download, FilterX, Plus, Search, SearchX } from 'lucide-react';
 import { ErrorAlert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -20,7 +20,7 @@ import { inventoryStatuses } from './status';
 import { StatusChip } from './status-chip';
 
 type SortKey = 'name' | 'internal_code' | 'category' | 'location' | 'assignee' | 'status';
-type Props = { orgId: string; isAdmin: boolean; objects: InventoryObject[]; allObjects: InventoryObject[]; openNew: boolean };
+type Props = { orgId: string; isAdmin: boolean; objects: InventoryObject[]; allObjects: InventoryObject[]; openNew: boolean; archived: boolean };
 
 const columns: { key: SortKey; label: string }[] = [
   { key: 'name', label: 'Nombre' },
@@ -34,7 +34,7 @@ const columns: { key: SortKey; label: string }[] = [
 const unique = (values: (string | null | undefined)[]) =>
   [...new Set(values.filter((v): v is string => Boolean(v)))].sort((a, b) => a.localeCompare(b, 'es'));
 
-export function InventoryView({ orgId, isAdmin, objects, allObjects, openNew }: Props) {
+export function InventoryView({ orgId, isAdmin, objects, allObjects, openNew, archived }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -98,14 +98,14 @@ export function InventoryView({ orgId, isAdmin, objects, allObjects, openNew }: 
     }
   }
 
-  const newButton = isAdmin ? (
+  const newButton = isAdmin && !archived ? (
     <Button onClick={() => setCreating(true)}>
       <Plus aria-hidden />
       Nuevo objeto
     </Button>
   ) : null;
 
-  const dialog = isAdmin ? (
+  const dialog = isAdmin && !archived ? (
     <ObjectFormDialog
       open={creating}
       onOpenChange={(open) => {
@@ -115,6 +115,24 @@ export function InventoryView({ orgId, isAdmin, objects, allObjects, openNew }: 
       orgId={orgId}
     />
   ) : null;
+
+  const switchTo = (value: boolean) => {
+    setSearch('');
+    update({ archived: value ? '1' : '', q: '', status: '', location: '', category: '' });
+  };
+
+  if (allObjects.length === 0 && archived) {
+    return (
+      <>
+        <PageHeader title="Inventario" description="Objetos archivados de tu empresa." />
+        <EmptyState icon={Archive} title="No hay objetos archivados" description="Cuando un administrador archive un objeto, lo encontrarás aquí.">
+          <Button variant="secondary" onClick={() => switchTo(false)}>
+            Ver objetos activos
+          </Button>
+        </EmptyState>
+      </>
+    );
+  }
 
   if (allObjects.length === 0) {
     return (
@@ -126,6 +144,11 @@ export function InventoryView({ orgId, isAdmin, objects, allObjects, openNew }: 
           description={isAdmin ? 'Crea el primero y tu equipo podrá consultarlo, cambiar su estado y registrar eventos.' : 'Cuando un administrador añada objetos, los verás aquí.'}
         >
           {newButton}
+          <div className="mt-4">
+            <Button variant="ghost" size="sm" onClick={() => switchTo(true)}>
+              Ver archivados
+            </Button>
+          </div>
         </EmptyState>
         {dialog}
       </>
@@ -139,17 +162,45 @@ export function InventoryView({ orgId, isAdmin, objects, allObjects, openNew }: 
     <>
       <PageHeader
         title="Inventario"
-        description="Todo lo que tu empresa cuida, con su historia."
+        description={archived ? 'Objetos archivados de tu empresa.' : 'Todo lo que tu empresa cuida, con su historia.'}
         actions={
-          <div className="flex flex-wrap gap-3">
-            <Button variant="secondary" onClick={exportCsv} disabled={exporting}>
-              <Download aria-hidden />
-              {exporting ? 'Exportando…' : 'Exportar CSV'}
-            </Button>
-            {newButton}
-          </div>
+          archived ? undefined : (
+            <div className="flex flex-wrap gap-3">
+              <Button variant="secondary" onClick={exportCsv} disabled={exporting}>
+                <Download aria-hidden />
+                {exporting ? 'Exportando…' : 'Exportar CSV'}
+              </Button>
+              {newButton}
+            </div>
+          )
         }
       />
+      <div role="radiogroup" aria-label="Ver objetos" className="mb-6 inline-flex gap-1 rounded-full border border-input bg-surface p-1">
+        {[
+          { value: false, label: 'Activos' },
+          { value: true, label: 'Archivados' },
+        ].map((option) => (
+          <button
+            key={option.label}
+            type="button"
+            role="radio"
+            aria-checked={archived === option.value}
+            onClick={() => archived !== option.value && switchTo(option.value)}
+            className={cn(
+              'inline-flex min-h-10 items-center rounded-full px-5 text-sm font-semibold transition-colors',
+              archived === option.value ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+            )}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+      {archived ? (
+        <div role="status" className="mb-6 flex items-start gap-3 rounded-lg border border-border bg-muted px-5 py-4 text-sm font-semibold">
+          <Archive className="mt-0.5 size-5 shrink-0 text-muted-foreground" aria-hidden />
+          <span>Estás viendo objetos archivados. No se pueden editar; un administrador puede restaurarlos desde su ficha.</span>
+        </div>
+      ) : null}
       {exportError ? <ErrorAlert className="mb-6">{exportError}</ErrorAlert> : null}
 
       <div className="mb-6 grid gap-3 md:grid-cols-[minmax(0,1fr)_repeat(3,minmax(0,200px))]">
@@ -177,6 +228,25 @@ export function InventoryView({ orgId, isAdmin, objects, allObjects, openNew }: 
             <option key={item}>{item}</option>
           ))}
         </Select>
+      </div>
+
+      <div className="mb-4 flex min-h-9 flex-wrap items-center justify-between gap-3">
+        <p className="text-sm font-semibold text-muted-foreground" aria-live="polite">
+          {filtering ? `${objects.length} de ${allObjects.length}` : objects.length} {(filtering ? allObjects.length : objects.length) === 1 ? 'objeto' : 'objetos'}
+        </p>
+        {filtering ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setSearch('');
+              update({ q: '', status: '', location: '', category: '' });
+            }}
+          >
+            <FilterX aria-hidden />
+            Limpiar filtros
+          </Button>
+        ) : null}
       </div>
 
       {rows.length === 0 ? (
