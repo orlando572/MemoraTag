@@ -14,6 +14,8 @@ import { radius, space, type, type Palette } from './ui/tokens';
 import { saveLocalName, type ThemeMode } from './storage';
 import { createBackupDocument } from './backup-export';
 import { applyBackupImport, prepareBackupImport, type PreparedImport } from './backup-import';
+import { AccountSection } from './company/AccountSection';
+import { useCompany } from './company/CompanyProvider';
 import { getStorageUsage } from './storage-usage';
 import { useFeedback } from './ui/feedback/FeedbackProvider';
 
@@ -33,6 +35,7 @@ const nfcMessages: Record<NfcState, string> = {
 
 export function Settings({ name, onNameChange, onImported, onShowTutorial, themeMode, onThemeMode }: { name: string; onNameChange: (name: string) => void; onImported: (name: string | null) => Promise<boolean>; onShowTutorial: () => void; themeMode: ThemeMode; onThemeMode: (mode: ThemeMode) => Promise<void> }) {
   const Alert = useFeedback();
+  const company = useCompany();
   const insets = useSafeAreaInsets();
   const { c } = useTheme();
   const styles = useStyles(makeStyles);
@@ -202,6 +205,8 @@ export function Settings({ name, onNameChange, onImported, onShowTutorial, theme
           <Ionicons name="chevron-forward" size={20} color={c.muted} />
         </Pressable>
       </Section>
+
+      {company.configured && <Section title="Cuenta de empresa" icon="business-outline"><AccountSection /></Section>}
 
       <Section title="Apariencia" icon="color-palette-outline">
         <View accessibilityRole="radiogroup" style={{ gap: space.sm }}>

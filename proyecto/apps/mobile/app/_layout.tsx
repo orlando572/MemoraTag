@@ -6,6 +6,7 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { CompanyProvider } from '../src/company/CompanyProvider';
 import { ProfileProvider, useProfile } from '../src/data/profile';
 import { ErrorMessage, Screen } from '../src/ui/components';
 import { FeedbackProvider } from '../src/ui/feedback/FeedbackProvider';
@@ -17,7 +18,7 @@ void SplashScreen.preventAutoHideAsync().catch(() => {});
 export const unstable_settings = { initialRouteName: 'index' };
 
 export default function Layout() {
-  return <ProfileProvider><FeedbackProvider><RootStack /></FeedbackProvider></ProfileProvider>;
+  return <ProfileProvider><CompanyProvider><FeedbackProvider><RootStack /></FeedbackProvider></CompanyProvider></ProfileProvider>;
 }
 
 function RootStack() {
@@ -49,6 +50,9 @@ function RootStack() {
       <Stack.Screen name="object/[id]/event/[eventId]" options={task} />
       <Stack.Screen name="scan" options={{ animation: 'fade' }} />
       <Stack.Screen name="scan-nfc" />
+      <Stack.Screen name="empresa/index" />
+      <Stack.Screen name="empresa/objeto/[id]/index" />
+      <Stack.Screen name="empresa/objeto/[id]/evento" options={task} />
       <Stack.Screen name="archived" />
       <Stack.Screen name="settings" />
     </Stack.Protected>

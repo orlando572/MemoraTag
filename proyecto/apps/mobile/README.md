@@ -53,9 +53,22 @@ Resumen; el detalle de cada cambio y el principio de IHM en que se basa está en
 
 Los datos locales se pierden si se eliminan los datos de la aplicación o se pierde el dispositivo. La persistencia todavía debe comprobarse en un dispositivo o emulador.
 
+### Cuenta de empresa (implementado, sin validar en dispositivo)
+
+El modo personal no cambia: sigue siendo local, sin cuenta ni conexión. La parte de empresa es opcional, requiere conexión y la gestión completa vive en la web. Solo aparece si están definidas `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY` y `EXPO_PUBLIC_API_URL` (ver `.env.example`; sin ellas se oculta por completo).
+
+- Ajustes → «Cuenta de empresa»: iniciar y cerrar sesión con correo y contraseña (Supabase Auth). La sesión se guarda en `expo-secure-store`. Muestra la empresa (la primera de `GET /organizations`) y el rol. No hay registro: la cuenta se crea en la web.
+- Inicio: una fila «Empresa» (solo con sesión y organización) abre la lista de objetos de la empresa con búsqueda (`?q=`).
+- Ficha del objeto de empresa (`app/empresa/objeto/[id]`): nombre, código, categoría, ubicación, responsable, estado (icono y texto) e historial. Acciones: cambiar estado y registrar evento (nota, incidencia, mantenimiento o resuelto, con fecha opcional). Sin foto ni documento.
+- QR/NFC: si el id existe en el teléfono se abre el objeto local. Si no existe y hay sesión, se consulta `GET /objects/:id`: 200 abre la ficha de empresa y 404 o 403 muestra el mensaje habitual. Sin sesión, nada cambia. Aplica al escáner, a la lectura NFC y a los enlaces abiertos desde fuera de la app.
+- Sin conexión se muestra «Necesitas conexión para ver los objetos de la empresa» con «Reintentar»; un 401 pide iniciar sesión de nuevo y los errores 403, 404 y 409 tienen mensajes en español.
+- Las respuestas se validan con `@memoratag/contracts` (compilar antes con `pnpm --filter @memoratag/contracts build`).
+- Desarrollo con USB: `adb reverse tcp:55321 tcp:55321` y `adb reverse tcp:3100 tcp:3100`. Las URLs locales son http: las compilaciones debug de Expo ya permiten tráfico sin cifrar; una versión release necesita URLs https.
+- Añade la dependencia nativa `expo-secure-store`, por lo que hay que recompilar la app de desarrollo (`react-native-url-polyfill` y `@supabase/supabase-js` son solo JS).
+
 ## Pendiente
 
-Validación de recuperación de respaldos en otro dispositivo, múltiples documentos por evento, validación NFC con hardware, inicio de sesión y creación de cuentas, backend, publicación y sincronización. Las opciones de cuenta son informativas y todavía no autentican ni crean usuarios. QR y NFC usan el enlace de la app `memoratag://objeto/<id>`, no un enlace web público: sin la app y sin los datos en el teléfono no muestran nada. Cuando exista la consulta pública, el formato tendrá que pasar a una URL web. La nueva app aún no sustituye todas las funciones del prototipo.
+Validación de recuperación de respaldos en otro dispositivo, múltiples documentos por evento, validación NFC con hardware, validación de la cuenta de empresa en dispositivo, creación de cuentas desde el móvil, selección entre varias empresas, fotos y documentos en eventos de empresa, trabajo sin conexión y sincronización, publicación. Las opciones de cuenta son informativas y todavía no autentican ni crean usuarios. QR y NFC usan el enlace de la app `memoratag://objeto/<id>`, no un enlace web público: sin la app y sin los datos en el teléfono no muestran nada. Cuando exista la consulta pública, el formato tendrá que pasar a una URL web. La nueva app aún no sustituye todas las funciones del prototipo.
 
 Los respaldos se comparten como JSON sin cifrar y contienen información privada. Cada archivo está limitado a 5 MiB, el total de archivos a 20 MiB y el documento a 32 MiB. La importación valida referencias e integridad, ofrece una decisión global para los conflictos y aplica los cambios en una transacción; no elimina los archivos originales al reemplazar registros. La preparación de la importación también necesita que los datos actuales estén dentro de los límites y que sus archivos estén disponibles. El menú de compartir no informa si la copia se guardó o se canceló, por lo que no se registra una fecha de exportación confirmada. **Todavía falta validar la exportación y la recuperación completa en instalaciones reales; no uses esta función como única copia de datos importantes.**
 

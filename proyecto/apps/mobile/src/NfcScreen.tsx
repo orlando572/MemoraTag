@@ -5,6 +5,9 @@ import { router, useNavigation } from 'expo-router';
 import { AccessibilityInfo, ActivityIndicator, Animated, Easing, Platform, ScrollView, Text, View } from 'react-native';
 import { NfcSession, type NfcAdapter, type NfcPhase } from './nfc-session';
 import { objectLink } from './qr';
+import { lookupCompanyObject } from './company/api';
+import { lookupMessages, scanTarget } from './company/scan';
+import { companyConfigured } from './company/supabase';
 import { findActiveObject, markNfcWritten, objectState, type MemoryObject } from './storage';
 import { useFeedback } from './ui/feedback/FeedbackProvider';
 import { haptic } from './ui/feedback/haptics';
@@ -43,7 +46,7 @@ const messages: Record<string, string> = {
   BUSY: 'Ya hay una operación NFC en curso.',
 };
 
-export function NfcScreen({ object, onFound, onWritten }: { object?: MemoryObject; onFound?: (object: MemoryObject) => void; onWritten?: (at: string) => void }) {
+export function NfcScreen({ object, onFound, onCompanyFound, onWritten }: { object?: MemoryObject; onFound?: (object: MemoryObject) => void; onCompanyFound?: (id: string) => void; onWritten?: (at: string) => void }) {
   const Alert = useFeedback();
   const { c } = useTheme();
   const styles = useStyles(makeStyles);
@@ -123,11 +126,17 @@ export function NfcScreen({ object, onFound, onWritten }: { object?: MemoryObjec
         if (!alive.current) return;
         if (found) { haptic.success(); onFound?.(found); }
         else {
+          const state = await objectState(id).catch(() => 'missing' as const);
+          if (!alive.current) return;
+          // Not stored here: ask the company (only with a company session) before reporting it missing.
+          const target = scanTarget(state === 'archived' ? 'archived' : 'missing', companyConfigured && !!onCompanyFound);
+          const outcome = target === 'company-lookup' ? await lookupCompanyObject(id) : 'missing';
+          if (!alive.current) return;
+          if (outcome === 'company') { haptic.success(); onCompanyFound?.(id); return; }
           haptic.warning();
           setResult('error');
-          const state = await objectState(id).catch(() => 'missing' as const);
-          if (alive.current) setArchivedFound(state === 'archived');
-          if (alive.current) announce(state === 'archived' ? 'Este objeto está archivado. Restáuralo desde «Objetos archivados» para ver su historia.' : 'Este objeto no está guardado en este teléfono. Puede haberse creado en otro dispositivo.');
+          setArchivedFound(state === 'archived');
+          announce(state === 'archived' ? 'Este objeto está archivado. Restáuralo desde «Objetos archivados» para ver su historia.' : outcome === 'missing' ? 'Este objeto no está guardado en este teléfono. Puede haberse creado en otro dispositivo.' : lookupMessages[outcome]);
         }
       }
     } catch (error) {

@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Redirect, router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { FlatList, Image, Pressable, Text, TextInput, View } from 'react-native';
+import { useCompany } from '../src/company/CompanyProvider';
 import { useReload } from '../src/data/bus';
 import { useProfile } from '../src/data/profile';
 import { countWithOpenIssues, effectiveFilter, filterObjects, type ObjectFilter } from '../src/objects/filter';
@@ -15,6 +16,7 @@ import { fonts, radius, space, type, type Palette } from '../src/ui/tokens';
 
 export default function Home() {
   const profile = useProfile();
+  const company = useCompany();
   const { c, dark } = useTheme();
   const s = useStyles(makeStyles);
   const [objects, setObjects] = useState<MemoryObject[] | null>(null);
@@ -57,6 +59,14 @@ export default function Home() {
         <IconButton icon="settings-outline" label="Ajustes y ayuda" onPress={() => router.push('/settings')} />
       </View>
     </View>
+    {company.state === 'signedIn' && !!company.org && <Card onPress={() => router.push('/empresa')} accessibilityLabel={`Empresa: ${company.org.name}`} accessibilityHint="Abre los objetos de la empresa" style={s.company}>
+      <Ionicons name="business-outline" size={22} color={c.primary} />
+      <View style={{ flex: 1 }}>
+        <Text style={s.companyName} numberOfLines={1}>{company.org.name}</Text>
+        <Text style={s.companyHint}>Objetos de la empresa</Text>
+      </View>
+      <Ionicons name="chevron-forward" size={20} color={c.muted} />
+    </Card>}
     {!!objects?.length && <>
       {searchOpen && <View style={s.search}>
         <Ionicons name="search" size={20} color={c.muted} />
@@ -134,6 +144,9 @@ const makeStyles = (c: Palette) => ({
   title: { ...type.title, color: c.ink },
   search: { minHeight: 50, flexDirection: 'row', alignItems: 'center', gap: space.sm, backgroundColor: c.surface, borderRadius: radius.md, borderWidth: 1, borderColor: c.inputBorder, paddingHorizontal: space.md, marginBottom: space.lg },
   searchInput: { flex: 1, ...type.body, color: c.ink, paddingVertical: space.sm },
+  company: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.md, marginBottom: space.lg },
+  companyName: { ...type.label, color: c.ink },
+  companyHint: { ...type.secondary, color: c.muted },
   filters: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginBottom: space.lg },
   results: { ...type.secondary, color: c.muted, marginTop: -space.sm, marginBottom: space.md },
 } as const);
