@@ -2,14 +2,16 @@ import type { InventoryObject, InventoryStatus, ObjectEvent } from '@memoratag/c
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { dayOf, formatDate, relativeDate } from '../ui/format';
-import { Badge, Button, Card, EmptyState, Footer, Loading, NavBar, Screen } from '../ui/components';
+import { Badge, Card, EmptyState, Loading, NavBar, Screen } from '../ui/components';
+import { haptic } from '../ui/feedback/haptics';
 import { useFeedback } from '../ui/feedback/FeedbackProvider';
 import { useStyles, useTheme } from '../ui/theme';
-import { space, type, type Palette } from '../ui/tokens';
+import { radius, space, type, type Palette } from '../ui/tokens';
 import { changeStatus, getObject, listEvents } from './api';
 import { EventAttachments } from './Attachments';
+import { CompanyAvatar } from './CompanyHome';
 import { useCompany } from './CompanyProvider';
 import { canWriteNfc } from './files';
 import { companyMessage, toCompanyError, type CompanyErrorKind } from './errors';
@@ -58,43 +60,62 @@ export function CompanyObjectScreen({ id }: { id: string }) {
     finally { setBusy(false); }
   }
 
-  function chooseStatus() {
-    Alert.sheet('Cambiar estado', undefined, [
-      ...(Object.keys(inventoryStatuses) as InventoryStatus[]).map((key) => ({ text: inventoryStatuses[key].label, icon: inventoryStatuses[key].icon, onPress: () => void setStatus(key) })),
-      { text: 'Cancelar', style: 'cancel' as const },
-    ]);
-  }
-
   const fields: { icon: keyof typeof Ionicons.glyphMap; label: string; value?: string | null }[] = [
-    { icon: 'barcode-outline', label: 'Código', value: object.internal_code },
     { icon: 'pricetags-outline', label: 'Categoría', value: object.category },
     { icon: 'location-outline', label: 'Ubicación', value: object.location },
     { icon: 'person-outline', label: 'Responsable', value: object.assignee },
+    { icon: 'calendar-outline', label: 'Fecha de alta', value: formatDate(dayOf(object.created_at)) },
   ];
+  const params = { id: object.id, name: object.name };
 
   return <Screen>
     <NavBar title="Objeto de la empresa" onBack={back} />
     <ScrollView contentContainerStyle={s.content}>
-      <Text accessibilityRole="header" style={s.name}>{object.name}</Text>
+      <View style={s.hero}>
+        <CompanyAvatar object={object} size={72} />
+        <View style={{ flex: 1 }}>
+          <Text accessibilityRole="header" style={s.name}>{object.name}</Text>
+          {!!object.internal_code && <View style={s.code} accessible accessibilityLabel={`Código ${object.internal_code}`}><Ionicons name="barcode-outline" size={16} color={c.muted} /><Text style={s.codeText}>{object.internal_code}</Text></View>}
+          {archived && <Badge style={{ marginTop: space.sm }} tone="neutral" icon="archive-outline" label="Archivado" />}
+        </View>
+      </View>
       {!!object.description && <Text style={s.description}>{object.description}</Text>}
-      <View style={s.badges}>
-        <Badge tone={status.tone} icon={status.icon} label={status.label} />
-        {archived && <Badge tone="neutral" icon="archive-outline" label="Archivado" />}
+
+      <Text accessibilityRole="header" style={s.label}>Estado</Text>
+      <View accessibilityRole="radiogroup" style={s.segments}>
+        {(Object.keys(inventoryStatuses) as InventoryStatus[]).map((key) => {
+          const item = inventoryStatuses[key];
+          const selected = object.status === key;
+          return <Pressable key={key} accessibilityRole="radio" accessibilityState={{ checked: selected, disabled: archived || busy }} accessibilityLabel={item.label} accessibilityHint={selected ? undefined : 'Cambia el estado del objeto'}
+            disabled={archived || busy} onPress={() => { haptic.tap(); void setStatus(key); }} style={({ pressed }) => [s.segment, selected && { backgroundColor: c.primarySoft, borderColor: c.primary, borderWidth: 2 }, pressed && { opacity: 0.75 }]}>
+            <Ionicons name={selected ? item.icon : (`${item.icon}-outline` as keyof typeof Ionicons.glyphMap)} size={20} color={selected ? c.onPrimarySoft : c.muted} />
+            <Text style={[s.segmentText, selected && { color: c.onPrimarySoft }]} numberOfLines={2}>{item.label}</Text>
+          </Pressable>;
+        })}
       </View>
 
       <Card style={s.fields}>
         {fields.map((field) => <View key={field.label} style={s.field} accessible accessibilityLabel={`${field.label}: ${field.value || 'sin indicar'}`}>
-          <Ionicons name={field.icon} size={20} color={c.muted} />
-          <Text style={s.fieldLabel}>{field.label}</Text>
-          <Text style={s.fieldValue} numberOfLines={2}>{field.value || '—'}</Text>
+          <View style={s.fieldIcon}><Ionicons name={field.icon} size={18} color={c.onPrimarySoft} /></View>
+          <View style={{ flex: 1 }}>
+            <Text style={s.fieldLabel}>{field.label}</Text>
+            <Text style={s.fieldValue}>{field.value || '—'}</Text>
+          </View>
         </View>)}
       </Card>
 
-      {canWriteNfc(org?.role) && <Button label="Escribir etiqueta NFC" icon="radio-outline" variant="secondary" style={{ marginBottom: space.xxl }} onPress={() => router.push({ pathname: '/empresa/objeto/[id]/nfc', params: { id: object.id, name: object.name } })} />}
+      {!archived && <View style={s.actions}>
+        <Action icon="add-circle-outline" label="Registrar evento" onPress={() => router.push({ pathname: '/empresa/objeto/[id]/evento', params })} />
+        <Action icon="qr-code-outline" label="Ver QR" onPress={() => router.push({ pathname: '/empresa/objeto/[id]/qr', params })} />
+        {canWriteNfc(org?.role) && <Action icon="radio-outline" label="Escribir NFC" accessibilityLabel="Escribir etiqueta NFC" onPress={() => router.push({ pathname: '/empresa/objeto/[id]/nfc', params })} />}
+      </View>}
 
-      <Text accessibilityRole="header" style={s.section}>Historia</Text>
+      <View style={s.historyHead}>
+        <Text accessibilityRole="header" style={s.section}>Historia</Text>
+        <Text style={s.count}>{events.length} {events.length === 1 ? 'evento' : 'eventos'}</Text>
+      </View>
       {error && <Text accessibilityLiveRegion="polite" style={s.stale}>{companyMessage(error)}</Text>}
-      {events.length === 0 ? <EmptyState icon="time-outline" title="Sin eventos" text="Registra el primer evento de este objeto." /> :
+      {events.length === 0 ? <EmptyState icon="time-outline" title="Aquí empieza su historia" text="Registra el primer evento de este objeto." /> :
         events.map((event, index) => {
           const look = companyEventLook(event.type, c);
           const day = dayOf(event.event_date ?? event.created_at);
@@ -112,23 +133,38 @@ export function CompanyObjectScreen({ id }: { id: string }) {
           </View>;
         })}
     </ScrollView>
-    {!archived && <Footer>
-      <Button label="Cambiar estado" icon="swap-horizontal" variant="secondary" loading={busy} onPress={chooseStatus} style={{ flex: 1 }} />
-      <Button label="Registrar evento" icon="add" onPress={() => router.push({ pathname: '/empresa/objeto/[id]/evento', params: { id: object.id, name: object.name } })} style={{ flex: 1 }} />
-    </Footer>}
   </Screen>;
+}
+
+function Action({ icon, label, onPress, accessibilityLabel }: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void; accessibilityLabel?: string }) {
+  const { c } = useTheme();
+  return <Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel ?? label} onPress={onPress}
+    style={({ pressed }) => [{ flex: 1, minHeight: 76, borderRadius: radius.md, borderWidth: 1, borderColor: c.line, backgroundColor: c.surface, alignItems: 'center', justifyContent: 'center', gap: 6, padding: space.sm }, pressed && { opacity: 0.75 }]}>
+    <Ionicons name={icon} size={24} color={c.primary} />
+    <Text style={{ ...type.label, color: c.ink, textAlign: 'center' }}>{label}</Text>
+  </Pressable>;
 }
 
 const makeStyles = (c: Palette) => ({
   content: { paddingHorizontal: space.xl, paddingTop: space.sm, paddingBottom: space.xxxl },
+  hero: { flexDirection: 'row', alignItems: 'center', gap: space.lg },
   name: { ...type.title, color: c.ink },
-  description: { ...type.body, color: c.muted, marginTop: space.sm },
-  badges: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginTop: space.md, marginBottom: space.lg },
-  fields: { gap: space.md, marginBottom: space.xxl },
+  code: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+  codeText: { ...type.label, color: c.muted },
+  description: { ...type.body, color: c.muted, marginTop: space.lg },
+  label: { ...type.label, color: c.ink, marginTop: space.xl, marginBottom: space.sm },
+  segments: { flexDirection: 'row', gap: space.sm },
+  segment: { flex: 1, minHeight: 64, borderRadius: radius.md, borderWidth: 1, borderColor: c.line, backgroundColor: c.surface, alignItems: 'center', justifyContent: 'center', gap: 4, padding: space.sm },
+  segmentText: { ...type.mini, color: c.ink, textAlign: 'center' },
+  fields: { gap: space.lg, marginTop: space.lg },
   field: { flexDirection: 'row', alignItems: 'center', gap: space.md },
-  fieldLabel: { ...type.secondary, color: c.muted, width: 96 },
-  fieldValue: { ...type.label, color: c.ink, flex: 1 },
-  section: { ...type.section, color: c.ink, marginBottom: space.md },
+  fieldIcon: { width: 36, height: 36, borderRadius: 12, backgroundColor: c.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  fieldLabel: { ...type.secondary, color: c.muted },
+  fieldValue: { ...type.label, color: c.ink },
+  actions: { flexDirection: 'row', gap: space.sm, marginTop: space.lg },
+  historyHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: space.xxl, marginBottom: space.md },
+  count: { ...type.secondary, color: c.muted },
+  section: { ...type.section, color: c.ink },
   stale: { ...type.secondary, color: c.muted, marginBottom: space.md },
   event: { flexDirection: 'row', gap: space.md },
   rail: { width: 40, alignItems: 'center' },

@@ -6,6 +6,7 @@ import { AccessibilityInfo, ActivityIndicator, Animated, Easing, Platform, Scrol
 import { NfcSession, type NfcAdapter, type NfcPhase } from './nfc-session';
 import { objectLink } from './qr';
 import { lookupCompanyObject } from './company/api';
+import { useCompany } from './company/CompanyProvider';
 import { lookupMessages, scanTarget } from './company/scan';
 import { companyConfigured } from './company/supabase';
 import { findActiveObject, markNfcWritten, objectState, type MemoryObject } from './storage';
@@ -48,6 +49,7 @@ const messages: Record<string, string> = {
 
 export function NfcScreen({ object, company, onFound, onCompanyFound, onWritten }: { object?: Pick<MemoryObject, 'id' | 'name'> & { nfc_written_at?: string | null }; /** Company object: the tag is written but nothing is stored locally. */ company?: boolean; onFound?: (object: MemoryObject) => void; onCompanyFound?: (id: string) => void; onWritten?: (at: string) => void }) {
   const Alert = useFeedback();
+  const { companyMode } = useCompany();
   const { c } = useTheme();
   const styles = useStyles(makeStyles);
   const navigation = useNavigation();
@@ -122,6 +124,10 @@ export function NfcScreen({ object, company, onFound, onCompanyFound, onWritten 
         announce('Etiqueta escrita y verificada. Acércala al teléfono, incluso con la app cerrada, para abrir este objeto.');
       }
       else {
+        // Company mode asks the company first; its «missing» result falls through to the phone.
+        const early = companyMode && onCompanyFound ? await lookupCompanyObject(id) : null;
+        if (!alive.current) return;
+        if (early === 'company') { haptic.success(); onCompanyFound?.(id); return; }
         const found = await findActiveObject(id);
         if (!alive.current) return;
         if (found) { haptic.success(); onFound?.(found); }
@@ -130,7 +136,7 @@ export function NfcScreen({ object, company, onFound, onCompanyFound, onWritten 
           if (!alive.current) return;
           // Not stored here: ask the company (only with a company session) before reporting it missing.
           const target = scanTarget(state === 'archived' ? 'archived' : 'missing', companyConfigured && !!onCompanyFound);
-          const outcome = target === 'company-lookup' ? await lookupCompanyObject(id) : 'missing';
+          const outcome = early ?? (target === 'company-lookup' ? await lookupCompanyObject(id) : 'missing');
           if (!alive.current) return;
           if (outcome === 'company') { haptic.success(); onCompanyFound?.(id); return; }
           haptic.warning();

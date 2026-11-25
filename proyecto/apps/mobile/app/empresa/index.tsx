@@ -1,5 +1,6 @@
-import { ObjectsScreen } from '../../src/company/ObjectsScreen';
+import { Redirect } from 'expo-router';
 
-export default function CompanyObjects() {
-  return <ObjectsScreen />;
+// The company home now lives at «/» when «Modo empresa» is on.
+export default function CompanyRoute() {
+  return <Redirect href="/" />;
 }

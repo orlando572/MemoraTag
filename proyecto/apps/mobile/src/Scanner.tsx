@@ -5,7 +5,9 @@ import { router } from 'expo-router';
 import { useRef, useState } from 'react';
 import { Linking, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { lookupCompanyObject } from './company/api';
-import { lookupMessages, scanTarget } from './company/scan';
+import { useCompany } from './company/CompanyProvider';
+import { scanOrder } from './company/filters';
+import { lookupMessages, scanTarget, type LookupOutcome } from './company/scan';
 import { companyConfigured } from './company/supabase';
 import { objectIdFromQr } from './qr';
 import { findActiveObject, objectState } from './storage';
@@ -19,6 +21,7 @@ type Problem = { text: string; archived?: boolean };
 export function Scanner() {
   const { c } = useTheme();
   const s = useStyles(makeStyles);
+  const { companyMode } = useCompany();
   const [permission, requestPermission] = useCameraPermissions();
   const [problem, setProblem] = useState<Problem | null>(null);
   const [busy, setBusy] = useState(false);
@@ -28,6 +31,13 @@ export function Scanner() {
     const id = objectIdFromQr(data);
     if (!id) { haptic.error(); setProblem({ text: 'Este código no es de MemoraTag.' }); return; }
     try {
+      // Company mode asks the company first; otherwise the phone comes first (see scanOrder).
+      const order = scanOrder(companyMode, companyConfigured);
+      let early: LookupOutcome | null = null;
+      if (order[0] === 'company') {
+        early = await lookupCompanyObject(id);
+        if (early === 'company') { haptic.success(); router.replace(`/empresa/objeto/${id}`); return; }
+      }
       const object = await findActiveObject(id);
       if (!object) {
         haptic.warning();
@@ -35,7 +45,7 @@ export function Scanner() {
         const target = scanTarget(state === 'archived' ? 'archived' : 'missing', companyConfigured);
         if (target === 'archived') { setProblem({ text: 'Este objeto está archivado. Restáuralo para ver su historia.', archived: true }); return; }
         // Not stored here: it may be a company object (needs a company session; without one this says «missing»).
-        const outcome = target === 'company-lookup' ? await lookupCompanyObject(id) : 'missing';
+        const outcome = early ?? (target === 'company-lookup' ? await lookupCompanyObject(id) : 'missing');
         if (outcome === 'company') { haptic.success(); router.replace(`/empresa/objeto/${id}`); return; }
         setProblem({ text: lookupMessages[outcome] });
         return;
