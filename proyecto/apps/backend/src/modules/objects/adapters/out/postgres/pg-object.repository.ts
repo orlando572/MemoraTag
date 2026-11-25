@@ -4,10 +4,10 @@ import type { ObjectPatch, ObjectRepository } from '../../../application/ports';
 
 const iso = (d: Date | string | null) => (d ? new Date(d).toISOString() : null);
 const like = (s: string) => `%${s.replace(/[\\%_]/g, '\\$&')}%`;
-const COLS = 'id, organization_id, name, description, color, internal_code, category, location, assignee, status, created_at, archived_at';
+const COLS = 'id, organization_id, name, description, color, internal_code, category, location, assignee, status, created_at, archived_at, nfc_written_at';
 const PATCHABLE = ['name', 'description', 'color', 'internal_code', 'category', 'location', 'assignee'] as const;
 
-const toObject = (r: any): InventoryObject => ({ ...r, created_at: iso(r.created_at)!, archived_at: iso(r.archived_at) });
+const toObject = (r: any): InventoryObject => ({ ...r, created_at: iso(r.created_at)!, archived_at: iso(r.archived_at), nfc_written_at: iso(r.nfc_written_at) });
 const toEvent = (r: any): ObjectEvent => ({ ...r, files: [], event_date: iso(r.event_date), created_at: iso(r.created_at)! });
 
 export class PgObjectRepository implements ObjectRepository {
@@ -31,6 +31,7 @@ export class PgObjectRepository implements ObjectRepository {
       args.push(value);
       where.push(sql.replaceAll('$n', `$${args.length}`));
     };
+    if (f.nfc) where.push(f.nfc === 'with' ? 'nfc_written_at is not null' : 'nfc_written_at is null');
     if (f.status) add('status = $n', f.status);
     if (f.location) add('location ilike $n', like(f.location));
     if (f.category) add('lower(category) = lower($n)', f.category);
@@ -42,6 +43,10 @@ export class PgObjectRepository implements ObjectRepository {
     const keys = PATCHABLE.filter((k) => k in patch);
     const sets = keys.map((k, i) => `${k} = $${i + 2}`);
     const r = await this.pool.query(`update objects set ${[...sets, 'updated_at = now()'].join(', ')} where id = $1 returning ${COLS}`, [id, ...keys.map((k) => patch[k] ?? null)]);
+    return toObject(r.rows[0]);
+  }
+  async markNfc(id: string, at: string, userId: string) {
+    const r = await this.pool.query(`update objects set nfc_written_at = $2, nfc_written_by = $3, updated_at = now() where id = $1 returning ${COLS}`, [id, at, userId]);
     return toObject(r.rows[0]);
   }
   async setStatus(id: string, status: InventoryStatus) {

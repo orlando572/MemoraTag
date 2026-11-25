@@ -63,6 +63,12 @@ export class ObjectsService {
     return this.repo.archive(id, null);
   }
 
+  async markNfc(user: CurrentUser, id: string) {
+    const { obj } = await this.load(user, id, 'admin');
+    this.assertActive(obj);
+    return this.repo.markNfc(id, new Date().toISOString(), user.id);
+  }
+
   async changeStatus(user: CurrentUser, id: string, status: InventoryStatus) {
     const { obj } = await this.load(user, id);
     this.assertActive(obj);

@@ -10,6 +10,11 @@ export class MemoryOrganizationRepository implements OrganizationRepository {
     this.orgs.set(org.id, org);
     this.members.set(org.id, [{ user_id: adminUserId, role: 'admin' }]);
   }
+  async rename(orgId: string, name: string) {
+    const org = { ...this.orgs.get(orgId)!, name };
+    this.orgs.set(orgId, org);
+    return org;
+  }
   async listForUser(userId: string) {
     return [...this.orgs.values()].flatMap((o) => {
       const m = this.members.get(o.id)?.find((x) => x.user_id === userId);

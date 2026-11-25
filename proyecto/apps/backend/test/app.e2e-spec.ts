@@ -103,7 +103,7 @@ describe('HTTP API (memory adapters)', () => {
     const res = await http.get(`/organizations/${orgId}/objects.csv`).set('Authorization', as('member')).expect(200);
     expect(res.headers['content-type']).toContain('text/csv');
     const lines = res.text.trim().split('\r\n');
-    expect(lines[0]).toBe('id,name,internal_code,category,location,assignee,status,description,created_at');
+    expect(lines[0]).toBe('id,name,internal_code,category,location,assignee,status,description,created_at,nfc');
     expect(lines).toHaveLength(3);
     expect(res.text).toContain('Drill,TL-1,Tools,Shop');
   });

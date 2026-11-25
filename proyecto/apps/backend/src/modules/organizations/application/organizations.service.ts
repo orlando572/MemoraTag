@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { AddMemberInput, CreateOrganizationInput, Member, Role } from '@memoratag/contracts';
+import type { AddMemberInput, CreateOrganizationInput, Member, Role, UpdateOrganizationInput } from '@memoratag/contracts';
 import type { UserDirectory } from '../../identity/application/ports';
 import type { CurrentUser } from '../../identity/domain/current-user';
 import { ConflictError, ForbiddenError, NotFoundError } from '../../../shared/errors';
@@ -16,6 +16,11 @@ export class OrganizationsService {
     const org = { id: randomUUID(), name: input.name, created_at: new Date().toISOString() };
     await this.repo.create(org, user.id);
     return { ...org, role: 'admin' as Role };
+  }
+
+  async rename(user: CurrentUser, orgId: string, input: UpdateOrganizationInput) {
+    await this.requireAdmin(user, orgId);
+    return { ...(await this.repo.rename(orgId, input.name)), role: 'admin' as Role };
   }
 
   listMine(user: CurrentUser) {

@@ -14,6 +14,8 @@ const iso = z.string().min(1);
 
 export const OrganizationSchema = z.object({ id: z.string(), name: z.string(), created_at: iso, role: RoleSchema.optional() });
 export type Organization = z.infer<typeof OrganizationSchema>;
+export const UpdateOrganizationSchema = z.object({ name: z.string().trim().min(1).max(80) });
+export type UpdateOrganizationInput = z.infer<typeof UpdateOrganizationSchema>;
 export const CreateOrganizationSchema = z.object({ name: z.string().trim().min(1).max(120) });
 export type CreateOrganizationInput = z.infer<typeof CreateOrganizationSchema>;
 
@@ -37,6 +39,7 @@ export const InventoryObjectSchema = z.object({
   status: InventoryStatusSchema,
   created_at: iso,
   archived_at: iso.nullish(),
+  nfc_written_at: z.string().nullable().optional(),
 });
 export type InventoryObject = z.infer<typeof InventoryObjectSchema>;
 
@@ -118,6 +121,7 @@ export const ObjectFiltersSchema = z.object({
   location: z.string().trim().optional(),
   category: z.string().trim().optional(),
   // Query-string flag: 'true' or '1' lists only archived objects.
+  nfc: z.enum(['with', 'without']).optional(),
   archived: z.union([z.boolean(), z.string()]).transform((v) => v === true || v === 'true' || v === '1').optional(),
 });
 export type ObjectFilters = z.infer<typeof ObjectFiltersSchema>;

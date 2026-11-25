@@ -49,6 +49,12 @@ export class ObjectsController {
     return this.service.archive(user, id);
   }
 
+  @Post('objects/:id/nfc')
+  @HttpCode(200)
+  nfc(@CurrentUser() user: User, @Param('id', UuidParam) id: string) {
+    return this.service.markNfc(user, id);
+  }
+
   @Post('objects/:id/restore')
   @HttpCode(200)
   restore(@CurrentUser() user: User, @Param('id', UuidParam) id: string) {

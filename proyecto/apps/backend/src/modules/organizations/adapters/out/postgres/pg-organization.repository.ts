@@ -22,6 +22,10 @@ export class PgOrganizationRepository implements OrganizationRepository {
       client.release();
     }
   }
+  async rename(orgId: string, name: string): Promise<Organization> {
+    const r = await this.pool.query('update organizations set name = $2 where id = $1 and deleted_at is null returning id, name, created_at', [orgId, name]);
+    return { id: r.rows[0].id, name: r.rows[0].name, created_at: iso(r.rows[0].created_at) };
+  }
   async listForUser(userId: string) {
     const r = await this.pool.query(
       `select o.id, o.name, o.created_at, m.role from organizations o

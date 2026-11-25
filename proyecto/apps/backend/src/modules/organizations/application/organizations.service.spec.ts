@@ -22,6 +22,14 @@ describe('OrganizationsService', () => {
     expect(await service.listMine(bob)).toHaveLength(0);
   });
 
+  it('lets only admins rename the organization', async () => {
+    const { service, org } = await setup();
+    await service.addMember(ana, org.id, { email: 'bob@x.com', role: 'member' });
+    expect(await service.rename(ana, org.id, { name: 'Acme 2' })).toMatchObject({ name: 'Acme 2', role: 'admin' });
+    await expect(service.rename(bob, org.id, { name: 'Hack' })).rejects.toThrow('Admin');
+    await expect(service.rename(eve, org.id, { name: 'Hack' })).rejects.toThrow('Not a member');
+  });
+
   it('adds members by email and lists them with emails', async () => {
     const { service, org } = await setup();
     await service.addMember(ana, org.id, { email: 'bob@x.com', role: 'member' });

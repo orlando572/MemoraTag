@@ -25,6 +25,8 @@ export interface ObjectRepository {
   update(id: string, patch: ObjectPatch): Promise<InventoryObject>;
   setStatus(id: string, status: InventoryStatus): Promise<InventoryObject>;
   archive(id: string, at: string | null): Promise<InventoryObject>;
+  /** Records that an NFC tag was written for the object. */
+  markNfc(id: string, at: string, userId: string): Promise<InventoryObject>;
   listEvents(objectId: string): Promise<ObjectEvent[]>;
   getEventById(id: string): Promise<ObjectEvent | null>;
   addEvent(event: ObjectEvent): Promise<void>;

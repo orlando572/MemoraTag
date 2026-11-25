@@ -17,6 +17,7 @@ export class MemoryObjectRepository implements ObjectRepository {
   async list(orgId: string, f: ObjectFilters) {
     return [...this.objects.values()]
       .filter((o) => o.organization_id === orgId && !!o.archived_at === !!f.archived)
+      .filter((o) => !f.nfc || !!o.nfc_written_at === (f.nfc === 'with'))
       .filter((o) => !f.status || o.status === f.status)
       .filter((o) => !f.location || has(o.location, f.location))
       .filter((o) => !f.category || (o.category ?? '').toLowerCase() === f.category.toLowerCase())
@@ -26,6 +27,9 @@ export class MemoryObjectRepository implements ObjectRepository {
   }
   async update(id: string, patch: ObjectPatch) {
     return this.mutate(id, patch);
+  }
+  async markNfc(id: string, at: string, _userId: string) {
+    return this.mutate(id, { nfc_written_at: at });
   }
   async setStatus(id: string, status: InventoryStatus) {
     return this.mutate(id, { status });

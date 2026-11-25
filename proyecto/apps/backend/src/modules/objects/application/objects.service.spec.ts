@@ -93,6 +93,34 @@ describe('ObjectsService archive, restore and authors', () => {
   });
 });
 
+describe('ObjectsService NFC', () => {
+  it('lets only admins mark NFC, hides objects from outsiders and blocks archived ones', async () => {
+    const s = setup();
+    const obj = await s.create(admin, 'org', input);
+    await expect(s.markNfc(member, obj.id)).rejects.toThrow('Admin');
+    await expect(s.markNfc(outsider, obj.id)).rejects.toThrow('not found');
+    expect((await s.markNfc(admin, obj.id)).nfc_written_at).toBeTruthy();
+    await s.archive(admin, obj.id);
+    await expect(s.markNfc(admin, obj.id)).rejects.toThrow('archived');
+  });
+
+  it('filters by NFC together with other filters and archived', async () => {
+    const s = setup();
+    const a = await s.create(admin, 'org', { ...input, name: 'A', location: 'L1' });
+    await s.create(admin, 'org', { ...input, name: 'B', location: 'L1' });
+    const c = await s.create(admin, 'org', { ...input, name: 'C', location: 'L2' });
+    await s.markNfc(admin, a.id);
+    await s.markNfc(admin, c.id);
+    const names = async (f: object) => (await s.list(admin, 'org', f)).map((o) => o.name);
+    expect(await names({ nfc: 'with' })).toEqual(['A', 'C']);
+    expect(await names({ nfc: 'without' })).toEqual(['B']);
+    expect(await names({ nfc: 'with', location: 'L2' })).toEqual(['C']);
+    await s.archive(admin, c.id);
+    expect(await names({ nfc: 'with', archived: true })).toEqual(['C']);
+    expect(await names({ nfc: 'with' })).toEqual(['A']);
+  });
+});
+
 describe('objectsToCsv', () => {
   it('escapes quotes and neutralizes formulas', () => {
     const csv = objectsToCsv([{ id: '1', organization_id: 'o', name: '=cmd', description: 'say "hi", ok', color: '', status: 'in_use', created_at: 't' }]);

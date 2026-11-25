@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, UseGuards } from '@nestjs/common';
-import { AddMemberSchema, CreateOrganizationSchema, UpdateMemberRoleSchema } from '@memoratag/contracts';
-import type { AddMemberInput, CreateOrganizationInput, UpdateMemberRoleInput } from '@memoratag/contracts';
+import { AddMemberSchema, CreateOrganizationSchema, UpdateOrganizationSchema, UpdateMemberRoleSchema } from '@memoratag/contracts';
+import type { AddMemberInput, CreateOrganizationInput, UpdateOrganizationInput, UpdateMemberRoleInput } from '@memoratag/contracts';
 import { AuthGuard, CurrentUser } from '../../../../identity/adapters/in/http/auth.guard';
 import type { CurrentUser as User } from '../../../../identity/domain/current-user';
 import { UuidParam, ZodPipe } from '../../../../../shared/http';
@@ -19,6 +19,11 @@ export class OrganizationsController {
   @Post()
   create(@CurrentUser() user: User, @Body(new ZodPipe(CreateOrganizationSchema)) body: CreateOrganizationInput) {
     return this.service.create(user, body);
+  }
+
+  @Patch(':orgId')
+  rename(@CurrentUser() user: User, @Param('orgId', UuidParam) orgId: string, @Body(new ZodPipe(UpdateOrganizationSchema)) body: UpdateOrganizationInput) {
+    return this.service.rename(user, orgId, body);
   }
 
   @Get(':orgId/members')
