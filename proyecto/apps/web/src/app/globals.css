@@ -1,0 +1,172 @@
+@import 'tailwindcss';
+
+/*
+ * MemoraTag «Bitácora» tokens, copied from the mobile app (apps/mobile/src/ui/tokens.ts).
+ * - `primary` is the only action colour. danger/success/warning only mean a state, and a state is
+ *   never shown by colour alone (always icon + text).
+ * - `line` separates cards; `input-border` outlines fields and controls.
+ */
+:root {
+  --canvas: #f7f3ec;
+  --surface: #ffffff;
+  --surface-alt: #efe9df;
+  --ink: #1f1b16;
+  --muted: #6b6258;
+  --line: #e4dccf;
+  --input-border: #8c8274;
+  --primary: #2f4bb8;
+  --primary-strong: #233a94;
+  --on-primary: #ffffff;
+  --primary-soft: #e6eaf8;
+  --on-primary-soft: #233a94;
+  --danger: #ad3520;
+  --danger-soft: #fbe6e1;
+  --success: #25692f;
+  --success-soft: #e2f1e4;
+  --warning: #8a5a00;
+  --warning-soft: #f8edd7;
+  --scrim: rgba(0, 0, 0, 0.45);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --canvas: #1b1916;
+    --surface: #262320;
+    --surface-alt: #302b26;
+    --ink: #f2ece3;
+    --muted: #a89e91;
+    --line: #3a352f;
+    --input-border: #7a7064;
+    --primary: #8fa8ff;
+    --primary-strong: #b3c3ff;
+    --on-primary: #0f1a3d;
+    --primary-soft: #232a45;
+    --on-primary-soft: #b3c3ff;
+    --danger: #ff8a73;
+    --danger-soft: #3a221c;
+    --success: #7fcb8a;
+    --success-soft: #1f3324;
+    --warning: #e8b964;
+    --warning-soft: #3a2e17;
+    --scrim: rgba(0, 0, 0, 0.6);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme='dark'] {
+  --canvas: #1b1916;
+  --surface: #262320;
+  --surface-alt: #302b26;
+  --ink: #f2ece3;
+  --muted: #a89e91;
+  --line: #3a352f;
+  --input-border: #7a7064;
+  --primary: #8fa8ff;
+  --primary-strong: #b3c3ff;
+  --on-primary: #0f1a3d;
+  --primary-soft: #232a45;
+  --on-primary-soft: #b3c3ff;
+  --danger: #ff8a73;
+  --danger-soft: #3a221c;
+  --success: #7fcb8a;
+  --success-soft: #1f3324;
+  --warning: #e8b964;
+  --warning-soft: #3a2e17;
+  --scrim: rgba(0, 0, 0, 0.6);
+  color-scheme: dark;
+}
+
+/* shadcn/ui semantic variables mapped onto the palette */
+:root {
+  --background: var(--canvas);
+  --foreground: var(--ink);
+  --card: var(--surface);
+  --card-foreground: var(--ink);
+  --popover: var(--surface);
+  --popover-foreground: var(--ink);
+  --primary-foreground: var(--on-primary);
+  --secondary: var(--surface-alt);
+  --secondary-foreground: var(--ink);
+  --muted-bg: var(--surface-alt);
+  --accent: var(--primary-soft);
+  --accent-foreground: var(--on-primary-soft);
+  --destructive: var(--danger);
+  --destructive-foreground: var(--danger);
+  --border: var(--line);
+  --input: var(--input-border);
+  --ring: var(--primary);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-strong: var(--primary-strong);
+  --color-primary-soft: var(--primary-soft);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted-bg);
+  --color-muted-foreground: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-danger-soft: var(--danger-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-surface: var(--surface);
+  --color-surface-alt: var(--surface-alt);
+  --color-scrim: var(--scrim);
+
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+
+  --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-fraunces), ui-serif, Georgia, serif;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* Accessible focus ring for everything interactive */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: var(--primary-soft);
+    color: var(--on-primary-soft);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
