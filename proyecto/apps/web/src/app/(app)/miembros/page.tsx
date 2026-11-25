@@ -1,25 +1,21 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { Users } from 'lucide-react';
-import { EmptyState } from '@/components/ui/empty-state';
 import { PageHeader } from '@/components/ui/page-header';
+import { MembersView } from '@/features/members/members-view';
 import { getAppContext } from '@/features/organization/session';
+import { serverApi } from '@/lib/api-server';
 
 export const metadata: Metadata = { title: 'Miembros' };
 
 export default async function MiembrosPage() {
   const ctx = await getAppContext();
   // Members are managed by admins only.
-  if (!ctx.ok || ctx.role !== 'admin') redirect('/resumen');
+  if (!ctx.ok || !ctx.organization || ctx.role !== 'admin') redirect('/resumen');
+  const members = await (await serverApi()).organizations.members(ctx.organization.id);
   return (
     <>
       <PageHeader title="Miembros" description="Quién forma parte de tu empresa y qué puede hacer." />
-      <EmptyState
-        icon={Users}
-        badge="En preparación"
-        title="Aquí gestionarás a tu equipo"
-        description="Añadirás personas por correo, cambiarás su rol entre administrador y miembro, y las quitarás cuando haga falta."
-      />
+      <MembersView orgId={ctx.organization.id} currentUserId={ctx.userId} members={members} />
     </>
   );
 }
