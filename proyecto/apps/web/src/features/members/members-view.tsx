@@ -40,7 +40,7 @@ function AddMemberForm({ orgId }: { orgId: string }) {
     } catch (failure) {
       setError(
         errorMessage(failure, {
-          404: 'Esa persona aún no tiene cuenta en MemoraTag; pídele que se registre primero.',
+          404: 'Esa persona aún no tiene cuenta. Pídele que se registre en MemoraTag y elija "Me van a añadir".',
           409: 'Esa persona ya es miembro de la empresa.',
         }),
       );

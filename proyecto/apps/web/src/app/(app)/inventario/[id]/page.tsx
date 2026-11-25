@@ -8,6 +8,7 @@ import { Card, CardTitle } from '@/components/ui/card';
 import { EventComposer } from '@/features/events/event-composer';
 import { EventTimeline } from '@/features/events/event-timeline';
 import { ArchiveObjectButton, EditObjectButton, RestoreObjectButton, StatusControl } from '@/features/inventory/object-actions';
+import { NfcIndicator } from '@/features/inventory/nfc-indicator';
 import { ObjectAvatar } from '@/features/inventory/object-avatar';
 import { ObjectQr } from '@/features/inventory/object-qr';
 import { getAppContext } from '@/features/organization/session';
@@ -69,7 +70,10 @@ export default async function ObjectPage({ params }: { params: Promise<{ id: str
         <div className="flex min-w-0 items-center gap-5">
           <ObjectAvatar color={object.color} className="size-16 rounded-lg" />
           <div className="min-w-0">
-            <h1 className="font-heading text-4xl font-semibold tracking-[-0.03em] text-balance md:text-5xl">{object.name}</h1>
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="font-heading text-4xl font-semibold tracking-[-0.03em] text-balance md:text-5xl">{object.name}</h1>
+              <NfcIndicator writtenAt={object.nfc_written_at} size="md" />
+            </div>
             {archived ? (
               <Badge className="mt-3">
                 <Archive aria-hidden />
