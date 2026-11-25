@@ -59,7 +59,10 @@ Evolución posterior a la primera versión. **Implementado en desarrollo local**
 - **Móvil (lo mínimo en campo):** un interruptor «Modo empresa» en Ajustes cambia el inicio al inventario de la empresa, con contadores por estado, búsqueda y filtros de ubicación y categoría. Desde la ficha se puede ver y compartir el QR, registrar eventos con una foto opcional, cambiar el estado y abrir los adjuntos. Solo `admin` puede escribir etiquetas NFC de objetos de empresa. La parte empresarial requiere conexión; con el modo activo, el escaneo consulta primero la empresa.
 - **Modo personal:** sin cambios; sigue sin conexión y sin cuenta.
 
-**Previsto:** registrar en el servidor cuándo se escribió una etiqueta NFC de empresa, compresión de fotos en el móvil, paginación para inventarios grandes.
+- **NFC vinculada:** al escribir una etiqueta de empresa desde el móvil se registra en el servidor; la web y el móvil muestran un icono (vinculada / sin etiqueta) y el inventario web filtra por NFC.
+- **Empresa y usuarios:** el `admin` puede renombrar la empresa en Ajustes. Tras registrarse, cada persona elige «Crear mi empresa» (queda como `admin`) o «Me van a añadir a una empresa» (muestra su correo para que el `admin` la añada en Miembros).
+
+**Previsto:** invitaciones por correo, compresión de fotos en el móvil, paginación para inventarios grandes.
 
 ## Fuera del alcance inicial
 
