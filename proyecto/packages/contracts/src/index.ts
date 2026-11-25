@@ -68,6 +68,29 @@ export type UpdateObjectInput = z.infer<typeof UpdateObjectSchema>;
 export const ChangeStatusSchema = z.object({ status: InventoryStatusSchema });
 export type ChangeStatusInput = z.infer<typeof ChangeStatusSchema>;
 
+export const MAX_FILE_BYTES = 5 * 1024 * 1024;
+export const PHOTO_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
+export const DOCUMENT_MIME_TYPES = [
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-excel',
+] as const;
+export const ALLOWED_FILE_MIME_TYPES = [...PHOTO_MIME_TYPES, ...DOCUMENT_MIME_TYPES] as const;
+
+export const EventFileKindSchema = z.enum(['photo', 'document']);
+export type EventFileKind = z.infer<typeof EventFileKindSchema>;
+export const EventFileSchema = z.object({
+  id: z.string(),
+  event_id: z.string(),
+  kind: EventFileKindSchema,
+  name: z.string(),
+  mime: z.string(),
+  size: z.number().int(),
+  created_at: iso,
+  created_by: z.string(),
+});
+export type EventFile = z.infer<typeof EventFileSchema>;
+
 export const ObjectEventSchema = z.object({
   id: z.string(),
   object_id: z.string(),
@@ -77,6 +100,7 @@ export const ObjectEventSchema = z.object({
   event_date: iso.nullish(),
   created_at: iso,
   created_by: z.string(),
+  files: z.array(EventFileSchema).default([]),
 });
 export type ObjectEvent = z.infer<typeof ObjectEventSchema>;
 export const CreateEventSchema = z.object({
