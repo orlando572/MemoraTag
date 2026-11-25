@@ -46,18 +46,20 @@ Los archivos se guardan localmente cuando no hay conexión y se sincronizan post
 
 Cada archivo puede tener un tamaño máximo de 5 MB. Los formatos admitidos se definirán antes de la implementación. La interfaz debe advertir que hacer público un objeto puede exponer información sensible y sus archivos.
 
-## Incremento empresarial (previsto)
+## Incremento empresarial
 
-Evolución posterior a la primera versión. No está implementada todavía.
+Evolución posterior a la primera versión. **Implementado en desarrollo local** (Supabase local); aún no desplegado ni evaluado con usuarios.
+
+**Implementado:**
 
 - **Empresa:** una organización con miembros que comparten el inventario de objetos.
-- **Roles:**
-  - `admin`: gestiona objetos y miembros.
-  - `member`: consulta objetos, registra eventos y puede cambiar el estado.
-- **Inventario:** cada objeto podrá tener, de forma opcional, código interno, categoría, ubicación, responsable y estado (en uso, en reparación o de baja). Los objetos podrán pertenecer a una organización.
-- **Web:** centro de gestión, con inventario con búsqueda, filtros y exportación CSV; ficha con línea de tiempo; gestión de miembros; y resumen con indicadores simples.
-- **Móvil:** solo lo mínimo en campo: iniciar sesión de empresa, abrir un objeto por QR o NFC, ver su ficha, registrar eventos y cambiar su estado. La parte empresarial requiere conexión.
-- **Modo personal:** se mantiene sin conexión y sin cuenta.
+- **Roles:** `admin` gestiona objetos y miembros; `member` consulta objetos, registra eventos y cambia el estado.
+- **Inventario:** campos opcionales por objeto: código interno, categoría, ubicación, responsable y estado (en uso, en reparación o de baja).
+- **Web (centro de gestión):** inventario con búsqueda, filtros y exportación CSV; ficha con línea de tiempo, QR descargable e impresión de etiqueta; gestión de miembros; resumen con indicadores simples; adjuntos de fotos y documentos (PDF y Excel, hasta 5 MB) en los eventos.
+- **Móvil (lo mínimo en campo):** iniciar sesión de empresa, abrir un objeto por QR o NFC, ver su ficha y sus adjuntos, registrar eventos con una foto opcional y cambiar el estado. Solo `admin` puede escribir etiquetas NFC de objetos de empresa. La parte empresarial requiere conexión.
+- **Modo personal:** sin cambios; sigue sin conexión y sin cuenta.
+
+**Previsto:** registrar en el servidor cuándo se escribió una etiqueta NFC de empresa, compresión de fotos en el móvil, autor visible en cada evento y paginación para inventarios grandes.
 
 ## Fuera del alcance inicial
 
