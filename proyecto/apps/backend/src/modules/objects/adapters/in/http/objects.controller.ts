@@ -49,6 +49,12 @@ export class ObjectsController {
     return this.service.archive(user, id);
   }
 
+  @Post('objects/:id/restore')
+  @HttpCode(200)
+  restore(@CurrentUser() user: User, @Param('id', UuidParam) id: string) {
+    return this.service.restore(user, id);
+  }
+
   @Patch('objects/:id/status')
   status(@CurrentUser() user: User, @Param('id', UuidParam) id: string, @Body(new ZodPipe(ChangeStatusSchema)) body: ChangeStatusInput) {
     return this.service.changeStatus(user, id, body.status);

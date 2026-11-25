@@ -48,7 +48,7 @@ Aplicar `supabase/migrations/0001_empresas_inventario.sql` y `0002_event_files.s
 
 - `identity`: guard Bearer con puerto `TokenVerifier` (adaptador `jose` + JWKS de Supabase) y directorio de usuarios.
 - `organizations`: crear/listar organizaciones, listar/añadir (por email de usuario registrado)/cambiar rol/quitar miembros. Solo admin gestiona miembros; el último admin está protegido.
-- `objects`: CRUD de objetos con filtros (`q`, `status`, `location`, `category`), archivado lógico, cambio de estado, eventos, resumen y exportación CSV.
+- `objects`: CRUD de objetos con filtros (`q`, `status`, `location`, `category`, `archived=true` para listar solo archivados), archivado lógico, restauración (`POST /objects/:id/restore`, solo admin, idempotente), autor de los eventos (`created_by_email`, en eventos y resumen), cambio de estado, eventos, resumen y exportación CSV.
 - `files`: adjuntos de eventos (fotos JPEG/PNG/WEBP y documentos PDF/XLS/XLSX, máx. 5 MB). `POST /events/:eventId/files` (multipart, campo `file`; admin y member; valida MIME y firma de bytes; 409 si el objeto está archivado; 404 a no miembros), `GET /files/:fileId/url` (URL firmada, 300 s, solo miembros) y `DELETE /files/:fileId` (solo admin, eliminación lógica y borrado en Storage). `GET /objects/:id/events` incluye `files`. Almacenamiento en el bucket privado `event-files` de Supabase Storage (ruta `org/<org>/object/<obj>/event/<evento>/<fichero>`), con adaptador en memoria para tests.
 
 Permisos: admin crea/edita/archiva objetos; member consulta, cambia estado y registra eventos. Un no miembro recibe 403 en rutas de organización y 404 en rutas de objeto.

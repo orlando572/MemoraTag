@@ -3,6 +3,7 @@ import type { CreateEventInput, CreateObjectInput, InventoryObject, InventorySta
 import type { CurrentUser } from '../../identity/domain/current-user';
 import { ConflictError, ForbiddenError, NotFoundError } from '../../../shared/errors';
 import { objectsToCsv } from '../domain/csv';
+import type { UserDirectory } from '../../identity/application/ports';
 import type { EventFileReader, MembershipReader, ObjectRepository } from './ports';
 
 /**
@@ -14,6 +15,7 @@ export class ObjectsService {
     private readonly repo: ObjectRepository,
     private readonly memberships: MembershipReader,
     private readonly eventFiles?: EventFileReader,
+    private readonly users?: UserDirectory,
   ) {}
 
   async create(user: CurrentUser, orgId: string, input: CreateObjectInput) {
@@ -34,7 +36,8 @@ export class ObjectsService {
 
   async summary(user: CurrentUser, orgId: string) {
     await this.requireRole(user, orgId);
-    return this.repo.summary(orgId);
+    const summary = await this.repo.summary(orgId);
+    return { ...summary, recent_events: await this.withAuthors(summary.recent_events) };
   }
 
   async get(user: CurrentUser, id: string) {
@@ -53,6 +56,13 @@ export class ObjectsService {
     return this.repo.archive(id, new Date().toISOString());
   }
 
+  /** Idempotent: restoring an active object is a no-op. */
+  async restore(user: CurrentUser, id: string) {
+    const { obj } = await this.load(user, id, 'admin');
+    if (!obj.archived_at) return obj;
+    return this.repo.archive(id, null);
+  }
+
   async changeStatus(user: CurrentUser, id: string, status: InventoryStatus) {
     const { obj } = await this.load(user, id);
     this.assertActive(obj);
@@ -63,7 +73,7 @@ export class ObjectsService {
     await this.load(user, id);
     const events = await this.repo.listEvents(id);
     const files = (await this.eventFiles?.listByEvents(events.map((e) => e.id))) ?? [];
-    return events.map((e) => ({ ...e, files: files.filter((f) => f.event_id === e.id) }));
+    return (await this.withAuthors(events)).map((e) => ({ ...e, files: files.filter((f) => f.event_id === e.id) }));
   }
 
   async addEvent(user: CurrentUser, id: string, input: CreateEventInput) {
@@ -72,6 +82,12 @@ export class ObjectsService {
     const event = { ...input, event_date: input.event_date ?? null, id: randomUUID(), object_id: id, created_at: new Date().toISOString(), created_by: user.id, files: [] };
     await this.repo.addEvent(event);
     return event;
+  }
+
+  private async withAuthors<E extends { created_by: string }>(events: E[]) {
+    const found = await this.users?.findByIds([...new Set(events.map((e) => e.created_by))]);
+    const emails = new Map((found ?? []).map((u) => [u.id, u.email]));
+    return events.map((e) => ({ ...e, created_by_email: emails.get(e.created_by) ?? null }));
   }
 
   private assertActive(obj: InventoryObject) {

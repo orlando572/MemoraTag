@@ -16,7 +16,7 @@ export class MemoryObjectRepository implements ObjectRepository {
   }
   async list(orgId: string, f: ObjectFilters) {
     return [...this.objects.values()]
-      .filter((o) => o.organization_id === orgId && !o.archived_at)
+      .filter((o) => o.organization_id === orgId && !!o.archived_at === !!f.archived)
       .filter((o) => !f.status || o.status === f.status)
       .filter((o) => !f.location || has(o.location, f.location))
       .filter((o) => !f.category || (o.category ?? '').toLowerCase() === f.category.toLowerCase())
@@ -30,7 +30,7 @@ export class MemoryObjectRepository implements ObjectRepository {
   async setStatus(id: string, status: InventoryStatus) {
     return this.mutate(id, { status });
   }
-  async archive(id: string, at: string) {
+  async archive(id: string, at: string | null) {
     return this.mutate(id, { archived_at: at });
   }
   async listEvents(objectId: string) {

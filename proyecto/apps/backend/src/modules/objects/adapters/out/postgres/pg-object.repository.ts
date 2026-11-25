@@ -25,7 +25,7 @@ export class PgObjectRepository implements ObjectRepository {
     return r.rows[0] ? toObject(r.rows[0]) : null;
   }
   async list(orgId: string, f: ObjectFilters) {
-    const where = ['organization_id = $1', 'deleted_at is null', 'archived_at is null'];
+    const where = ['organization_id = $1', 'deleted_at is null', f.archived ? 'archived_at is not null' : 'archived_at is null'];
     const args: unknown[] = [orgId];
     const add = (sql: string, value: unknown) => {
       args.push(value);
@@ -48,7 +48,7 @@ export class PgObjectRepository implements ObjectRepository {
     const r = await this.pool.query(`update objects set status = $2, updated_at = now() where id = $1 returning ${COLS}`, [id, status]);
     return toObject(r.rows[0]);
   }
-  async archive(id: string, at: string) {
+  async archive(id: string, at: string | null) {
     const r = await this.pool.query(`update objects set archived_at = $2, updated_at = now() where id = $1 returning ${COLS}`, [id, at]);
     return toObject(r.rows[0]);
   }

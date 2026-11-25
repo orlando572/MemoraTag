@@ -100,6 +100,7 @@ export const ObjectEventSchema = z.object({
   event_date: iso.nullish(),
   created_at: iso,
   created_by: z.string(),
+  created_by_email: z.string().nullable().optional(),
   files: z.array(EventFileSchema).default([]),
 });
 export type ObjectEvent = z.infer<typeof ObjectEventSchema>;
@@ -116,6 +117,8 @@ export const ObjectFiltersSchema = z.object({
   status: InventoryStatusSchema.optional(),
   location: z.string().trim().optional(),
   category: z.string().trim().optional(),
+  // Query-string flag: 'true' or '1' lists only archived objects.
+  archived: z.union([z.boolean(), z.string()]).transform((v) => v === true || v === 'true' || v === '1').optional(),
 });
 export type ObjectFilters = z.infer<typeof ObjectFiltersSchema>;
 

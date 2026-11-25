@@ -66,6 +66,33 @@ describe('ObjectsService', () => {
   });
 });
 
+describe('ObjectsService archive, restore and authors', () => {
+  it('lists archived objects only on request and restores them (admin only, idempotent)', async () => {
+    const s = setup();
+    const obj = await s.create(admin, 'org', input);
+    await s.create(admin, 'org', { ...input, name: 'Other' });
+    await s.archive(admin, obj.id);
+    expect(await s.list(member, 'org', {})).toHaveLength(1);
+    expect((await s.list(member, 'org', { archived: true })).map((o) => o.id)).toEqual([obj.id]);
+    await expect(s.restore(member, obj.id)).rejects.toThrow('Admin');
+    await expect(s.restore(outsider, obj.id)).rejects.toThrow('not found');
+    expect((await s.restore(admin, obj.id)).archived_at).toBeNull();
+    expect((await s.restore(admin, obj.id)).archived_at).toBeNull();
+    expect(await s.list(admin, 'org', {})).toHaveLength(2);
+    expect(await s.list(admin, 'org', { archived: true })).toHaveLength(0);
+  });
+
+  it('adds the author email to events and to the summary', async () => {
+    const memberships = { getRole: async (_org: string, userId: string) => roles[userId] ?? null };
+    const users = { remember: async () => undefined, findByEmail: async () => null, findByIds: async (ids: string[]) => [admin, member].filter((u) => ids.includes(u.id)) };
+    const s = new ObjectsService(new MemoryObjectRepository(), memberships, undefined, users);
+    const obj = await s.create(admin, 'org', input);
+    await s.addEvent(member, obj.id, { type: 'note', title: 'n', description: '' });
+    expect((await s.listEvents(admin, obj.id))[0].created_by_email).toBe('m@x.com');
+    expect((await s.summary(admin, 'org')).recent_events[0].created_by_email).toBe('m@x.com');
+  });
+});
+
 describe('objectsToCsv', () => {
   it('escapes quotes and neutralizes formulas', () => {
     const csv = objectsToCsv([{ id: '1', organization_id: 'o', name: '=cmd', description: 'say "hi", ok', color: '', status: 'in_use', created_at: 't' }]);

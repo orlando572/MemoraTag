@@ -20,11 +20,11 @@ export interface ObjectRepository {
   create(obj: InventoryObject): Promise<void>;
   /** Returns the object even when archived. */
   getById(id: string): Promise<InventoryObject | null>;
-  /** Non-archived objects of the organization matching the filters. */
+  /** Non-archived objects of the organization matching the filters (only archived ones with `archived`). */
   list(orgId: string, filters: ObjectFilters): Promise<InventoryObject[]>;
   update(id: string, patch: ObjectPatch): Promise<InventoryObject>;
   setStatus(id: string, status: InventoryStatus): Promise<InventoryObject>;
-  archive(id: string, at: string): Promise<InventoryObject>;
+  archive(id: string, at: string | null): Promise<InventoryObject>;
   listEvents(objectId: string): Promise<ObjectEvent[]>;
   getEventById(id: string): Promise<ObjectEvent | null>;
   addEvent(event: ObjectEvent): Promise<void>;
