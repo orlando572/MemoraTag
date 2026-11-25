@@ -88,3 +88,6 @@ const urlSchema = { safeParse: (v: unknown) => typeof (v as { url?: unknown } | 
 
 /** Signed URL of an attachment; it expires after about 5 minutes. */
 export const fileUrl = (fileId: string) => request<string>(`/files/${fileId}/url`, urlSchema);
+
+/** Tells the backend that an NFC tag was written for this object (admin only). */
+export const markCompanyNfcWritten = (id: string) => request(`/objects/${id}/nfc`, InventoryObjectSchema, { method: 'POST' });

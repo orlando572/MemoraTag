@@ -11,6 +11,7 @@ import { useStyles, useTheme } from '../ui/theme';
 import { radius, space, type, type Palette } from '../ui/tokens';
 import { changeStatus, getObject, listEvents } from './api';
 import { EventAttachments } from './Attachments';
+import { NfcBadge } from './NfcBadge';
 import { CompanyAvatar } from './CompanyHome';
 import { useCompany } from './CompanyProvider';
 import { canWriteNfc } from './files';
@@ -67,6 +68,7 @@ export function CompanyObjectScreen({ id }: { id: string }) {
     { icon: 'calendar-outline', label: 'Fecha de alta', value: formatDate(dayOf(object.created_at)) },
   ];
   const params = { id: object.id, name: object.name };
+  const nfcParams = { ...params, nfc: object.nfc_written_at ?? '' };
 
   return <Screen>
     <NavBar title="Objeto de la empresa" onBack={back} />
@@ -74,7 +76,7 @@ export function CompanyObjectScreen({ id }: { id: string }) {
       <View style={s.hero}>
         <CompanyAvatar object={object} size={72} />
         <View style={{ flex: 1 }}>
-          <Text accessibilityRole="header" style={s.name}>{object.name}</Text>
+          <View style={s.nameRow}><Text accessibilityRole="header" style={[s.name, { flex: 1 }]}>{object.name}</Text><NfcBadge writtenAt={object.nfc_written_at} /></View>
           {!!object.internal_code && <View style={s.code} accessible accessibilityLabel={`Código ${object.internal_code}`}><Ionicons name="barcode-outline" size={16} color={c.muted} /><Text style={s.codeText}>{object.internal_code}</Text></View>}
           {archived && <Badge style={{ marginTop: space.sm }} tone="neutral" icon="archive-outline" label="Archivado" />}
         </View>
@@ -107,7 +109,7 @@ export function CompanyObjectScreen({ id }: { id: string }) {
       {!archived && <View style={s.actions}>
         <Action icon="add-circle-outline" label="Registrar evento" onPress={() => router.push({ pathname: '/empresa/objeto/[id]/evento', params })} />
         <Action icon="qr-code-outline" label="Ver QR" onPress={() => router.push({ pathname: '/empresa/objeto/[id]/qr', params })} />
-        {canWriteNfc(org?.role) && <Action icon="radio-outline" label="Escribir NFC" accessibilityLabel="Escribir etiqueta NFC" onPress={() => router.push({ pathname: '/empresa/objeto/[id]/nfc', params })} />}
+        {canWriteNfc(org?.role) && <Action icon="radio-outline" label="Escribir NFC" accessibilityLabel="Escribir etiqueta NFC" onPress={() => router.push({ pathname: '/empresa/objeto/[id]/nfc', params: nfcParams })} />}
       </View>}
 
       <View style={s.historyHead}>
@@ -147,6 +149,7 @@ function Action({ icon, label, onPress, accessibilityLabel }: { icon: keyof type
 
 const makeStyles = (c: Palette) => ({
   content: { paddingHorizontal: space.xl, paddingTop: space.sm, paddingBottom: space.xxxl },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   hero: { flexDirection: 'row', alignItems: 'center', gap: space.lg },
   name: { ...type.title, color: c.ink },
   code: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },

@@ -6,6 +6,7 @@ import { AccessibilityInfo, ActivityIndicator, Animated, Easing, Platform, Scrol
 import { NfcSession, type NfcAdapter, type NfcPhase } from './nfc-session';
 import { objectLink } from './qr';
 import { lookupCompanyObject } from './company/api';
+import { needsReplaceConfirm } from './company/nfc';
 import { lookupMessages, scanTarget } from './company/scan';
 import { companyConfigured } from './company/supabase';
 import { findActiveObject, markNfcWritten, objectState, type MemoryObject } from './storage';
@@ -46,7 +47,7 @@ const messages: Record<string, string> = {
   BUSY: 'Ya hay una operación NFC en curso.',
 };
 
-export function NfcScreen({ object, company, onFound, onCompanyFound, onWritten }: { object?: Pick<MemoryObject, 'id' | 'name'> & { nfc_written_at?: string | null }; /** Company object: the tag is written but nothing is stored locally. */ company?: boolean; onFound?: (object: MemoryObject) => void; onCompanyFound?: (id: string) => void; onWritten?: (at: string) => void }) {
+export function NfcScreen({ object, company, onCompanyWritten, onFound, onCompanyFound, onWritten }: { object?: Pick<MemoryObject, 'id' | 'name'> & { nfc_written_at?: string | null }; /** Company object: the tag is written but nothing is stored locally. */ company?: boolean; /** Company only: called after the tag is verified (e.g. to tell the backend). */ onCompanyWritten?: (id: string) => Promise<unknown>; onFound?: (object: MemoryObject) => void; onCompanyFound?: (id: string) => void; onWritten?: (at: string) => void }) {
   const Alert = useFeedback();
   const { c } = useTheme();
   const styles = useStyles(makeStyles);
@@ -115,6 +116,8 @@ export function NfcScreen({ object, company, onFound, onCompanyFound, onWritten 
       if (!alive.current) return;
       if (object) {
         const at = company ? null : await markNfcWritten(object.id).catch(() => null);
+        // The tag is already written: a failed notice must not block the user.
+        if (company && onCompanyWritten) await onCompanyWritten(object.id).catch(() => { if (alive.current) Alert.toast('Etiqueta escrita. No se pudo registrar en la empresa.', { tone: 'info' }); });
         if (!alive.current) return;
         if (at) onWritten?.(at);
         haptic.success();
@@ -157,7 +160,7 @@ export function NfcScreen({ object, company, onFound, onCompanyFound, onWritten 
 
   function start() {
     if (!object) { void run(); return; }
-    Alert.alert('¿Escribir etiqueta NFC?', 'Se reemplazará el contenido de la etiqueta.', [
+    Alert.alert(company && needsReplaceConfirm(object.nfc_written_at) ? 'Este objeto ya tiene etiqueta. ¿Reemplazarla?' : '¿Escribir etiqueta NFC?', 'Se reemplazará el contenido de la etiqueta.', [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Continuar', style: 'destructive', onPress: () => void run() },
     ]);

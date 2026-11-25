@@ -1,11 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { ActivityIndicator, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, Clipboard, Switch, Text, View } from 'react-native';
 import { Badge, Button, TextField } from '../ui/components';
 import { useFeedback } from '../ui/feedback/FeedbackProvider';
 import { useStyles, useTheme } from '../ui/theme';
 import { space, type, type Palette } from '../ui/tokens';
 import { useCompany } from './CompanyProvider';
+import { showJoinHelp } from './nfc';
 
 /** Content of the «Cuenta de empresa» section in Ajustes: sign in / sign out. Sign-up happens on the web. */
 export function AccountSection() {
@@ -31,10 +32,14 @@ export function AccountSection() {
             {!!company.org.role && <Badge tone="primary" label={company.org.role === 'admin' ? 'Administrador' : 'Miembro'} />}
           </View>
         : company.orgLoading ? <View style={s.row}><ActivityIndicator color={c.primary} /><Text style={s.hint}>Cargando tu empresa…</Text></View>
-        : <>
-            <Text style={s.hint}>No se pudo cargar tu empresa. Necesitas conexión, o tu cuenta aún no pertenece a ninguna.</Text>
-            <Button label="Reintentar" icon="refresh" variant="ghost" onPress={() => void company.reloadOrg()} />
-          </>}
+        : showJoinHelp(company.state, !!company.org, company.orgLoading) ? <>
+            <Text style={s.hint}>Aún no perteneces a una empresa. Dale este correo a tu administrador:</Text>
+            <View style={s.row}>
+              <Text selectable accessibilityLabel={`Tu correo: ${company.email ?? ''}`} style={[s.label, { flex: 1 }]}>{company.email}</Text>
+              {!!company.email && <Button label="Copiar" icon="copy-outline" variant="secondary" onPress={() => { Clipboard.setString(company.email!); Alert.toast('Correo copiado'); }} />}
+            </View>
+            <Button label="Ya me añadieron" icon="refresh" variant="ghost" onPress={() => void company.reloadOrg()} />
+          </> : null}
       <View style={s.row}>
         <View style={{ flex: 1 }}>
           <Text style={s.label}>Modo empresa</Text>
