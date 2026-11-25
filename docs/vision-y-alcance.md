@@ -56,7 +56,7 @@ Evolución posterior a la primera versión. **Implementado en desarrollo local**
 - **Roles:** `admin` gestiona objetos y miembros; `member` consulta objetos, registra eventos y cambia el estado.
 - **Inventario:** campos opcionales por objeto: código interno, categoría, ubicación, responsable y estado (en uso, en reparación o de baja).
 - **Web (centro de gestión):** inventario con búsqueda, filtros y exportación CSV; ficha con línea de tiempo, QR descargable e impresión de etiqueta; gestión de miembros; resumen con indicadores simples; adjuntos de fotos y documentos (PDF y Excel, hasta 5 MB) en los eventos.
-- **Móvil (lo mínimo en campo):** iniciar sesión de empresa, abrir un objeto por QR o NFC, ver su ficha y sus adjuntos, registrar eventos con una foto opcional y cambiar el estado. Solo `admin` puede escribir etiquetas NFC de objetos de empresa. La parte empresarial requiere conexión.
+- **Móvil (lo mínimo en campo):** un interruptor «Modo empresa» en Ajustes cambia el inicio al inventario de la empresa, con contadores por estado, búsqueda y filtros de ubicación y categoría. Desde la ficha se puede ver y compartir el QR, registrar eventos con una foto opcional, cambiar el estado y abrir los adjuntos. Solo `admin` puede escribir etiquetas NFC de objetos de empresa. La parte empresarial requiere conexión; con el modo activo, el escaneo consulta primero la empresa.
 - **Modo personal:** sin cambios; sigue sin conexión y sin cuenta.
 
 **Previsto:** registrar en el servidor cuándo se escribió una etiqueta NFC de empresa, compresión de fotos en el móvil, autor visible en cada evento y paginación para inventarios grandes.
