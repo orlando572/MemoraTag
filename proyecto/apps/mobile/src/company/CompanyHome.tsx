@@ -13,6 +13,8 @@ import { getSummary, listObjects } from './api';
 import { useCompany } from './CompanyProvider';
 import { toCompanyError, type CompanyErrorKind } from './errors';
 import { activeChips, distinctValues, emptyFilters, type CompanyFilters, type StatusFilter } from './filters';
+import { NfcBadge } from './NfcBadge';
+import { nfcLabel } from './nfc';
 import { CompanyProblem } from './Problem';
 import { inventoryStatuses } from './status';
 
@@ -118,7 +120,7 @@ function Row({ item }: { item: InventoryObject }) {
   const { c } = useTheme();
   const status = inventoryStatuses[item.status];
   const place = [item.location, item.category].filter(Boolean);
-  const label = [item.name, item.internal_code ? `Código ${item.internal_code}` : null, item.location ? `Ubicación ${item.location}` : null, item.category ? `Categoría ${item.category}` : null, item.assignee ? `Responsable ${item.assignee}` : null, status.label].filter(Boolean).join('. ');
+  const label = [item.name, item.internal_code ? `Código ${item.internal_code}` : null, item.location ? `Ubicación ${item.location}` : null, item.category ? `Categoría ${item.category}` : null, item.assignee ? `Responsable ${item.assignee}` : null, status.label, nfcLabel(item.nfc_written_at)].filter(Boolean).join('. ');
   return <Card onPress={() => router.push(`/empresa/objeto/${item.id}`)} accessibilityLabel={label} accessibilityHint="Abre la ficha del objeto" style={{ padding: space.md, flexDirection: 'row', alignItems: 'center', gap: space.md }}>
     <CompanyAvatar object={item} size={60} />
     <View style={{ flex: 1, gap: 3 }}>
@@ -126,7 +128,7 @@ function Row({ item }: { item: InventoryObject }) {
       {!!item.internal_code && <Meta icon="barcode-outline" text={item.internal_code} />}
       {place.length > 0 && <Meta icon="location-outline" text={place.join(' · ')} />}
       {!!item.assignee && <Meta icon="person-outline" text={item.assignee} />}
-      <Badge style={{ marginTop: 3 }} tone={status.tone} icon={status.icon} label={status.label} />
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: 3 }}><Badge tone={status.tone} icon={status.icon} label={status.label} /><NfcBadge writtenAt={item.nfc_written_at} size="sm" announce={false} /></View>
     </View>
     <Ionicons name="chevron-forward" size={20} color={c.muted} />
   </Card>;
