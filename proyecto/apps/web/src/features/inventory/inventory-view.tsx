@@ -158,7 +158,7 @@ export function InventoryView({ orgId, isAdmin, objects, allObjects, openNew }: 
           <Input type="search" aria-label="Buscar objetos" placeholder="Buscar por nombre, código…" className="pl-11" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
         <Select aria-label="Filtrar por estado" value={status} onChange={(e) => update({ status: e.target.value })}>
-          <option value="">Todos los estados</option>
+          <option value="">Estado: todos</option>
           {(Object.keys(inventoryStatuses) as InventoryStatus[]).map((key) => (
             <option key={key} value={key}>
               {inventoryStatuses[key].label}
@@ -166,13 +166,13 @@ export function InventoryView({ orgId, isAdmin, objects, allObjects, openNew }: 
           ))}
         </Select>
         <Select aria-label="Filtrar por ubicación" value={location} onChange={(e) => update({ location: e.target.value })}>
-          <option value="">Todas las ubicaciones</option>
+          <option value="">Ubicación: todas</option>
           {locations.map((item) => (
             <option key={item}>{item}</option>
           ))}
         </Select>
         <Select aria-label="Filtrar por categoría" value={category} onChange={(e) => update({ category: e.target.value })}>
-          <option value="">Todas las categorías</option>
+          <option value="">Categoría: todas</option>
           {categories.map((item) => (
             <option key={item}>{item}</option>
           ))}
