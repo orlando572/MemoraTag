@@ -53,6 +53,7 @@ function RootStack() {
       <Stack.Screen name="empresa/index" />
       <Stack.Screen name="empresa/objeto/[id]/index" />
       <Stack.Screen name="empresa/objeto/[id]/evento" options={task} />
+      <Stack.Screen name="empresa/objeto/[id]/nfc" />
       <Stack.Screen name="archived" />
       <Stack.Screen name="settings" />
     </Stack.Protected>

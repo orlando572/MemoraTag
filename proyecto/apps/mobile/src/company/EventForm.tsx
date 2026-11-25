@@ -2,8 +2,10 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import type { EventType } from '@memoratag/contracts';
 import { router } from 'expo-router';
+import type { ImagePickerAsset } from 'expo-image-picker';
 import { useRef, useState } from 'react';
-import { AccessibilityInfo, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { AccessibilityInfo, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { pickPhoto } from '../forms/attachments';
 import { useUnsavedGuard } from '../forms/useUnsavedGuard';
 import { Button, Footer, IconButton, NavBar, Screen, TextField } from '../ui/components';
 import { useFeedback } from '../ui/feedback/FeedbackProvider';
@@ -11,9 +13,10 @@ import { haptic } from '../ui/feedback/haptics';
 import { formatDate, localDate, relativeDate } from '../ui/format';
 import { useStyles, useTheme } from '../ui/theme';
 import { radius, space, type, type Palette } from '../ui/tokens';
-import { addEvent } from './api';
+import { addEvent, uploadEventFile } from './api';
 import { companyMessage, toCompanyError } from './errors';
 import { companyEventLook, registrableTypes } from './events';
+import { photoUpload } from './files';
 
 /** Small form to register an event on a company object (no photo or document in this phase). */
 export function CompanyEventForm({ objectId, objectName }: { objectId: string; objectName: string }) {
@@ -26,9 +29,10 @@ export function CompanyEventForm({ objectId, objectName }: { objectId: string; o
   const [description, setDescription] = useState('');
   const [date, setDate] = useState<Date | null>(null);
   const [showPicker, setShowPicker] = useState(false);
+  const [photo, setPhoto] = useState<ImagePickerAsset | null>(null);
   const [titleError, setTitleError] = useState(false);
   const [saving, setSaving] = useState(false);
-  const guard = useUnsavedGuard(!saving && (!!title || !!description || kind !== 'note' || !!date));
+  const guard = useUnsavedGuard(!saving && (!!title || !!description || kind !== 'note' || !!date || !!photo));
 
   async function save() {
     if (!title.trim()) { haptic.error(); setTitleError(true); titleInput.current?.focus(); AccessibilityInfo.announceForAccessibility('Falta el título del evento.'); return; }
@@ -37,14 +41,37 @@ export function CompanyEventForm({ objectId, objectName }: { objectId: string; o
     try {
       // Noon avoids shifting the day when the server converts time zones (same as the web form).
       const event_date = date ? new Date(`${localDate(date)}T12:00:00`).toISOString() : null;
-      await addEvent(objectId, { type: kind, title: title.trim(), description: description.trim(), event_date });
+      const created = await addEvent(objectId, { type: kind, title: title.trim(), description: description.trim(), event_date });
       guard.allowLeave();
-      router.back();
-      Alert.toast(`${companyEventLook(kind, c).label} registrado`);
+      // The event exists from here on; a failed photo upload must not create it twice.
+      if (photo && !await upload(created.id)) return;
+      finish();
     } catch (e) {
       const error = toCompanyError(e).kind;
       Alert.error('No se pudo guardar el evento', companyMessage(error));
       setSaving(false);
+    }
+  }
+
+  function finish() {
+    router.back();
+    Alert.toast(`${companyEventLook(kind, c).label} registrado`);
+  }
+
+  /** Uploads the photo; on failure offers to retry or to keep the event without it. Returns true when done. */
+  async function upload(eventId: string): Promise<boolean> {
+    const info = photo ? photoUpload(photo) : null;
+    if (!photo || !info) {
+      Alert.error('Evento guardado sin foto', 'La foto debe ser JPEG, PNG o WebP. Puedes adjuntarla desde la web.', [{ text: 'Entendido', onPress: finish }]);
+      return false;
+    }
+    try { await uploadEventFile(eventId, { uri: photo.uri, ...info }); return true; }
+    catch (e) {
+      Alert.error('El evento se guardó, pero la foto no se subió', companyMessage(toCompanyError(e).kind), [
+        { text: 'Continuar sin foto', style: 'cancel', onPress: finish },
+        { text: 'Reintentar', onPress: () => { void upload(eventId).then((done) => { if (done) finish(); }); } },
+      ]);
+      return false;
     }
   }
 
@@ -83,6 +110,13 @@ export function CompanyEventForm({ objectId, objectName }: { objectId: string; o
         </View>
         {showPicker && <DateTimePicker value={date ?? new Date()} mode="date" maximumDate={new Date()} display={Platform.OS === 'ios' ? 'spinner' : 'default'} onChange={(e, value) => { if (Platform.OS !== 'ios') setShowPicker(false); if (e.type !== 'dismissed' && value) setDate(value); }} />}
         {showPicker && Platform.OS === 'ios' && <Button label="Listo" variant="ghost" onPress={() => setShowPicker(false)} />}
+
+        <Text style={[s.label, { marginTop: space.xl }]}>Foto <Text style={s.optional}>· opcional</Text></Text>
+        {photo ? <View style={s.attachment}>
+          <Image source={{ uri: photo.uri }} style={s.thumb} accessibilityLabel="Vista previa de la foto adjunta" />
+          <Text style={[s.fieldText, { flex: 1 }]}>Foto lista para subir</Text>
+          <IconButton icon="close" label="Quitar foto" onPress={() => setPhoto(null)} />
+        </View> : <Button label="Añadir foto" icon="camera-outline" variant="secondary" disabled={saving} onPress={async () => { const asset = await pickPhoto(Alert, 'Foto del evento'); if (asset) setPhoto(asset); }} />}
       </ScrollView>
       <Footer><Button label={saving ? 'Guardando…' : 'Guardar evento'} icon="checkmark" loading={saving} onPress={() => void save()} style={{ flex: 1 }} /></Footer>
     </KeyboardAvoidingView>
@@ -102,5 +136,7 @@ const makeStyles = (c: Palette) => ({
   dateRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   field: { flex: 1, minHeight: 54, flexDirection: 'row', alignItems: 'center', gap: space.md, backgroundColor: c.surface, borderWidth: 1, borderColor: c.inputBorder, borderRadius: radius.md, paddingHorizontal: space.lg },
   fieldText: { ...type.body, color: c.ink, flexShrink: 1 },
+  attachment: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.sm, borderRadius: radius.md, borderWidth: 1, borderColor: c.line, backgroundColor: c.surface },
+  thumb: { width: 56, height: 56, borderRadius: radius.sm },
   fieldDetail: { ...type.secondary, color: c.muted, marginLeft: 'auto' },
 } as const);

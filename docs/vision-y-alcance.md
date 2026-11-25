@@ -12,7 +12,7 @@ Diseñar y evaluar una interfaz móvil orientada a eventos que facilite el regis
 
 ## Usuario principal
 
-Personas que desean conservar información sobre objetos cotidianos, como notas, fotografías, incidencias, mantenimientos y documentos. La gestión empresarial se contempla como evolución futura, no como foco de la primera versión.
+Personas que desean conservar información sobre objetos cotidianos, como notas, fotografías, incidencias, mantenimientos y documentos. La gestión empresarial se describe en la sección «Incremento empresarial (previsto)» y no forma parte de la primera versión.
 
 ## Alcance inicial
 
@@ -46,8 +46,24 @@ Los archivos se guardan localmente cuando no hay conexión y se sincronizan post
 
 Cada archivo puede tener un tamaño máximo de 5 MB. Los formatos admitidos se definirán antes de la implementación. La interfaz debe advertir que hacer público un objeto puede exponer información sensible y sus archivos.
 
+## Incremento empresarial (previsto)
+
+Evolución posterior a la primera versión. No está implementada todavía.
+
+- **Empresa:** una organización con miembros que comparten el inventario de objetos.
+- **Roles:**
+  - `admin`: gestiona objetos y miembros.
+  - `member`: consulta objetos, registra eventos y puede cambiar el estado.
+- **Inventario:** cada objeto podrá tener, de forma opcional, código interno, categoría, ubicación, responsable y estado (en uso, en reparación o de baja). Los objetos podrán pertenecer a una organización.
+- **Web:** centro de gestión, con inventario con búsqueda, filtros y exportación CSV; ficha con línea de tiempo; gestión de miembros; y resumen con indicadores simples.
+- **Móvil:** solo lo mínimo en campo: iniciar sesión de empresa, abrir un objeto por QR o NFC, ver su ficha, registrar eventos y cambiar su estado. La parte empresarial requiere conexión.
+- **Modo personal:** se mantiene sin conexión y sin cuenta.
+
 ## Fuera del alcance inicial
 
-- Dashboard empresarial con equipos, roles y múltiples organizaciones.
+- Invitaciones por correo.
+- Roles adicionales a `admin` y `member`.
+- Varias empresas por usuario en la interfaz.
+- Sincronización offline de datos de empresa.
 - Contabilidad y gestión avanzada de activos.
 - Integraciones empresariales e inteligencia artificial.

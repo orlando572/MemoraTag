@@ -29,7 +29,8 @@ La aplicación móvil permite trabajar localmente sin cuenta ni conexión. La we
 ## Módulos del backend
 
 - **Identidad y acceso:** cuentas, autenticación y autorización.
-- **Memoria de objetos:** objetos, eventos, visibilidad e identificadores QR/NFC.
+- **Memoria de objetos:** objetos, eventos, visibilidad e identificadores QR/NFC. Previsto: campos de inventario opcionales y pertenencia a una organización.
+- **Organizaciones (previsto):** empresas, miembros y roles.
 - **Archivos:** metadatos y acceso al almacenamiento de fotografías y documentos.
 
 La sincronización coordinará las operaciones entre el móvil y el backend. Su ubicación definitiva se definirá al diseñar el flujo offline, sin crear un módulo independiente si no aporta valor.
@@ -82,6 +83,7 @@ proyecto/                  # Workspace independiente del prototipo
 │   ├── web/               # Plataforma Next.js
 │   └── backend/           # Backend NestJS
 ├── packages/              # Compartidos cuando sean necesarios
+│   └── contracts/         # Esquemas Zod compartidos (previsto)
 ├── package.json
 └── pnpm-workspace.yaml
 ```

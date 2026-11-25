@@ -46,7 +46,7 @@ const messages: Record<string, string> = {
   BUSY: 'Ya hay una operación NFC en curso.',
 };
 
-export function NfcScreen({ object, onFound, onCompanyFound, onWritten }: { object?: MemoryObject; onFound?: (object: MemoryObject) => void; onCompanyFound?: (id: string) => void; onWritten?: (at: string) => void }) {
+export function NfcScreen({ object, company, onFound, onCompanyFound, onWritten }: { object?: Pick<MemoryObject, 'id' | 'name'> & { nfc_written_at?: string | null }; /** Company object: the tag is written but nothing is stored locally. */ company?: boolean; onFound?: (object: MemoryObject) => void; onCompanyFound?: (id: string) => void; onWritten?: (at: string) => void }) {
   const Alert = useFeedback();
   const { c } = useTheme();
   const styles = useStyles(makeStyles);
@@ -114,7 +114,7 @@ export function NfcScreen({ object, onFound, onCompanyFound, onWritten }: { obje
       const id = await current.run(object ? 'write' : 'read', object ? objectLink(object.id) : undefined);
       if (!alive.current) return;
       if (object) {
-        const at = await markNfcWritten(object.id).catch(() => null);
+        const at = company ? null : await markNfcWritten(object.id).catch(() => null);
         if (!alive.current) return;
         if (at) onWritten?.(at);
         haptic.success();
