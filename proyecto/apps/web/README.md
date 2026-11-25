@@ -37,11 +37,13 @@ Scripts: `dev`, `build`, `start`, `lint`, `typecheck`. Necesita el backend (`app
 - Pantalla «Crea tu empresa» si el usuario no tiene organización; si tiene, se usa la primera (sin selector multi-empresa).
 - Armazón: barra lateral con nombre de empresa y rol, menú en sheet en móvil, «Miembros» solo para admin.
 - Ajustes: tema Sistema/Claro/Oscuro (localStorage), datos de la cuenta, cerrar sesión.
-- Cliente API con todos los endpoints del backend (aún sin usar en pantallas, salvo organizaciones).
+- Inventario: tabla con búsqueda, filtros por estado, ubicación y categoría (en la URL), orden por columna, exportación CSV, alta y edición (admin), ficha del objeto con cambio de estado, archivado (admin), QR compatible con la app y etiqueta imprimible.
+- Eventos: línea de tiempo y formulario con los 6 tipos.
+- Adjuntos de eventos: fotos (JPG, PNG, WEBP) y documentos (PDF, Excel) de hasta 5 MB. Subida múltiple con validación en cliente, estado por archivo y reintento; miniaturas con visor y URL firmada renovable; documentos con botón «Abrir»; «Quitar archivo» solo para admin.
+- Miembros (admin): alta por correo, cambio de rol y baja, con protección del último admin.
+- Resumen: indicadores, incidencias abiertas y actividad reciente.
 
 ## Previsto (no implementado)
 
-- Inventario: listado, filtros, ficha del objeto, eventos, estado, archivado y exportación CSV.
-- Miembros: alta por correo, cambio de rol y baja.
-- Resumen: totales por estado, incidencias abiertas y actividad reciente.
-- Selector de varias empresas, subida de fotos/documentos, recuperación de contraseña.
+- Previsualización de PDF dentro de la página y progreso de subida por bytes.
+- Selector de varias empresas, recuperación de contraseña, invitaciones a personas sin cuenta.

@@ -1,6 +1,7 @@
 import type { ObjectEvent } from '@memoratag/contracts';
 import { formatDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { EventAttachments } from './event-attachments';
 import { eventTypes } from './event-types';
 import { toneClasses } from './tone';
 
@@ -13,7 +14,7 @@ export function EventIcon({ type }: { type: ObjectEvent['type'] }) {
   );
 }
 
-export function EventTimeline({ events }: { events: ObjectEvent[] }) {
+export function EventTimeline({ events, isAdmin = false }: { events: ObjectEvent[]; isAdmin?: boolean }) {
   if (events.length === 0) {
     return <p className="rounded-lg border border-dashed border-border px-5 py-8 text-center text-muted-foreground">Aún no hay eventos. Registra el primero con el formulario.</p>;
   }
@@ -28,6 +29,7 @@ export function EventTimeline({ events }: { events: ObjectEvent[] }) {
             </p>
             <p className="font-semibold">{event.title}</p>
             {event.description ? <p className="mt-1 whitespace-pre-line text-muted-foreground">{event.description}</p> : null}
+            <EventAttachments files={event.files} isAdmin={isAdmin} />
           </div>
         </li>
       ))}

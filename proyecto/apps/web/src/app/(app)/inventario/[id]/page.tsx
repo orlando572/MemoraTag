@@ -81,7 +81,7 @@ export default async function ObjectPage({ params }: { params: Promise<{ id: str
             <CardTitle>Historia</CardTitle>
             <div className="mt-6 space-y-8">
               {archived ? null : <EventForm objectId={object.id} disabled={false} />}
-              <EventTimeline events={sorted} />
+              <EventTimeline events={sorted} isAdmin={isAdmin} />
             </div>
           </Card>
         </div>

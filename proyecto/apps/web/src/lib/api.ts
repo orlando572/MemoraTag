@@ -2,6 +2,7 @@ import {
   InventoryObjectSchema,
   MemberSchema,
   ObjectEventSchema,
+  EventFileSchema,
   OrganizationSchema,
   OrganizationSummarySchema,
   type AddMemberInput,
@@ -34,6 +35,7 @@ const messages: Record<number, string> = {
   401: 'Tu sesión ha caducado. Vuelve a iniciar sesión.',
   403: 'No tienes permiso para hacer esto.',
   404: 'No hemos encontrado lo que buscas.',
+  413: 'El archivo es demasiado grande (máximo 5 MB).',
   409: 'Esta acción choca con el estado actual (por ejemplo, ya existe o no se puede completar).',
 };
 
@@ -53,8 +55,9 @@ export function createApi(getToken: TokenGetter) {
       res = await fetch(`${env.apiUrl}${path}`, {
         method,
         cache: 'no-store',
-        headers: { Authorization: `Bearer ${token}`, ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
-        body: body === undefined ? undefined : JSON.stringify(body),
+        // FormData sets its own multipart Content-Type (with boundary).
+        headers: { Authorization: `Bearer ${token}`, ...(body === undefined || body instanceof FormData ? {} : { 'Content-Type': 'application/json' }) },
+        body: body === undefined ? undefined : body instanceof FormData ? body : JSON.stringify(body),
       });
     } catch {
       throw new ApiError(0, 'No se pudo conectar con el servidor. Comprueba tu conexión.');
@@ -97,6 +100,15 @@ export function createApi(getToken: TokenGetter) {
       changeStatus: (id: string, input: ChangeStatusInput) => send('PATCH', `/objects/${id}/status`, InventoryObjectSchema, input),
       events: (id: string) => get(`/objects/${id}/events`, z.array(ObjectEventSchema)),
       addEvent: (id: string, input: CreateEventInput) => send('POST', `/objects/${id}/events`, ObjectEventSchema, input),
+    },
+    files: {
+      upload: (eventId: string, file: File) => {
+        const form = new FormData();
+        form.append('file', file);
+        return send('POST', `/events/${eventId}/files`, EventFileSchema, form);
+      },
+      url: (fileId: string) => get(`/files/${fileId}/url`, z.object({ url: z.string(), expires_in: z.number() })),
+      remove: (fileId: string) => request('DELETE', `/files/${fileId}`, null),
     },
   };
 }
