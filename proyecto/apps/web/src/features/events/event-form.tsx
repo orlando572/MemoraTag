@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/features/toast/toast';
 import { errorMessage } from '@/lib/api';
 import { browserApi } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
@@ -27,8 +28,9 @@ const uploadErrors = {
   404: 'no se encontró el evento',
 };
 
-export function EventForm({ objectId, disabled }: { objectId: string; disabled: boolean }) {
+export function EventForm({ objectId, disabled, onSaved }: { objectId: string; disabled: boolean; onSaved?: () => void }) {
   const router = useRouter();
+  const toast = useToast();
   const input = useRef<HTMLInputElement>(null);
   const [type, setType] = useState<EventType>('note');
   const [title, setTitle] = useState('');
@@ -71,6 +73,13 @@ export function EventForm({ objectId, disabled }: { objectId: string; disabled: 
     setError(null);
   }
 
+  // Everything saved: clear the form, notify and let the parent fold it.
+  function finish() {
+    toast(files.length > 0 ? 'Evento y archivos guardados' : 'Evento registrado');
+    reset();
+    onSaved?.();
+  }
+
   async function upload(id: string, items: Picked[]) {
     const api = browserApi();
     let failures = 0;
@@ -103,7 +112,7 @@ export function EventForm({ objectId, disabled }: { objectId: string; disabled: 
       router.refresh();
       const failures = await upload(created.id, files);
       router.refresh();
-      if (failures === 0) reset();
+      if (failures === 0) finish();
     } catch (failure) {
       setError(errorMessage(failure, { 409: 'Este objeto está archivado y ya no admite eventos.' }));
     } finally {
@@ -117,7 +126,7 @@ export function EventForm({ objectId, disabled }: { objectId: string; disabled: 
     const failures = await upload(eventId, failed);
     router.refresh();
     setBusy(false);
-    if (failures === 0) reset();
+    if (failures === 0) finish();
   }
 
   const locked = eventId !== null;

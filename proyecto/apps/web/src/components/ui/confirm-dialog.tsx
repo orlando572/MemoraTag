@@ -15,9 +15,10 @@ type Props = {
   /** Runs the action; throw to show the error inside the dialog. */
   onConfirm: () => Promise<void>;
   errorOverrides?: Partial<Record<number, string>>;
+  tone?: 'destructive' | 'default';
 };
 
-export function ConfirmDialog({ open, onOpenChange, title, description, confirmLabel, onConfirm, errorOverrides }: Props) {
+export function ConfirmDialog({ open, onOpenChange, title, description, confirmLabel, onConfirm, errorOverrides, tone = 'destructive' }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,7 +51,7 @@ export function ConfirmDialog({ open, onOpenChange, title, description, confirmL
           <DialogClose asChild>
             <Button variant="secondary">Cancelar</Button>
           </DialogClose>
-          <Button variant="destructive" onClick={run} disabled={busy}>
+          <Button variant={tone} onClick={run} disabled={busy}>
             {busy ? 'Un momento…' : confirmLabel}
           </Button>
         </div>

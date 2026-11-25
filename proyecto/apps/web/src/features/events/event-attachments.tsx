@@ -8,12 +8,14 @@ import { ErrorAlert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import { useToast } from '@/features/toast/toast';
 import { errorMessage } from '@/lib/api';
 import { browserApi } from '@/lib/api-client';
 import { formatBytes } from './files';
 
 function RemoveFile({ file, className }: { file: EventFile; className?: string }) {
   const router = useRouter();
+  const toast = useToast();
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -29,6 +31,7 @@ function RemoveFile({ file, className }: { file: EventFile; className?: string }
         errorOverrides={{ 409: 'Este objeto está archivado y ya no se puede modificar.' }}
         onConfirm={async () => {
           await browserApi().files.remove(file.id);
+          toast('Archivo quitado');
           router.refresh();
         }}
       />

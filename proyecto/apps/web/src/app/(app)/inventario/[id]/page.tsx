@@ -1,12 +1,13 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
+import { cache } from 'react';
 import { ArrowLeft, Archive } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardTitle } from '@/components/ui/card';
-import { EventForm } from '@/features/events/event-form';
+import { EventComposer } from '@/features/events/event-composer';
 import { EventTimeline } from '@/features/events/event-timeline';
-import { ArchiveObjectButton, EditObjectButton, StatusControl } from '@/features/inventory/object-actions';
+import { ArchiveObjectButton, EditObjectButton, RestoreObjectButton, StatusControl } from '@/features/inventory/object-actions';
 import { ObjectAvatar } from '@/features/inventory/object-avatar';
 import { ObjectQr } from '@/features/inventory/object-qr';
 import { getAppContext } from '@/features/organization/session';
@@ -14,7 +15,16 @@ import { ApiError } from '@/lib/api';
 import { serverApi } from '@/lib/api-server';
 import { formatDate } from '@/lib/format';
 
-export const metadata: Metadata = { title: 'Objeto' };
+// Shared by generateMetadata and the page (one API call per request).
+const getObject = cache(async (id: string) => (await serverApi()).objects.get(id));
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  try {
+    return { title: (await getObject((await params).id)).name };
+  } catch {
+    return { title: 'Objeto' };
+  }
+}
 
 export default async function ObjectPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -23,7 +33,7 @@ export default async function ObjectPage({ params }: { params: Promise<{ id: str
   const api = await serverApi();
   let object, events;
   try {
-    [object, events] = await Promise.all([api.objects.get(id), api.objects.events(id)]);
+    [object, events] = await Promise.all([getObject(id), api.objects.events(id)]);
   } catch (error) {
     if (error instanceof ApiError && (error.status === 404 || error.status === 403)) notFound();
     throw error;
@@ -46,6 +56,15 @@ export default async function ObjectPage({ params }: { params: Promise<{ id: str
         <ArrowLeft className="size-4" aria-hidden />
         Inventario
       </Link>
+      {archived ? (
+        <div role="status" className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-border bg-muted px-5 py-4">
+          <p className="flex items-start gap-3 text-sm font-semibold">
+            <Archive className="mt-0.5 size-5 shrink-0 text-muted-foreground" aria-hidden />
+            <span>Este objeto está archivado: no se puede editar ni registrar eventos.</span>
+          </p>
+          {isAdmin ? <RestoreObjectButton id={object.id} name={object.name} /> : null}
+        </div>
+      ) : null}
       <header className="mb-10 flex flex-wrap items-center justify-between gap-6 md:mb-14">
         <div className="flex min-w-0 items-center gap-5">
           <ObjectAvatar color={object.color} className="size-16 rounded-lg" />
@@ -80,8 +99,8 @@ export default async function ObjectPage({ params }: { params: Promise<{ id: str
           <Card>
             <CardTitle>Historia</CardTitle>
             <div className="mt-6 space-y-8">
-              {archived ? null : <EventForm objectId={object.id} disabled={false} />}
-              <EventTimeline events={sorted} isAdmin={isAdmin} />
+              {archived ? null : <EventComposer objectId={object.id} />}
+              <EventTimeline events={sorted} isAdmin={isAdmin} currentUserId={ctx.userId} />
             </div>
           </Card>
         </div>

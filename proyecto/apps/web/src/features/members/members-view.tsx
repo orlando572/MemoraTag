@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { roleInfo } from '@/features/organization/roles';
+import { useToast } from '@/features/toast/toast';
 import { errorMessage } from '@/lib/api';
 import { browserApi } from '@/lib/api-client';
 
@@ -21,6 +22,7 @@ const roles = Object.keys(roleInfo) as Role[];
 
 function AddMemberForm({ orgId }: { orgId: string }) {
   const router = useRouter();
+  const toast = useToast();
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<Role>('member');
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +35,7 @@ function AddMemberForm({ orgId }: { orgId: string }) {
     try {
       await browserApi().organizations.addMember(orgId, { email, role });
       setEmail('');
+      toast('Miembro añadido');
       router.refresh();
     } catch (failure) {
       setError(
@@ -79,6 +82,7 @@ function AddMemberForm({ orgId }: { orgId: string }) {
 
 function MemberRow({ orgId, member, isSelf }: { orgId: string; member: Member; isSelf: boolean }) {
   const router = useRouter();
+  const toast = useToast();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [removing, setRemoving] = useState(false);
@@ -88,6 +92,7 @@ function MemberRow({ orgId, member, isSelf }: { orgId: string; member: Member; i
     setError(null);
     try {
       await browserApi().organizations.changeRole(orgId, member.user_id, role);
+      toast('Rol actualizado');
       router.refresh();
     } catch (failure) {
       setError(errorMessage(failure, { 409: lastAdmin }));
@@ -129,6 +134,7 @@ function MemberRow({ orgId, member, isSelf }: { orgId: string; member: Member; i
         errorOverrides={{ 409: lastAdmin }}
         onConfirm={async () => {
           await browserApi().organizations.removeMember(orgId, member.user_id);
+          toast(isSelf ? 'Has salido de la empresa' : 'Miembro quitado');
           router.refresh();
         }}
       />

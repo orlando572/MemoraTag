@@ -3,10 +3,11 @@
 import type { InventoryObject, InventoryStatus } from '@memoratag/contracts';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { Archive, Pencil } from 'lucide-react';
+import { Archive, ArchiveRestore, Pencil } from 'lucide-react';
 import { ErrorAlert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { useToast } from '@/features/toast/toast';
 import { errorMessage } from '@/lib/api';
 import { browserApi } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
@@ -17,6 +18,7 @@ const archivedMessage = { 409: 'Este objeto está archivado y ya no se puede mod
 
 export function StatusControl({ id, status, disabled }: { id: string; status: InventoryStatus; disabled: boolean }) {
   const router = useRouter();
+  const toast = useToast();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,6 +28,7 @@ export function StatusControl({ id, status, disabled }: { id: string; status: In
     setError(null);
     try {
       await browserApi().objects.changeStatus(id, { status: next });
+      toast('Estado actualizado');
       router.refresh();
     } catch (failure) {
       setError(errorMessage(failure, archivedMessage));
@@ -79,6 +82,7 @@ export function EditObjectButton({ orgId, object }: { orgId: string; object: Inv
 
 export function ArchiveObjectButton({ id, name }: { id: string; name: string }) {
   const router = useRouter();
+  const toast = useToast();
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -95,7 +99,35 @@ export function ArchiveObjectButton({ id, name }: { id: string; name: string }) 
         errorOverrides={archivedMessage}
         onConfirm={async () => {
           await browserApi().objects.archive(id);
+          toast('Objeto archivado');
           router.replace('/inventario');
+          router.refresh();
+        }}
+      />
+    </>
+  );
+}
+
+export function RestoreObjectButton({ id, name }: { id: string; name: string }) {
+  const router = useRouter();
+  const toast = useToast();
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button onClick={() => setOpen(true)}>
+        <ArchiveRestore aria-hidden />
+        Restaurar
+      </Button>
+      <ConfirmDialog
+        open={open}
+        onOpenChange={setOpen}
+        tone="default"
+        title="¿Restaurar este objeto?"
+        description={`«${name}» volverá al inventario y se podrá editar de nuevo.`}
+        confirmLabel="Restaurar"
+        onConfirm={async () => {
+          await browserApi().objects.restore(id);
+          toast('Objeto restaurado');
           router.refresh();
         }}
       />

@@ -18,6 +18,9 @@ import { z } from 'zod';
 import { env } from '@/lib/env';
 
 // The role-change endpoint answers without the email.
+// Events may carry the author's email (optional until the contracts include it).
+const WebEventSchema = ObjectEventSchema.extend({ created_by_email: z.string().nullish() });
+export type WebEvent = z.infer<typeof WebEventSchema>;
 const MemberRoleSchema = z.object({ user_id: z.string(), role: MemberSchema.shape.role });
 
 export class ApiError extends Error {
@@ -73,9 +76,9 @@ export function createApi(getToken: TokenGetter) {
   const get = async <S extends z.ZodType>(path: string, schema: S) => (await request('GET', path, schema)) as z.infer<S>;
   const send = async <S extends z.ZodType>(method: string, path: string, schema: S, body?: unknown) => (await request(method, path, schema, body)) as z.infer<S>;
 
-  const query = (filters: ObjectFilters = {}) => {
+  const query = (filters: ObjectFilters & { archived?: boolean } = {}) => {
     const params = new URLSearchParams();
-    Object.entries(filters).forEach(([key, value]) => value && params.set(key, value));
+    Object.entries(filters).forEach(([key, value]) => value && params.set(key, String(value)));
     const text = params.toString();
     return text ? `?${text}` : '';
   };
@@ -91,15 +94,16 @@ export function createApi(getToken: TokenGetter) {
       summary: (orgId: string) => get(`/organizations/${orgId}/summary`, OrganizationSummarySchema),
     },
     objects: {
-      list: (orgId: string, filters?: ObjectFilters) => get(`/organizations/${orgId}/objects${query(filters)}`, z.array(InventoryObjectSchema)),
+      list: (orgId: string, filters?: ObjectFilters & { archived?: boolean }) => get(`/organizations/${orgId}/objects${query(filters)}`, z.array(InventoryObjectSchema)),
       create: (orgId: string, input: CreateObjectInput) => send('POST', `/organizations/${orgId}/objects`, InventoryObjectSchema, input),
       exportCsv: async (orgId: string) => (await request('GET', `/organizations/${orgId}/objects.csv`, 'blob')) as Blob,
       get: (id: string) => get(`/objects/${id}`, InventoryObjectSchema),
       update: (id: string, input: UpdateObjectInput) => send('PATCH', `/objects/${id}`, InventoryObjectSchema, input),
+      restore: (id: string) => send('POST', `/objects/${id}/restore`, InventoryObjectSchema),
       archive: (id: string) => send('POST', `/objects/${id}/archive`, InventoryObjectSchema),
       changeStatus: (id: string, input: ChangeStatusInput) => send('PATCH', `/objects/${id}/status`, InventoryObjectSchema, input),
-      events: (id: string) => get(`/objects/${id}/events`, z.array(ObjectEventSchema)),
-      addEvent: (id: string, input: CreateEventInput) => send('POST', `/objects/${id}/events`, ObjectEventSchema, input),
+      events: (id: string) => get(`/objects/${id}/events`, z.array(WebEventSchema)),
+      addEvent: (id: string, input: CreateEventInput) => send('POST', `/objects/${id}/events`, WebEventSchema, input),
     },
     files: {
       upload: (eventId: string, file: File) => {
