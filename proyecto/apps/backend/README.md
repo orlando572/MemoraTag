@@ -21,10 +21,25 @@ Scripts: `dev`, `build`, `start`, `test`, `test:e2e`, `typecheck`, `lint` (compr
 | `SUPABASE_URL` | Obligatoria. Se usa `${SUPABASE_URL}/auth/v1/.well-known/jwks.json` para verificar el JWT. |
 | `DATABASE_URL` | Cadena Postgres; obligatoria con `PERSISTENCE=postgres`. |
 | `PERSISTENCE` | `memory` (por defecto, datos volátiles) o `postgres`. |
-| `PORT` | Puerto HTTP (3000). |
+| `PORT` | Puerto HTTP (3100; la web usa 3000). |
 | `CORS_ORIGIN` | Orígenes permitidos, separados por comas. |
 
 ## Base de datos
+
+### Desarrollo local (Supabase CLI + Docker)
+
+`supabase/config.toml` usa el rango de puertos **553xx** para convivir con otros proyectos Supabase locales (API 55321, Postgres 55322, Studio 55323, correo de pruebas 55324).
+
+```bash
+cd proyecto/apps/backend
+npx supabase@2 start -x realtime,storage-api,imgproxy,edge-runtime,logflare,vector,supavisor
+npx supabase@2 db reset    # reaplica las migraciones desde cero
+npx supabase@2 stop        # detiene los contenedores
+```
+
+`.env` local: `SUPABASE_URL=http://127.0.0.1:55321`, `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55322/postgres`, `PERSISTENCE=postgres`, `PORT=3100`.
+
+### Proyecto Supabase remoto
 
 Aplicar `supabase/migrations/0001_empresas_inventario.sql` en el proyecto Supabase (SQL editor o CLI). Crea `profiles` (rellenada por trigger desde `auth.users`), `organizations`, `organization_members`, `objects` y `events`, con RLS activado y sin políticas: el acceso es solo mediante el backend con una conexión privilegiada.
 
@@ -38,9 +53,10 @@ Permisos: admin crea/edita/archiva objetos; member consulta, cambia estado y reg
 
 Endpoints: `GET/POST /organizations`, `GET/POST /organizations/:orgId/members`, `PATCH/DELETE /organizations/:orgId/members/:userId`, `GET/POST /organizations/:orgId/objects`, `GET /organizations/:orgId/objects.csv`, `GET /organizations/:orgId/summary`, `GET/PATCH /objects/:id`, `POST /objects/:id/archive`, `PATCH /objects/:id/status`, `GET/POST /objects/:id/events`.
 
+Verificado manualmente contra Supabase local (Auth real + Postgres): permisos por rol, filtros, resumen, CSV, último admin y archivado. Los tests automáticos usan adaptadores en memoria.
+
 ## Previsto / no implementado
 
-- Adaptadores Postgres sin probar contra una base real (los tests usan memoria).
 - Subida de fotos/documentos de eventos, invitaciones a usuarios no registrados, auditoría y paginación.
 - La comprobación del último admin no es transaccional (posible carrera entre dos admins).
 - En modo `memory`, un usuario solo es localizable por email tras su primera petición autenticada.

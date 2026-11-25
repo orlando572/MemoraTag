@@ -29,7 +29,7 @@ export class PgObjectRepository implements ObjectRepository {
     const args: unknown[] = [orgId];
     const add = (sql: string, value: unknown) => {
       args.push(value);
-      where.push(sql.replace('$n', `$${args.length}`));
+      where.push(sql.replaceAll('$n', `$${args.length}`));
     };
     if (f.status) add('status = $n', f.status);
     if (f.location) add('location ilike $n', like(f.location));

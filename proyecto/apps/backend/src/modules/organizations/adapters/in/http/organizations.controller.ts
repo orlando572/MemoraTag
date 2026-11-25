@@ -3,7 +3,7 @@ import { AddMemberSchema, CreateOrganizationSchema, UpdateMemberRoleSchema } fro
 import type { AddMemberInput, CreateOrganizationInput, UpdateMemberRoleInput } from '@memoratag/contracts';
 import { AuthGuard, CurrentUser } from '../../../../identity/adapters/in/http/auth.guard';
 import type { CurrentUser as User } from '../../../../identity/domain/current-user';
-import { ZodPipe } from '../../../../../shared/http';
+import { UuidParam, ZodPipe } from '../../../../../shared/http';
 import { OrganizationsService } from '../../../application/organizations.service';
 
 @Controller('organizations')
@@ -22,23 +22,23 @@ export class OrganizationsController {
   }
 
   @Get(':orgId/members')
-  members(@CurrentUser() user: User, @Param('orgId') orgId: string) {
+  members(@CurrentUser() user: User, @Param('orgId', UuidParam) orgId: string) {
     return this.service.listMembers(user, orgId);
   }
 
   @Post(':orgId/members')
-  addMember(@CurrentUser() user: User, @Param('orgId') orgId: string, @Body(new ZodPipe(AddMemberSchema)) body: AddMemberInput) {
+  addMember(@CurrentUser() user: User, @Param('orgId', UuidParam) orgId: string, @Body(new ZodPipe(AddMemberSchema)) body: AddMemberInput) {
     return this.service.addMember(user, orgId, body);
   }
 
   @Patch(':orgId/members/:userId')
-  changeRole(@CurrentUser() user: User, @Param('orgId') orgId: string, @Param('userId') userId: string, @Body(new ZodPipe(UpdateMemberRoleSchema)) body: UpdateMemberRoleInput) {
+  changeRole(@CurrentUser() user: User, @Param('orgId', UuidParam) orgId: string, @Param('userId', UuidParam) userId: string, @Body(new ZodPipe(UpdateMemberRoleSchema)) body: UpdateMemberRoleInput) {
     return this.service.changeRole(user, orgId, userId, body.role);
   }
 
   @Delete(':orgId/members/:userId')
   @HttpCode(204)
-  async remove(@CurrentUser() user: User, @Param('orgId') orgId: string, @Param('userId') userId: string) {
+  async remove(@CurrentUser() user: User, @Param('orgId', UuidParam) orgId: string, @Param('userId', UuidParam) userId: string) {
     await this.service.removeMember(user, orgId, userId);
   }
 }

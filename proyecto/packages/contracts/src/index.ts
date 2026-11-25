@@ -44,7 +44,7 @@ const optText = z.string().trim().max(200).nullish();
 export const CreateObjectSchema = z.object({
   name: z.string().trim().min(1).max(200),
   description: z.string().max(2000).default(''),
-  color: z.string().max(32).default('#6b7280'),
+  color: z.string().max(32).default('#DCEBEE'),
   internal_code: optText,
   category: optText,
   location: optText,

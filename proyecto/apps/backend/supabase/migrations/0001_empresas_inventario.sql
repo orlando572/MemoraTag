@@ -46,7 +46,7 @@ create table public.objects (
   organization_id uuid references public.organizations (id), -- null = personal object (future)
   name text not null,
   description text not null default '',
-  color text not null default '#6b7280',
+  color text not null default '#DCEBEE',
   internal_code text,
   category text,
   location text,
