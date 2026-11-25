@@ -1,4 +1,4 @@
-import { InventoryObjectSchema, ObjectEventSchema, OrganizationSchema, type ChangeStatusInput, type CreateEventInput } from '@memoratag/contracts';
+import { EventFileSchema, InventoryObjectSchema, ObjectEventSchema, OrganizationSchema, type ChangeStatusInput, type CreateEventInput } from '@memoratag/contracts';
 import { CompanyError, kindFromStatus } from './errors';
 import { apiUrl, supabase } from './supabase';
 import { lookupOutcome, type LookupOutcome } from './scan';
@@ -58,3 +58,23 @@ export async function lookupCompanyObject(id: string): Promise<LookupOutcome> {
     return lookupOutcome(error instanceof CompanyError && error.kind === 'offline' ? null : 500);
   }
 }
+
+/** Uploads one photo as multipart (field «file»). The event must already exist. */
+export async function uploadEventFile(eventId: string, file: { uri: string; name: string; type: string }) {
+  const bearer = await token();
+  const form = new FormData();
+  // React Native accepts { uri, name, type } as a file part.
+  form.append('file', file as unknown as Blob);
+  let response: Response;
+  try { response = await fetch(`${apiUrl}/events/${eventId}/files`, { method: 'POST', headers: { Authorization: `Bearer ${bearer}`, Accept: 'application/json' }, body: form }); }
+  catch { throw new CompanyError('offline'); }
+  if (!response.ok) throw new CompanyError(kindFromStatus(response.status));
+  const parsed = EventFileSchema.safeParse(await response.json().catch(() => null));
+  if (!parsed.success) throw new CompanyError('server');
+  return parsed.data;
+}
+
+const urlSchema = { safeParse: (v: unknown) => typeof (v as { url?: unknown } | null)?.url === 'string' ? { success: true as const, data: (v as { url: string }).url } : { success: false as const } };
+
+/** Signed URL of an attachment; it expires after about 5 minutes. */
+export const fileUrl = (fileId: string) => request<string>(`/files/${fileId}/url`, urlSchema);

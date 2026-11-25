@@ -9,6 +9,9 @@ import { useFeedback } from '../ui/feedback/FeedbackProvider';
 import { useStyles, useTheme } from '../ui/theme';
 import { space, type, type Palette } from '../ui/tokens';
 import { changeStatus, getObject, listEvents } from './api';
+import { EventAttachments } from './Attachments';
+import { useCompany } from './CompanyProvider';
+import { canWriteNfc } from './files';
 import { companyMessage, toCompanyError, type CompanyErrorKind } from './errors';
 import { companyEventLook } from './events';
 import { CompanyProblem } from './Problem';
@@ -17,6 +20,7 @@ import { inventoryStatuses } from './status';
 /** Company object sheet: data, status (icon + text) and history, with the two field actions. */
 export function CompanyObjectScreen({ id }: { id: string }) {
   const Alert = useFeedback();
+  const { org } = useCompany();
   const { c } = useTheme();
   const s = useStyles(makeStyles);
   const [object, setObject] = useState<InventoryObject | null>(null);
@@ -86,6 +90,8 @@ export function CompanyObjectScreen({ id }: { id: string }) {
         </View>)}
       </Card>
 
+      {canWriteNfc(org?.role) && <Button label="Escribir etiqueta NFC" icon="radio-outline" variant="secondary" style={{ marginBottom: space.xxl }} onPress={() => router.push({ pathname: '/empresa/objeto/[id]/nfc', params: { id: object.id, name: object.name } })} />}
+
       <Text accessibilityRole="header" style={s.section}>Historia</Text>
       {error && <Text accessibilityLiveRegion="polite" style={s.stale}>{companyMessage(error)}</Text>}
       {events.length === 0 ? <EmptyState icon="time-outline" title="Sin eventos" text="Registra el primer evento de este objeto." /> :
@@ -101,6 +107,7 @@ export function CompanyObjectScreen({ id }: { id: string }) {
               <Text style={[s.eventMeta, { color: look.color }]} accessibilityLabel={`${look.label}, ${formatDate(day)}`}>{look.label} · {relativeDate(day)}</Text>
               <Text style={s.eventTitle}>{event.title}</Text>
               {!!event.description && <Text style={s.eventText}>{event.description}</Text>}
+              <EventAttachments files={event.files} />
             </Card>
           </View>;
         })}
