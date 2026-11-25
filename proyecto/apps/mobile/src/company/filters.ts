@@ -33,10 +33,3 @@ export function activeChips(filters: CompanyFilters) {
   return chips;
 }
 
-export type ScanSource = 'company' | 'local';
-
-/** Where a scanned id is looked up, in order. In company mode the company comes first. */
-export function scanOrder(companyMode: boolean, companyConfigured: boolean): ScanSource[] {
-  if (companyMode) return ['company', 'local'];
-  return companyConfigured ? ['local', 'company'] : ['local'];
-}

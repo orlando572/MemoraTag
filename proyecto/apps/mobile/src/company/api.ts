@@ -49,16 +49,23 @@ export const changeStatus = (id: string, status: ChangeStatusInput['status']) =>
 export const addEvent = (id: string, input: CreateEventInput) =>
   request(`/objects/${id}/events`, ObjectEventSchema, { method: 'POST', body: input });
 
+/** Longest wait for the company when resolving a scan, so a weak signal never leaves the scanner hanging. */
+export const LOOKUP_TIMEOUT_MS = 8000;
+
 /** Asks whether a scanned id is a company object. Never throws: the result tells the scanner what to do. */
-export async function lookupCompanyObject(id: string): Promise<LookupOutcome> {
+export async function lookupCompanyObject(id: string, timeoutMs = LOOKUP_TIMEOUT_MS): Promise<LookupOutcome> {
   if (!supabase) return 'missing';
   const { data } = await supabase.auth.getSession().catch(() => ({ data: { session: null } }));
   if (!data.session) return 'missing'; // No company session: behave as before.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await send(`/objects/${id}`);
+    const response = await fetch(`${apiUrl}/objects/${id}`, { headers: { Authorization: `Bearer ${data.session.access_token}`, Accept: 'application/json' }, signal: controller.signal });
     return lookupOutcome(response.status);
-  } catch (error) {
-    return lookupOutcome(error instanceof CompanyError && error.kind === 'offline' ? null : 500);
+  } catch {
+    return controller.signal.aborted ? 'timeout' : lookupOutcome(null);
+  } finally {
+    clearTimeout(timer);
   }
 }
 

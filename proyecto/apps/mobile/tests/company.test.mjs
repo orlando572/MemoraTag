@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { CompanyError, companyMessage, kindFromStatus, toCompanyError } from '../src/company/errors.ts';
-import { lookupOutcome, scanTarget } from '../src/company/scan.ts';
+import { lookupMessages, lookupOutcome, scanTarget } from '../src/company/scan.ts';
 
 test('el estado HTTP se traduce a un tipo de error con mensaje en español', () => {
   assert.equal(kindFromStatus(401), 'auth');
@@ -33,4 +33,15 @@ test('el resultado de GET /objects/:id decide abrir la ficha o el mensaje habitu
   assert.equal(lookupOutcome(401), 'auth');
   assert.equal(lookupOutcome(500), 'error');
   assert.equal(lookupOutcome(null), 'offline');
+});
+
+test('el teléfono siempre se consulta primero; la empresa solo si el objeto no está aquí', () => {
+  assert.equal(scanTarget('active', true), 'local');
+  assert.equal(scanTarget('missing', true), 'company-lookup');
+  assert.equal(scanTarget('missing', false), 'missing');
+});
+
+test('si la empresa tarda demasiado se explica y se puede reintentar', () => {
+  assert.match(lookupMessages.timeout, /tarda demasiado/);
+  assert.match(lookupMessages.timeout, /vuelve a intentarlo/);
 });

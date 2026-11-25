@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { activeChips, buildQuery, distinctValues, emptyFilters, scanOrder } from '../src/company/filters.ts';
+import { activeChips, buildQuery, distinctValues, emptyFilters } from '../src/company/filters.ts';
 
 test('la query solo incluye los filtros con valor y los codifica', () => {
   assert.equal(buildQuery(emptyFilters), '');
@@ -18,8 +18,3 @@ test('los filtros activos se muestran como chips quitables', () => {
   assert.deepEqual(activeChips({ ...emptyFilters, location: 'Nave 1', category: 'Taller' }).map((c) => c.key), ['location', 'category']);
 });
 
-test('el orden de consulta al escanear depende del modo empresa', () => {
-  assert.deepEqual(scanOrder(true, true), ['company', 'local']);
-  assert.deepEqual(scanOrder(false, true), ['local', 'company']);
-  assert.deepEqual(scanOrder(false, false), ['local']);
-});
