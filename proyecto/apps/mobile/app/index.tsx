@@ -114,14 +114,13 @@ function ObjectCard({ item }: { item: MemoryObject }) {
     <ObjectCover object={item} size={68} />
     <View style={{ flex: 1, gap: 4 }}>
       <Text style={{ ...type.card, color: c.ink }} numberOfLines={2}>{item.name}</Text>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+      {!!when && <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
         {latest && <Ionicons name={latest.icon} size={15} color={latest.color} />}
-        {/* The date goes first so that, when the title is long, the title is what gets cut and never the date. */}
-        <Text numberOfLines={1} style={{ ...type.secondary, color: c.muted, flex: 1 }}>
-          {!!when && <Text style={{ fontFamily: fonts.strong, color: c.ink }}>{when} · </Text>}
-          {item.latest_event_title ?? 'Aún no tiene eventos'}
-        </Text>
-      </View>
+        <Text numberOfLines={1} style={{ ...type.secondary, fontFamily: fonts.strong, color: c.ink, flex: 1 }}>{when}</Text>
+      </View>}
+      <Text numberOfLines={1} style={{ ...type.secondary, color: c.muted }}>
+        {item.latest_event_title ?? 'Aún no tiene eventos'}
+      </Text>
       {(!!item.open_issues || !!item.nfc_written_at) && <View style={{ flexDirection: 'row', gap: 6, marginTop: 2, flexWrap: 'wrap' }}>
         {!!item.open_issues && <Badge tone="danger" icon="alert-circle" label={item.open_issues === 1 ? '1 abierta' : `${item.open_issues} abiertas`} />}
         {!!item.nfc_written_at && <Badge tone="neutral" icon="radio-outline" label="NFC" />}
