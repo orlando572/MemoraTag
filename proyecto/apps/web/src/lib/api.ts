@@ -16,6 +16,9 @@ import {
 import { z } from 'zod';
 import { env } from '@/lib/env';
 
+// The role-change endpoint answers without the email.
+const MemberRoleSchema = z.object({ user_id: z.string(), role: MemberSchema.shape.role });
+
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -42,7 +45,7 @@ export type TokenGetter = () => Promise<string | null>;
 
 /** Typed API client. `getToken` returns the Supabase access token (server or browser). */
 export function createApi(getToken: TokenGetter) {
-  async function request(method: string, path: string, schema: z.ZodType | null, body?: unknown): Promise<unknown> {
+  async function request(method: string, path: string, schema: z.ZodType | 'blob' | null, body?: unknown): Promise<unknown> {
     const token = await getToken();
     if (!token) throw new ApiError(401, messages[401]);
     let res: Response;
@@ -58,6 +61,7 @@ export function createApi(getToken: TokenGetter) {
     }
     if (!res.ok) throw new ApiError(res.status, messageFor(res.status));
     if (!schema || res.status === 204) return undefined;
+    if (schema === 'blob') return res.blob();
     const parsed = schema.safeParse(await res.json());
     if (!parsed.success) throw new ApiError(502, 'La respuesta del servidor no tiene el formato esperado.');
     return parsed.data;
@@ -79,13 +83,14 @@ export function createApi(getToken: TokenGetter) {
       create: (input: CreateOrganizationInput) => send('POST', '/organizations', OrganizationSchema, input),
       members: (orgId: string) => get(`/organizations/${orgId}/members`, z.array(MemberSchema)),
       addMember: (orgId: string, input: AddMemberInput) => send('POST', `/organizations/${orgId}/members`, MemberSchema, input),
-      changeRole: (orgId: string, userId: string, role: Role) => send('PATCH', `/organizations/${orgId}/members/${userId}`, MemberSchema, { role }),
+      changeRole: (orgId: string, userId: string, role: Role) => send('PATCH', `/organizations/${orgId}/members/${userId}`, MemberRoleSchema, { role }),
       removeMember: (orgId: string, userId: string) => request('DELETE', `/organizations/${orgId}/members/${userId}`, null),
       summary: (orgId: string) => get(`/organizations/${orgId}/summary`, OrganizationSummarySchema),
     },
     objects: {
       list: (orgId: string, filters?: ObjectFilters) => get(`/organizations/${orgId}/objects${query(filters)}`, z.array(InventoryObjectSchema)),
       create: (orgId: string, input: CreateObjectInput) => send('POST', `/organizations/${orgId}/objects`, InventoryObjectSchema, input),
+      exportCsv: async (orgId: string) => (await request('GET', `/organizations/${orgId}/objects.csv`, 'blob')) as Blob,
       get: (id: string) => get(`/objects/${id}`, InventoryObjectSchema),
       update: (id: string, input: UpdateObjectInput) => send('PATCH', `/objects/${id}`, InventoryObjectSchema, input),
       archive: (id: string) => send('POST', `/objects/${id}/archive`, InventoryObjectSchema),
@@ -97,3 +102,9 @@ export function createApi(getToken: TokenGetter) {
 }
 
 export type Api = ReturnType<typeof createApi>;
+
+/** User-facing message for any thrown error; `overrides` replaces the text for specific statuses. */
+export function errorMessage(error: unknown, overrides: Partial<Record<number, string>> = {}) {
+  if (error instanceof ApiError) return overrides[error.status] ?? error.message;
+  return 'Algo ha salido mal. Inténtalo de nuevo.';
+}
