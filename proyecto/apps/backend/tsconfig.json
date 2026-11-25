@@ -4,7 +4,7 @@
     "outDir": "dist", "rootDir": ".",
     "strict": true, "esModuleInterop": true, "skipLibCheck": true,
     "emitDecoratorMetadata": true, "experimentalDecorators": true,
-    "types": ["node", "jest"]
+    "types": ["node", "jest", "multer"]
   },
   "include": ["src", "test"]
 }

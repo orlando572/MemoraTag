@@ -36,6 +36,9 @@ export class MemoryObjectRepository implements ObjectRepository {
   async listEvents(objectId: string) {
     return this.events.filter((e) => e.object_id === objectId).sort((a, b) => b.created_at.localeCompare(a.created_at));
   }
+  async getEventById(id: string) {
+    return this.events.find((e) => e.id === id) ?? null;
+  }
   async addEvent(event: ObjectEvent) {
     this.events.push({ ...event });
   }

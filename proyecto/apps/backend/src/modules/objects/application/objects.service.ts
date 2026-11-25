@@ -3,7 +3,7 @@ import type { CreateEventInput, CreateObjectInput, InventoryObject, InventorySta
 import type { CurrentUser } from '../../identity/domain/current-user';
 import { ConflictError, ForbiddenError, NotFoundError } from '../../../shared/errors';
 import { objectsToCsv } from '../domain/csv';
-import type { MembershipReader, ObjectRepository } from './ports';
+import type { EventFileReader, MembershipReader, ObjectRepository } from './ports';
 
 /**
  * Use cases for inventory objects and their events.
@@ -13,6 +13,7 @@ export class ObjectsService {
   constructor(
     private readonly repo: ObjectRepository,
     private readonly memberships: MembershipReader,
+    private readonly eventFiles?: EventFileReader,
   ) {}
 
   async create(user: CurrentUser, orgId: string, input: CreateObjectInput) {
@@ -60,13 +61,15 @@ export class ObjectsService {
 
   async listEvents(user: CurrentUser, id: string) {
     await this.load(user, id);
-    return this.repo.listEvents(id);
+    const events = await this.repo.listEvents(id);
+    const files = (await this.eventFiles?.listByEvents(events.map((e) => e.id))) ?? [];
+    return events.map((e) => ({ ...e, files: files.filter((f) => f.event_id === e.id) }));
   }
 
   async addEvent(user: CurrentUser, id: string, input: CreateEventInput) {
     const { obj } = await this.load(user, id);
     this.assertActive(obj);
-    const event = { ...input, event_date: input.event_date ?? null, id: randomUUID(), object_id: id, created_at: new Date().toISOString(), created_by: user.id };
+    const event = { ...input, event_date: input.event_date ?? null, id: randomUUID(), object_id: id, created_at: new Date().toISOString(), created_by: user.id, files: [] };
     await this.repo.addEvent(event);
     return event;
   }

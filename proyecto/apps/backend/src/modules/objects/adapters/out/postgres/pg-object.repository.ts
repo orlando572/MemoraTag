@@ -8,7 +8,7 @@ const COLS = 'id, organization_id, name, description, color, internal_code, cate
 const PATCHABLE = ['name', 'description', 'color', 'internal_code', 'category', 'location', 'assignee'] as const;
 
 const toObject = (r: any): InventoryObject => ({ ...r, created_at: iso(r.created_at)!, archived_at: iso(r.archived_at) });
-const toEvent = (r: any): ObjectEvent => ({ ...r, event_date: iso(r.event_date), created_at: iso(r.created_at)! });
+const toEvent = (r: any): ObjectEvent => ({ ...r, files: [], event_date: iso(r.event_date), created_at: iso(r.created_at)! });
 
 export class PgObjectRepository implements ObjectRepository {
   constructor(private readonly pool: Pool) {}
@@ -55,6 +55,10 @@ export class PgObjectRepository implements ObjectRepository {
   async listEvents(objectId: string) {
     const r = await this.pool.query('select id, object_id, type, title, description, event_date, created_at, created_by from events where object_id = $1 and deleted_at is null order by created_at desc', [objectId]);
     return r.rows.map(toEvent);
+  }
+  async getEventById(id: string) {
+    const r = await this.pool.query('select id, object_id, type, title, description, event_date, created_at, created_by from events where id = $1 and deleted_at is null', [id]);
+    return r.rows[0] ? toEvent(r.rows[0]) : null;
   }
   async addEvent(e: ObjectEvent) {
     await this.pool.query('insert into events (id, object_id, type, title, description, event_date, created_at, created_by) values ($1,$2,$3,$4,$5,$6,$7,$8)', [e.id, e.object_id, e.type, e.title, e.description, e.event_date ?? null, e.created_at, e.created_by]);

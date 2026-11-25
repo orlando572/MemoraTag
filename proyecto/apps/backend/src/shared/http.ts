@@ -1,7 +1,7 @@
 import { ArgumentMetadata, ArgumentsHost, BadRequestException, Catch, NotFoundException, ExceptionFilter, PipeTransform } from '@nestjs/common';
 import type { Response } from 'express';
 import type { ZodType } from 'zod';
-import { ConflictError, ForbiddenError, NotFoundError } from './errors';
+import { ConflictError, ForbiddenError, InvalidInputError, NotFoundError, PayloadTooLargeError } from './errors';
 
 /** Validates and parses a request part with a Zod schema from @memoratag/contracts. */
 export class ZodPipe<T> implements PipeTransform {
@@ -13,10 +13,11 @@ export class ZodPipe<T> implements PipeTransform {
   }
 }
 
-@Catch(NotFoundError, ForbiddenError, ConflictError)
+@Catch(NotFoundError, ForbiddenError, ConflictError, InvalidInputError, PayloadTooLargeError)
 export class DomainExceptionFilter implements ExceptionFilter {
   catch(error: Error, host: ArgumentsHost) {
-    const status = error instanceof NotFoundError ? 404 : error instanceof ForbiddenError ? 403 : 409;
+    const status =
+      error instanceof NotFoundError ? 404 : error instanceof ForbiddenError ? 403 : error instanceof InvalidInputError ? 400 : error instanceof PayloadTooLargeError ? 413 : 409;
     host.switchToHttp().getResponse<Response>().status(status).json({ statusCode: status, message: error.message });
   }
 }
