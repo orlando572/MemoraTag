@@ -108,8 +108,7 @@ function ObjectCard({ item }: { item: MemoryObject }) {
   const when = item.latest_event_date ? relativeDate(item.latest_event_date) : null;
   const label = [item.name,
     item.latest_event_title ? `Último evento: ${item.latest_event_title}${resolved ? ' (incidencia resuelta)' : ''}, ${formatDate(item.latest_event_date!)}` : 'Aún no tiene eventos',
-    item.open_issues ? `${item.open_issues} ${item.open_issues === 1 ? 'incidencia abierta' : 'incidencias abiertas'}` : null,
-    item.nfc_written_at ? 'Etiqueta NFC vinculada' : null].filter(Boolean).join('. ');
+    item.open_issues ? `${item.open_issues} ${item.open_issues === 1 ? 'incidencia abierta' : 'incidencias abiertas'}` : null].filter(Boolean).join('. ');
   return <Card onPress={() => router.push(`/object/${item.id}`)} accessibilityLabel={label} accessibilityHint="Abre su historia" style={{ padding: space.md, flexDirection: 'row', alignItems: 'center', gap: space.md }}>
     <ObjectCover object={item} size={68} />
     <View style={{ flex: 1, gap: 4 }}>
@@ -121,9 +120,9 @@ function ObjectCard({ item }: { item: MemoryObject }) {
       <Text numberOfLines={1} style={{ ...type.secondary, color: c.muted }}>
         {item.latest_event_title ?? 'Aún no tiene eventos'}
       </Text>
-      {(!!item.open_issues || !!item.nfc_written_at) && <View style={{ flexDirection: 'row', gap: 6, marginTop: 2, flexWrap: 'wrap' }}>
-        {!!item.open_issues && <Badge tone="danger" icon="alert-circle" label={item.open_issues === 1 ? '1 abierta' : `${item.open_issues} abiertas`} />}
-        {!!item.nfc_written_at && <Badge tone="neutral" icon="radio-outline" label="NFC" />}
+      {/* The NFC tag is shown on the object screen, not here, to keep the list calm. */}
+      {!!item.open_issues && <View style={{ flexDirection: 'row', gap: 6, marginTop: 2, flexWrap: 'wrap' }}>
+        <Badge tone="danger" icon="alert-circle" label={item.open_issues === 1 ? '1 abierta' : `${item.open_issues} abiertas`} />
       </View>}
     </View>
     <Ionicons name="chevron-forward" size={20} color={c.muted} />
