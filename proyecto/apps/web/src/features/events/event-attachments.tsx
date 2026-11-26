@@ -142,8 +142,8 @@ function DocumentRow({ file, isAdmin }: { file: EventFile; isAdmin: boolean }) {
   }
 
   return (
-    <div>
-      <div className="flex items-center gap-3 rounded-md border border-border bg-surface p-3">
+    <div className="min-w-0">
+      <div className="flex min-w-0 items-center gap-3 rounded-md border border-border bg-surface p-3">
         <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
           <Icon className="size-5" aria-hidden />
         </span>
@@ -157,7 +157,8 @@ function DocumentRow({ file, isAdmin }: { file: EventFile; isAdmin: boolean }) {
         </div>
         <Button variant="secondary" size="sm" onClick={open} disabled={busy} aria-label={`Abrir ${file.name}`}>
           <ExternalLink aria-hidden />
-          {busy ? 'Abriendo…' : 'Abrir'}
+          {/* Narrow screens keep the icon only; the aria-label still names the file. */}
+          <span className="hidden sm:inline">{busy ? 'Abriendo…' : 'Abrir'}</span>
         </Button>
         {isAdmin ? <RemoveFile file={file} /> : null}
       </div>
@@ -180,7 +181,7 @@ export function EventAttachments({ files, isAdmin }: { files: EventFile[]; isAdm
         </div>
       ) : null}
       {documents.length ? (
-        <div className="grid gap-2">
+        <div className="grid grid-cols-1 gap-2">
           {documents.map((file) => (
             <DocumentRow key={file.id} file={file} isAdmin={isAdmin} />
           ))}
