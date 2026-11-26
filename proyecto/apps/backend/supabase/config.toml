@@ -125,6 +125,14 @@ file_size_limit = "50MiB"
 # allowed_mime_types = ["image/png", "image/jpeg"]
 # objects_path = "./images"
 
+# Bucket privado de adjuntos y fotos (lo crea también la migración 0002). Al ejecutar
+# «npx supabase db reset» se suben a él las fotos de prueba de ./seed/event-files.
+[storage.buckets.event-files]
+public = false
+file_size_limit = "5MiB"
+allowed_mime_types = ["image/jpeg", "image/png", "image/webp", "application/pdf", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.ms-excel"]
+objects_path = "./seed/event-files"
+
 # Allow connections via S3 compatible clients
 [storage.s3_protocol]
 enabled = true

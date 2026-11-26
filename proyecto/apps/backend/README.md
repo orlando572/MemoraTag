@@ -34,10 +34,14 @@ Scripts: `dev`, `build`, `start`, `test`, `test:e2e`, `typecheck`, `lint` (compr
 
 ```bash
 cd proyecto/apps/backend
-npx supabase@2 start -x realtime,storage-api,imgproxy,edge-runtime,logflare,vector,supavisor
-npx supabase@2 db reset    # reaplica las migraciones desde cero
+npx supabase@2 start -x realtime,imgproxy,edge-runtime,logflare,vector,supavisor
+npx supabase@2 db reset    # borra la base local, reaplica las migraciones y carga los datos de prueba
 npx supabase@2 stop        # detiene los contenedores
 ```
+
+Storage (`storage-api`) debe estar encendido: guarda las fotos y los adjuntos.
+
+**Datos de prueba.** `supabase/seed.sql` contiene los usuarios de prueba (con sus mismas contraseñas), las empresas «AgroRenta Maquinarias» y «Taller Prueba», sus miembros, objetos y eventos. Las fotos están en `supabase/seed/event-files/` y `config.toml` las sube al bucket `event-files`. Ambos se cargan solo con `db reset` (que **borra los datos locales** que hubiera); `migration up` no los carga. Cuentas: `evil.7306@hotmail.com` (admin de AgroRenta), `lyb452207@gmail.com` (miembro de AgroRenta) y `prueba-foto@memoratag.test` (admin de Taller Prueba). No es una migración: nunca se aplica en un proyecto Supabase remoto.
 
 `.env` local: `SUPABASE_URL=http://127.0.0.1:55321`, `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55322/postgres`, `PERSISTENCE=postgres`, `PORT=3100`.
 
