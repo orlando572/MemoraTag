@@ -2,9 +2,10 @@ import type { InventoryObject, InventoryStatus, ObjectEvent } from '@memoratag/c
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Image, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { dayOf, formatDate, relativeDate } from '../ui/format';
-import { Badge, Card, EmptyState, Loading, NavBar, Screen } from '../ui/components';
+import { Badge, Card, EmptyState, IconButton, Loading, NavBar, Screen } from '../ui/components';
 import { haptic } from '../ui/feedback/haptics';
 import { useFeedback } from '../ui/feedback/FeedbackProvider';
 import { useStyles, useTheme } from '../ui/theme';
@@ -12,7 +13,7 @@ import { radius, space, type, type Palette } from '../ui/tokens';
 import { changeStatus, getObject, listEvents } from './api';
 import { EventAttachments } from './Attachments';
 import { NfcBadge } from './NfcBadge';
-import { CompanyAvatar } from './CompanyHome';
+import { AvatarView, CompanyAvatar, useObjectPhoto } from './CompanyHome';
 import { useCompany } from './CompanyProvider';
 import { canWriteNfc } from './files';
 import { companyMessage, toCompanyError, type CompanyErrorKind } from './errors';
@@ -74,7 +75,7 @@ export function CompanyObjectScreen({ id }: { id: string }) {
     <NavBar title="Objeto de la empresa" onBack={back} />
     <ScrollView contentContainerStyle={s.content}>
       <View style={s.hero}>
-        <CompanyAvatar object={object} size={72} />
+        <HeroPhoto object={object} />
         <View style={{ flex: 1 }}>
           <View style={s.nameRow}><Text accessibilityRole="header" style={[s.name, { flex: 1 }]}>{object.name}</Text><NfcBadge writtenAt={object.nfc_written_at} /></View>
           {!!object.internal_code && <View style={s.code} accessible accessibilityLabel={`Código ${object.internal_code}`}><Ionicons name="barcode-outline" size={16} color={c.muted} /><Text style={s.codeText}>{object.internal_code}</Text></View>}
@@ -136,6 +137,25 @@ export function CompanyObjectScreen({ id }: { id: string }) {
         })}
     </ScrollView>
   </Screen>;
+}
+
+/** Avatar of the sheet; with a photo it is bigger and opens it full screen. */
+function HeroPhoto({ object }: { object: InventoryObject }) {
+  const { url, renew } = useObjectPhoto(object);
+  const [open, setOpen] = useState(false);
+  if (!object.photo_updated_at) return <CompanyAvatar object={object} size={72} />;
+  return <>
+    <Pressable accessibilityRole="button" accessibilityLabel={`Ver la foto de ${object.name} a pantalla completa`} disabled={!url} onPress={() => setOpen(true)} style={({ pressed }) => pressed && { opacity: 0.8 }}>
+      <AvatarView object={object} size={96} url={url} onError={renew} />
+    </Pressable>
+    <Modal visible={open} animationType="fade" onRequestClose={() => setOpen(false)}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }}>
+        <View style={{ alignItems: 'flex-end', padding: space.lg }}><IconButton icon="close" label="Cerrar foto" tone="onDark" onPress={() => setOpen(false)} /></View>
+        {url ? <Image accessibilityLabel={`Foto de ${object.name}`} source={{ uri: url }} style={{ flex: 1 }} resizeMode="contain" onError={renew} />
+          : <Text style={{ ...type.body, color: '#fff', textAlign: 'center', marginTop: space.xl }}>No se pudo cargar la foto.</Text>}
+      </SafeAreaView>
+    </Modal>
+  </>;
 }
 
 function Action({ icon, label, onPress, accessibilityLabel }: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void; accessibilityLabel?: string }) {

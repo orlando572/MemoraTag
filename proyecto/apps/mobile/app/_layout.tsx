@@ -51,6 +51,7 @@ function RootStack() {
       <Stack.Screen name="scan" options={{ animation: 'fade' }} />
       <Stack.Screen name="scan-nfc" />
       <Stack.Screen name="empresa/index" />
+      <Stack.Screen name="empresa/nuevo" options={task} />
       <Stack.Screen name="empresa/objeto/[id]/index" />
       <Stack.Screen name="empresa/objeto/[id]/evento" options={task} />
       <Stack.Screen name="empresa/objeto/[id]/nfc" />

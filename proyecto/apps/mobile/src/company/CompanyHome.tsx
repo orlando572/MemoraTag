@@ -2,14 +2,15 @@ import type { InventoryObject, OrganizationSummary } from '@memoratag/contracts'
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, Modal, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
+import { FlatList, Image, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { objectIcon } from '../objects/icons';
 import { Badge, Button, Card, Chip, EmptyState, Footer, IconButton, Loading, Screen } from '../ui/components';
 import { haptic } from '../ui/feedback/haptics';
 import { useStyles, useTheme } from '../ui/theme';
 import { radius, space, type, type Palette } from '../ui/tokens';
-import { getSummary, listObjects } from './api';
+import { getSummary, listObjects, objectPhotoUrl } from './api';
+import { canCreateObjects, photoKey } from './files';
 import { useCompany } from './CompanyProvider';
 import { toCompanyError, type CompanyErrorKind } from './errors';
 import { activeChips, distinctValues, emptyFilters, type CompanyFilters, type StatusFilter } from './filters';
@@ -58,6 +59,8 @@ export function CompanyHome() {
   const refresh = async () => { setRefreshing(true); await load(filters); setRefreshing(false); };
   const counts: Record<'all' | StatusFilter, number | undefined> = { all: summary?.total, in_use: summary?.by_status.in_use ?? 0, in_repair: summary?.by_status.in_repair ?? 0, retired: summary?.by_status.retired ?? 0 };
   const searching = !!filters.q.trim() || !!filters.status || chips.length > 0;
+  const canCreate = canCreateObjects(org?.role);
+  const newObject = () => router.push('/empresa/nuevo');
 
   const header = <View>
     <View style={s.header}>
@@ -98,21 +101,52 @@ export function CompanyHome() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} colors={[c.primary]} progressBackgroundColor={c.surface} />}
         ListEmptyComponent={searching
           ? <EmptyState icon="search-outline" title="Sin resultados" text="Ningún objeto cumple la búsqueda o los filtros." action={{ label: 'Quitar filtros', icon: 'close', onPress: () => setFilters(emptyFilters) }} />
-          : <EmptyState icon="cube-outline" title="Sin objetos" text="Tu empresa aún no tiene objetos. Créalos desde la web." />}
+          : canCreate
+            ? <EmptyState icon="cube-outline" title="Sin objetos" text="Tu empresa aún no tiene objetos. Crea el primero desde aquí o desde la web." action={{ label: 'Nuevo objeto', icon: 'add', onPress: newObject }} />
+            : <EmptyState icon="cube-outline" title="Sin objetos" text="Tu empresa aún no tiene objetos. Un administrador puede crearlos." />}
         ListFooterComponent={error ? <View style={{ marginTop: space.lg }}><CompanyProblem kind={error} onRetry={retry} /></View> : null}
         renderItem={({ item }) => <Row item={item} />}
       />}
-    <Footer><Button label="Escanear" icon="scan-outline" variant="secondary" accessibilityLabel="Escanear código QR o etiqueta NFC" onPress={() => router.push('/scan')} style={{ flex: 1 }} /></Footer>
+    <Footer>
+      <Button label="Escanear" icon="scan-outline" variant="secondary" accessibilityLabel="Escanear código QR o etiqueta NFC" onPress={() => router.push('/scan')} style={{ flex: 1 }} />
+      {canCreate && <Button label="Nuevo objeto" icon="add" accessibilityLabel="Crear un objeto de la empresa" onPress={newObject} style={{ flex: 1 }} />}
+    </Footer>
     <FilterSheet visible={sheet} filters={filters} options={options} onClose={() => setSheet(false)} onApply={(location, category) => { setFilters({ ...filters, location, category }); setSheet(false); }} />
   </Screen>;
 }
 
-/** Avatar with the object's colour and icon (same palette as personal objects). */
-export function CompanyAvatar({ object, size = 56 }: { object: Pick<InventoryObject, 'name' | 'color'>; size?: number }) {
+/**
+ * Signed URL of the object's photo, or null while loading, without photo or after a failure.
+ * Signed URLs last about 5 minutes: `renew` asks for a new one once if the image fails to load.
+ */
+export function useObjectPhoto(object: Pick<InventoryObject, 'id' | 'photo_updated_at'>) {
+  const key = photoKey(object);
+  const [state, setState] = useState<{ key: string | null; url: string | null }>({ key: null, url: null });
+  const [attempt, setAttempt] = useState(0);
+  const id = object.id;
+  useEffect(() => {
+    if (!key) return;
+    let cancelled = false;
+    objectPhotoUrl(id).then((url) => { if (!cancelled) setState({ key, url }); }).catch(() => { if (!cancelled) setState({ key, url: null }); });
+    return () => { cancelled = true; };
+  }, [key, id, attempt]);
+  const url = key && state.key === key ? state.url : null;
+  return { url, renew: () => { setState({ key: null, url: null }); setAttempt((n) => (n < 1 ? n + 1 : n)); } };
+}
+
+/** Avatar with the object's photo, or its colour and icon (same palette as personal objects). */
+export function CompanyAvatar({ object, size = 56 }: { object: Pick<InventoryObject, 'id' | 'name' | 'color' | 'photo_updated_at'>; size?: number }) {
+  const { url, renew } = useObjectPhoto(object);
+  return <AvatarView object={object} size={size} url={url} onError={renew} />;
+}
+
+/** Avatar drawing only: the photo when `url` is given, otherwise the icon on the object's colour. */
+export function AvatarView({ object, size, url, onError }: { object: Pick<InventoryObject, 'name' | 'color'>; size: number; url: string | null; onError?: () => void }) {
   const { object: tone } = useTheme();
   const look = tone(object.color);
-  return <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ width: size, height: size, borderRadius: size * 0.28, backgroundColor: look.bg, alignItems: 'center', justifyContent: 'center' }}>
+  return <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ width: size, height: size, borderRadius: size * 0.28, backgroundColor: look.bg, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
     <Ionicons name={objectIcon(null, object.name)} size={size * 0.46} color={look.fg} />
+    {url && <Image source={{ uri: url }} style={StyleSheet.absoluteFill} accessibilityIgnoresInvertColors onError={onError} />}
   </View>;
 }
 

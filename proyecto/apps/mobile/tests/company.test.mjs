@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { CompanyError, companyMessage, kindFromStatus, toCompanyError } from '../src/company/errors.ts';
+import { CompanyError, companyMessage, kindFromStatus, photoUploadMessage, toCompanyError } from '../src/company/errors.ts';
 import { lookupMessages, lookupOutcome, scanTarget } from '../src/company/scan.ts';
 
 test('el estado HTTP se traduce a un tipo de error con mensaje en español', () => {
@@ -44,4 +44,12 @@ test('el teléfono siempre se consulta primero; la empresa solo si el objeto no 
 test('si la empresa tarda demasiado se explica y se puede reintentar', () => {
   assert.match(lookupMessages.timeout, /tarda demasiado/);
   assert.match(lookupMessages.timeout, /vuelve a intentarlo/);
+});
+
+test('si falla la foto, el mensaje habla de la foto y no de ver los objetos', () => {
+  assert.match(photoUploadMessage('offline'), /enviar la foto/);
+  assert.doesNotMatch(photoUploadMessage('offline'), /ver los objetos/);
+  assert.match(photoUploadMessage('too_large'), /5 MB/);
+  assert.match(photoUploadMessage('invalid'), /leer la foto/);
+  assert.equal(photoUploadMessage('forbidden'), companyMessage('forbidden'));
 });

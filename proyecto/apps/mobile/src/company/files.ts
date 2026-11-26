@@ -35,3 +35,25 @@ export function photoUpload(asset: { uri: string; fileName?: string | null; mime
 export function canWriteNfc(role: string | null | undefined) {
   return role === 'admin';
 }
+
+/** Only company admins may create objects from the phone (the backend enforces it too). */
+export function canCreateObjects(role: string | null | undefined) {
+  return role === 'admin';
+}
+
+/** Key that changes whenever the object's photo changes, or null when it has none. */
+export function photoKey(object: { id: string; photo_updated_at?: string | null }) {
+  return object.photo_updated_at ? `${object.id}:${object.photo_updated_at}` : null;
+}
+
+/** Longest side, in pixels, of a photo sent to the company. Enough to see the object; a few hundred KB. */
+export const UPLOAD_MAX_SIDE = 1600;
+
+/**
+ * New size for a photo before uploading it, keeping its proportions, or null when it is already small enough.
+ * Only one side is returned: the other one follows from the aspect ratio.
+ */
+export function uploadResize(width: number | null | undefined, height: number | null | undefined, max = UPLOAD_MAX_SIDE): { width: number } | { height: number } | null {
+  if (!width || !height || (width <= max && height <= max)) return null;
+  return width >= height ? { width: max } : { height: max };
+}
