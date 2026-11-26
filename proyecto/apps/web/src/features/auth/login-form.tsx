@@ -2,14 +2,15 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
-import { MailCheck } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { LoaderCircle, MailCheck } from 'lucide-react';
 import { ErrorAlert } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Field, RequiredNote, focusFirstError } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { createClient } from '@/lib/supabase/client';
 
 type Mode = 'login' | 'signup';
+type Errors = { email?: string; password?: string };
 
 function translate(message: string) {
   const text = message.toLowerCase();
@@ -21,20 +22,36 @@ function translate(message: string) {
   return 'No se pudo completar la acción. Inténtalo de nuevo.';
 }
 
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function validate(email: string, password: string): Errors {
+  const errors: Errors = {};
+  if (!email.trim()) errors.email = 'Escribe tu correo electrónico.';
+  else if (!emailPattern.test(email.trim())) errors.email = 'El correo no tiene un formato válido (por ejemplo, tu@empresa.com).';
+  if (!password) errors.password = 'Escribe tu contraseña.';
+  else if (password.length < 6) errors.password = 'La contraseña debe tener al menos 6 caracteres.';
+  return errors;
+}
+
+// Heading + card + form: the title changes with the mode (login or sign up).
 export function LoginForm() {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [errors, setErrors] = useState<Errors>({});
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
-    setBusy(true);
     setError(null);
     setNotice(null);
+    const found = validate(email, password);
+    setErrors(found);
+    if (found.email || found.password) return focusFirstError(found, ['email', 'password']);
+    setBusy(true);
     const supabase = createClient();
     const credentials = { email: email.trim(), password };
     const { data, error: failure } =
@@ -51,48 +68,50 @@ export function LoginForm() {
 
   const signup = mode === 'signup';
   return (
-    <form onSubmit={onSubmit} className="space-y-6" noValidate={false}>
-      <div className="space-y-2">
-        <Label htmlFor="email">Correo electrónico</Label>
-        <Input id="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@empresa.com" />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="password">Contraseña</Label>
-        <Input
-          id="password"
-          type="password"
-          autoComplete={signup ? 'new-password' : 'current-password'}
-          required
-          minLength={6}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        {signup ? <p className="text-sm text-muted-foreground">Mínimo 6 caracteres.</p> : null}
-      </div>
-      {error ? <ErrorAlert>{error}</ErrorAlert> : null}
-      {notice ? (
-        <div role="status" className="flex items-start gap-2.5 rounded-md bg-success-soft px-4 py-3 text-sm font-medium text-success">
-          <MailCheck className="mt-0.5 size-4 shrink-0" aria-hidden />
-          <span>{notice}</span>
-        </div>
-      ) : null}
-      <Button type="submit" size="lg" className="w-full" disabled={busy}>
-        {busy ? 'Un momento…' : signup ? 'Crear cuenta' : 'Entrar'}
-      </Button>
-      <p className="text-center text-sm text-muted-foreground">
-        {signup ? '¿Ya tienes cuenta?' : '¿Aún no tienes cuenta?'}{' '}
-        <button
-          type="button"
-          className="rounded-sm font-semibold text-primary underline-offset-4 hover:underline"
-          onClick={() => {
-            setMode(signup ? 'login' : 'signup');
-            setError(null);
-            setNotice(null);
-          }}
-        >
-          {signup ? 'Inicia sesión' : 'Crea una'}
-        </button>
+    <>
+      <h1 className="mt-8 text-center font-heading text-4xl font-semibold tracking-[-0.03em] text-balance md:text-5xl lg:mt-12">
+        {signup ? 'Crea tu cuenta' : 'Tu empresa, con memoria'}
+      </h1>
+      <p className="mt-3 max-w-md text-center text-lg text-muted-foreground">
+        {signup ? 'Regístrate con tu correo. Después eliges si crear tu empresa o unirte a una.' : 'Entra para gestionar tu inventario y tu equipo.'}
       </p>
-    </form>
+      <div className="mt-8 w-full max-w-[440px] rounded-xl border border-border bg-card p-6 md:p-8 lg:mt-10">
+        <form onSubmit={onSubmit} noValidate className="space-y-6">
+          <Field id="email" label="Correo electrónico" required error={errors.email}>
+            {(p) => <Input {...p} type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@empresa.com" />}
+          </Field>
+          <Field id="password" label="Contraseña" required error={errors.password} hint={signup ? 'Mínimo 6 caracteres.' : undefined}>
+            {(p) => <Input {...p} type="password" autoComplete={signup ? 'new-password' : 'current-password'} value={password} onChange={(e) => setPassword(e.target.value)} />}
+          </Field>
+          <RequiredNote />
+          {error ? <ErrorAlert>{error}</ErrorAlert> : null}
+          {notice ? (
+            <div role="status" className="flex items-start gap-2.5 rounded-md bg-success-soft px-4 py-3 text-sm font-medium text-success">
+              <MailCheck className="mt-0.5 size-4 shrink-0" aria-hidden />
+              <span>{notice}</span>
+            </div>
+          ) : null}
+          <Button type="submit" size="lg" className="w-full" disabled={busy}>
+            {busy ? <LoaderCircle className="animate-spin" aria-hidden /> : null}
+            {busy ? 'Un momento…' : signup ? 'Crear cuenta' : 'Entrar'}
+          </Button>
+          <p className="text-center text-sm text-muted-foreground">
+            {signup ? '¿Ya tienes cuenta?' : '¿Aún no tienes cuenta?'}{' '}
+            <button
+              type="button"
+              className="rounded-sm font-semibold text-primary underline-offset-4 hover:underline"
+              onClick={() => {
+                setMode(signup ? 'login' : 'signup');
+                setError(null);
+                setNotice(null);
+                setErrors({});
+              }}
+            >
+              {signup ? 'Inicia sesión' : 'Crea una'}
+            </button>
+          </p>
+        </form>
+      </div>
+    </>
   );
 }

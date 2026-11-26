@@ -6,8 +6,8 @@ import { useRef, useState, type FormEvent } from 'react';
 import { CircleAlert, CircleCheck, LoaderCircle, Paperclip, Plus, RotateCcw, X } from 'lucide-react';
 import { ErrorAlert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Field, RequiredNote } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/features/toast/toast';
@@ -40,6 +40,8 @@ export function EventForm({ objectId, disabled, onSaved }: { objectId: string; d
   const [rejected, setRejected] = useState<string[]>([]);
   // Set once the event exists: from then on only the failed uploads can be retried or discarded.
   const [eventId, setEventId] = useState<string | null>(null);
+  const [titleError, setTitleError] = useState<string | null>(null);
+  const [filesError, setFilesError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -71,6 +73,8 @@ export function EventForm({ objectId, disabled, onSaved }: { objectId: string; d
     setRejected([]);
     setEventId(null);
     setError(null);
+    setTitleError(null);
+    setFilesError(null);
   }
 
   // Everything saved: clear the form, notify and let the parent fold it.
@@ -98,7 +102,13 @@ export function EventForm({ objectId, disabled, onSaved }: { objectId: string; d
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
-    if (needsFile && files.length === 0) return setError(`Un evento de tipo «${eventTypes[type].label}» necesita al menos un archivo.`);
+    setError(null);
+    const missingTitle = !title.trim();
+    const missingFiles = needsFile && files.length === 0;
+    setTitleError(missingTitle ? 'Escribe un título para el evento.' : null);
+    setFilesError(missingFiles ? `Un evento de tipo «${eventTypes[type].label}» necesita al menos un archivo.` : null);
+    if (missingTitle) return document.getElementById('ev-title')?.focus();
+    if (missingFiles) return document.getElementById('ev-files-button')?.focus();
     setBusy(true);
     setError(null);
     try {
@@ -131,35 +141,34 @@ export function EventForm({ objectId, disabled, onSaved }: { objectId: string; d
 
   const locked = eventId !== null;
   return (
-    <form onSubmit={onSubmit} className="space-y-4 rounded-lg bg-muted p-5">
+    <form onSubmit={onSubmit} noValidate className="space-y-4 rounded-lg bg-muted p-5">
       <h3 className="font-heading text-lg font-semibold tracking-tight">Registrar evento</h3>
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="ev-type">Tipo</Label>
-          <Select id="ev-type" value={type} disabled={locked} onChange={(e) => setType(e.target.value as EventType)}>
-            {selectable.map((key) => (
-              <option key={key} value={key}>
-                {eventTypes[key].label}
-              </option>
-            ))}
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="ev-date">Fecha (opcional)</Label>
-          <Input id="ev-date" type="date" value={date} disabled={locked} onChange={(e) => setDate(e.target.value)} />
-        </div>
+        <Field id="ev-type" label="Tipo">
+          {(p) => (
+            <Select {...p} value={type} disabled={locked} onChange={(e) => setType(e.target.value as EventType)}>
+              {selectable.map((key) => (
+                <option key={key} value={key}>
+                  {eventTypes[key].label}
+                </option>
+              ))}
+            </Select>
+          )}
+        </Field>
+        <Field id="ev-date" label="Fecha (opcional)">
+          {(p) => <Input {...p} type="date" value={date} disabled={locked} onChange={(e) => setDate(e.target.value)} />}
+        </Field>
       </div>
+      <Field id="ev-title" label="Título" required error={titleError}>
+        {(p) => <Input {...p} maxLength={200} value={title} disabled={locked} onChange={(e) => setTitle(e.target.value)} placeholder="Qué ha pasado" />}
+      </Field>
+      <Field id="ev-desc" label="Descripción">
+        {(p) => <Textarea {...p} maxLength={4000} value={description} disabled={locked} onChange={(e) => setDescription(e.target.value)} />}
+      </Field>
       <div className="space-y-2">
-        <Label htmlFor="ev-title">Título</Label>
-        <Input id="ev-title" required maxLength={200} value={title} disabled={locked} onChange={(e) => setTitle(e.target.value)} placeholder="Qué ha pasado" />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="ev-desc">Descripción</Label>
-        <Textarea id="ev-desc" maxLength={4000} value={description} disabled={locked} onChange={(e) => setDescription(e.target.value)} />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="ev-files">Adjuntos {needsFile ? '(obligatorio)' : '(opcional)'}</Label>
+        <label htmlFor="ev-files" className="text-sm font-semibold">
+          Adjuntos {needsFile ? '*' : '(opcional)'}
+        </label>
         <div
           onDragOver={(e) => {
             e.preventDefault();
@@ -175,7 +184,7 @@ export function EventForm({ objectId, disabled, onSaved }: { objectId: string; d
         >
           <Paperclip className="size-5 text-muted-foreground" aria-hidden />
           <p className="text-sm text-muted-foreground">Arrastra fotos o documentos aquí, o</p>
-          <Button type="button" variant="secondary" size="sm" disabled={locked} onClick={() => input.current?.click()}>
+          <Button id="ev-files-button" type="button" variant="secondary" size="sm" disabled={locked} onClick={() => input.current?.click()}>
             Elegir archivos
           </Button>
           <p className="text-xs text-muted-foreground">JPG, PNG, WEBP, PDF o Excel · máximo 5 MB cada uno</p>
@@ -192,6 +201,7 @@ export function EventForm({ objectId, disabled, onSaved }: { objectId: string; d
             }}
           />
         </div>
+        {filesError ? <ErrorAlert>{filesError}</ErrorAlert> : null}
         {rejected.length ? (
           <ErrorAlert>
             <span className="block">No se han añadido estos archivos:</span>
@@ -230,6 +240,7 @@ export function EventForm({ objectId, disabled, onSaved }: { objectId: string; d
         ) : null}
       </div>
 
+      <RequiredNote />
       {error ? <ErrorAlert>{error}</ErrorAlert> : null}
       {locked && failed.length > 0 && !busy ? (
         <ErrorAlert>El evento se guardó, pero {failed.length === 1 ? 'un archivo no se subió' : `${failed.length} archivos no se subieron`}. Puedes reintentarlos o descartarlos.</ErrorAlert>
@@ -246,7 +257,7 @@ export function EventForm({ objectId, disabled, onSaved }: { objectId: string; d
           </Button>
         </div>
       ) : (
-        <Button type="submit" disabled={busy || disabled || !title.trim()}>
+        <Button type="submit" disabled={busy || disabled}>
           <Plus aria-hidden />
           {busy ? 'Guardando…' : 'Registrar'}
         </Button>

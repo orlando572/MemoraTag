@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
+import { SkipLink } from '@/components/skip-link';
 import { Brand } from '@/components/brand';
 import { LoginForm } from '@/features/auth/login-form';
 
@@ -7,7 +8,9 @@ export const metadata: Metadata = { title: 'Entrar' };
 
 export default function LoginPage() {
   return (
-    <main className="grid min-h-screen lg:grid-cols-2">
+    <>
+      <SkipLink />
+      <main id="contenido" className="grid min-h-screen lg:grid-cols-2">
       {/* Photo: low strip on mobile, full-height column on large screens */}
       <section className="relative h-32 overflow-hidden bg-muted sm:h-44 lg:h-auto lg:min-h-screen">
         <Image
@@ -35,12 +38,9 @@ export default function LoginPage() {
 
       <section className="flex flex-col items-center justify-center px-6 py-10 lg:py-16">
         <Brand />
-        <h1 className="mt-8 text-center font-heading text-4xl font-semibold tracking-[-0.03em] text-balance md:text-5xl lg:mt-12">Tu empresa, con memoria</h1>
-        <p className="mt-3 max-w-md text-center text-lg text-muted-foreground">Entra para gestionar tu inventario y tu equipo.</p>
-        <div className="mt-8 w-full max-w-[440px] rounded-xl border border-border bg-card p-6 md:p-8 lg:mt-10">
-          <LoginForm />
-        </div>
+        <LoginForm />
       </section>
-    </main>
+      </main>
+    </>
   );
 }

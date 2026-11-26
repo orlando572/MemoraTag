@@ -2,12 +2,12 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
-import { Pencil } from 'lucide-react';
+import { LoaderCircle, Pencil } from 'lucide-react';
 import { ErrorAlert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardTitle } from '@/components/ui/card';
+import { Field, RequiredNote } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useToast } from '@/features/toast/toast';
 import { errorMessage } from '@/lib/api';
 import { browserApi } from '@/lib/api-client';
@@ -17,15 +17,20 @@ export function CompanyCard({ orgId, name, isAdmin }: { orgId: string; name: str
   const toast = useToast();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(name);
+  const [nameError, setNameError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function save(event: FormEvent) {
     event.preventDefault();
     const next = value.trim();
-    if (next.length < 1 || next.length > 80) return setError('El nombre debe tener entre 1 y 80 caracteres.');
-    setBusy(true);
     setError(null);
+    if (next.length < 1 || next.length > 80) {
+      setNameError(next.length < 1 ? 'Escribe el nombre de la empresa.' : 'El nombre no puede pasar de 80 caracteres.');
+      return document.getElementById('company-name')?.focus();
+    }
+    setNameError(null);
+    setBusy(true);
     try {
       await browserApi().organizations.rename(orgId, next);
       toast('Nombre actualizado');
@@ -42,14 +47,15 @@ export function CompanyCard({ orgId, name, isAdmin }: { orgId: string; name: str
     <Card>
       <CardTitle>Empresa</CardTitle>
       {editing ? (
-        <form onSubmit={save} className="mt-6 space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="company-name">Nombre de la empresa</Label>
-            <Input id="company-name" required maxLength={80} value={value} onChange={(e) => setValue(e.target.value)} autoFocus />
-          </div>
+        <form onSubmit={save} noValidate className="mt-6 space-y-4">
+          <Field id="company-name" label="Nombre de la empresa" required error={nameError}>
+            {(p) => <Input {...p} maxLength={80} value={value} onChange={(e) => setValue(e.target.value)} autoFocus />}
+          </Field>
+          <RequiredNote />
           {error ? <ErrorAlert>{error}</ErrorAlert> : null}
           <div className="flex flex-wrap gap-3">
-            <Button type="submit" disabled={busy || !value.trim()}>
+            <Button type="submit" disabled={busy}>
+              {busy ? <LoaderCircle className="animate-spin" aria-hidden /> : null}
               {busy ? 'Guardando…' : 'Guardar'}
             </Button>
             <Button
@@ -58,6 +64,7 @@ export function CompanyCard({ orgId, name, isAdmin }: { orgId: string; name: str
               onClick={() => {
                 setEditing(false);
                 setError(null);
+                setNameError(null);
               }}
             >
               Cancelar

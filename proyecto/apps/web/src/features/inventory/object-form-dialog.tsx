@@ -3,18 +3,18 @@
 import type { InventoryObject, InventoryStatus } from '@memoratag/contracts';
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
-import { Check } from 'lucide-react';
+import { Check, LoaderCircle } from 'lucide-react';
 import { ErrorAlert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import { Field, RequiredNote } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/features/toast/toast';
 import { errorMessage } from '@/lib/api';
 import { browserApi } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/features/toast/toast';
 import { objectColorIndex, objectColors } from './colors';
 import { inventoryStatuses } from './status';
 
@@ -45,13 +45,19 @@ function ObjectForm({ orgId, object, onDone }: { orgId: string; object?: Invento
   const [location, setLocation] = useState(object?.location ?? '');
   const [assignee, setAssignee] = useState(object?.assignee ?? '');
   const [status, setStatus] = useState<InventoryStatus>('in_use');
+  const [nameError, setNameError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
-    setBusy(true);
     setError(null);
+    if (!name.trim()) {
+      setNameError('Escribe el nombre del objeto.');
+      return document.getElementById('obj-name')?.focus();
+    }
+    setNameError(null);
+    setBusy(true);
     const fields = {
       name: name.trim(),
       description,
@@ -78,21 +84,21 @@ function ObjectForm({ orgId, object, onDone }: { orgId: string; object?: Invento
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-5">
+    <form onSubmit={onSubmit} noValidate className="space-y-5">
       <div>
         <DialogTitle>{editing ? 'Editar objeto' : 'Nuevo objeto'}</DialogTitle>
         <DialogDescription>{editing ? 'Actualiza los datos de inventario.' : 'Añade un objeto al inventario de tu empresa.'}</DialogDescription>
       </div>
-      <div className="space-y-2">
-        <Label htmlFor="obj-name">Nombre</Label>
-        <Input id="obj-name" required maxLength={200} value={name} onChange={(e) => setName(e.target.value)} placeholder="Taladro de columna" />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="obj-desc">Descripción</Label>
-        <Textarea id="obj-desc" maxLength={2000} value={description} onChange={(e) => setDescription(e.target.value)} />
-      </div>
-      <fieldset className="space-y-2">
-        <legend className="text-sm font-semibold">Color</legend>
+      <Field id="obj-name" label="Nombre" required error={nameError}>
+        {(p) => <Input {...p} maxLength={200} value={name} onChange={(e) => setName(e.target.value)} placeholder="Taladro de columna" />}
+      </Field>
+      <Field id="obj-desc" label="Descripción">
+        {(p) => <Textarea {...p} maxLength={2000} value={description} onChange={(e) => setDescription(e.target.value)} />}
+      </Field>
+      <div role="radiogroup" aria-labelledby="obj-color-label" className="space-y-2">
+        <p id="obj-color-label" className="text-sm font-semibold">
+          Color
+        </p>
         <div className="flex flex-wrap gap-2">
           {objectColors.map((item, i) => {
             const selected = item.key === colorKey;
@@ -100,7 +106,8 @@ function ObjectForm({ orgId, object, onDone }: { orgId: string; object?: Invento
               <button
                 key={item.key}
                 type="button"
-                aria-pressed={selected}
+                role="radio"
+                aria-checked={selected}
                 aria-label={item.name}
                 title={item.name}
                 onClick={() => setColorKey(item.key)}
@@ -112,37 +119,35 @@ function ObjectForm({ orgId, object, onDone }: { orgId: string; object?: Invento
             );
           })}
         </div>
-      </fieldset>
+      </div>
       <div className="grid gap-5 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="obj-code">Código interno</Label>
-          <Input id="obj-code" maxLength={200} value={code} onChange={(e) => setCode(e.target.value)} />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="obj-cat">Categoría</Label>
-          <Input id="obj-cat" maxLength={200} value={category} onChange={(e) => setCategory(e.target.value)} />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="obj-loc">Ubicación</Label>
-          <Input id="obj-loc" maxLength={200} value={location} onChange={(e) => setLocation(e.target.value)} />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="obj-asg">Responsable</Label>
-          <Input id="obj-asg" maxLength={200} value={assignee} onChange={(e) => setAssignee(e.target.value)} />
-        </div>
+        <Field id="obj-code" label="Código interno">
+          {(p) => <Input {...p} maxLength={200} value={code} onChange={(e) => setCode(e.target.value)} />}
+        </Field>
+        <Field id="obj-cat" label="Categoría">
+          {(p) => <Input {...p} maxLength={200} value={category} onChange={(e) => setCategory(e.target.value)} />}
+        </Field>
+        <Field id="obj-loc" label="Ubicación">
+          {(p) => <Input {...p} maxLength={200} value={location} onChange={(e) => setLocation(e.target.value)} />}
+        </Field>
+        <Field id="obj-asg" label="Responsable">
+          {(p) => <Input {...p} maxLength={200} value={assignee} onChange={(e) => setAssignee(e.target.value)} />}
+        </Field>
       </div>
       {editing ? null : (
-        <div className="space-y-2">
-          <Label htmlFor="obj-status">Estado</Label>
-          <Select id="obj-status" value={status} onChange={(e) => setStatus(e.target.value as InventoryStatus)}>
-            {(Object.keys(inventoryStatuses) as InventoryStatus[]).map((key) => (
-              <option key={key} value={key}>
-                {inventoryStatuses[key].label}
-              </option>
-            ))}
-          </Select>
-        </div>
+        <Field id="obj-status" label="Estado">
+          {(p) => (
+            <Select {...p} value={status} onChange={(e) => setStatus(e.target.value as InventoryStatus)}>
+              {(Object.keys(inventoryStatuses) as InventoryStatus[]).map((key) => (
+                <option key={key} value={key}>
+                  {inventoryStatuses[key].label}
+                </option>
+              ))}
+            </Select>
+          )}
+        </Field>
       )}
+      <RequiredNote />
       {error ? <ErrorAlert>{error}</ErrorAlert> : null}
       <div className="flex flex-wrap justify-end gap-3 pt-2">
         <DialogClose asChild>
@@ -150,7 +155,8 @@ function ObjectForm({ orgId, object, onDone }: { orgId: string; object?: Invento
             Cancelar
           </Button>
         </DialogClose>
-        <Button type="submit" disabled={busy || !name.trim()}>
+        <Button type="submit" disabled={busy}>
+          {busy ? <LoaderCircle className="animate-spin" aria-hidden /> : null}
           {busy ? 'Guardando…' : editing ? 'Guardar cambios' : 'Crear objeto'}
         </Button>
       </div>

@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { Menu } from 'lucide-react';
 import type { Role } from '@memoratag/contracts';
+import { SkipLink } from '@/components/skip-link';
 import { Brand } from '@/components/brand';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
@@ -78,6 +79,7 @@ export function AppShell(props: ShellProps) {
   const { children, ...sidebar } = props;
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[240px_1fr]">
+      <SkipLink />
       <aside className="sticky top-0 hidden h-screen border-r border-border p-5 lg:block">
         <SidebarContent {...sidebar} />
       </aside>
@@ -99,7 +101,7 @@ export function AppShell(props: ShellProps) {
             </SheetContent>
           </Sheet>
         </div>
-        <main className="mx-auto w-full max-w-[1200px] px-6 py-10 md:px-12 md:py-16">{children}</main>
+        <main id="contenido" tabIndex={-1} className="mx-auto w-full max-w-[1200px] px-6 py-10 outline-none md:px-12 md:py-16">{children}</main>
       </div>
     </div>
   );
