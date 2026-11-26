@@ -117,6 +117,32 @@ En toda la app los mensajes se escriben en lenguaje cotidiano, en segunda person
 
 ---
 
+## 10. Plataforma web y modo empresa
+
+Revisión de la web de gestión (`proyecto/apps/web`) recorrida como usuario nuevo, `admin` y `member`, en escritorio (1360 px) y móvil (390 px), en modo claro y oscuro. Severidad de 1 (leve) a 3 (grave).
+
+| Problema detectado | Cambio | Principio |
+|---|---|---|
+| En móvil, la ficha y Miembros se salían de la pantalla (scroll horizontal) — sev. 3 | Rejillas con ancho mínimo cero, textos largos que se parten y fila de adjunto compacta; todas las páginas miden 390 px | WCAG 1.4.10 (*reflow*), H8 |
+| Botones principales desactivados sin explicar qué faltaba — sev. 2 | Botones activos; al enviar se marca el campo con un mensaje propio y se lleva el foco al primer error; solo se desactivan mientras se guarda | H1, H9, WCAG 3.3.1 |
+| Mensajes de validación del navegador, con otro estilo e idioma — sev. 2 | Mensajes propios bajo cada campo con icono, `aria-invalid` y `aria-describedby`; campos obligatorios con «*» | H4, H9, WCAG 3.3.2 |
+| El registro mostraba el titular del login — sev. 2 | «Crea tu cuenta» y qué pasa después | H2, modelo mental |
+| Tras registrarse, un trabajador debía «crear su empresa» — sev. 3 | Bienvenida con dos caminos: «Crear mi empresa» o «Me van a añadir» (correo con Copiar y «Ya me añadieron») | H2, golfo de ejecución de Norman |
+| Filtros con el texto cortado — sev. 2 | Etiquetas cortas y legibles | H6, H8 |
+| Cambio de rol inmediato, incluso al quitar a un `admin` — sev. 2 | Confirmación solo al pasar de `admin` a `member`; botón «Quitar» con texto | H3, H5 |
+| «De baja» y «Archivar» usaban el mismo icono — sev. 2 | Icono propio para «De baja» | H4, consistencia de significantes |
+| En móvil, el estado quedaba bajo toda la historia — sev. 2 | Orden Datos → Estado → Historia → QR | Ley de Fitts, H7 |
+| Resumen en móvil demasiado largo — sev. 2 | Indicadores en rejilla de 2 columnas | H8, carga cognitiva |
+| Sin atajo para usuarios de teclado — sev. 1 | Enlace «Saltar al contenido» | WCAG 2.4.1 |
+| Colores sin nombre — sev. 1 | Cada color con nombre accesible y *tooltip* | WCAG 1.1.1, 1.4.1 |
+| Fecha partida en dos líneas — sev. 1 | Fecha en una sola línea | Gestalt (proximidad) |
+
+Otros cambios de la web y del modo empresa con la misma base: avisos breves tras cada acción (H1), pantallas de carga (H1), 404 propia (H9), historia filtrable con autor y hora (H6), archivados con «Restaurar» (H3), icono NFC vinculada/sin etiqueta (H1, sin depender solo del color) y, en el móvil, interruptor «Modo empresa» en Ajustes y escaneo que consulta primero el teléfono con un máximo de 8 s y aviso «Buscando en tu empresa…» (H1, límites de tiempo de respuesta).
+
+**Pendiente:** auditar la app móvil en modo empresa en un teléfono real y validar la web y el modo empresa con usuarios.
+
+---
+
 ## Implementado frente a pendiente
 
 **Implementado y comprobado técnicamente.**
