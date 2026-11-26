@@ -63,6 +63,13 @@ export class ObjectsService {
     return this.repo.archive(id, null);
   }
 
+  /** Deletes an archived object (admins only). Active objects must be archived first (409). Logical deletion. */
+  async remove(user: CurrentUser, id: string) {
+    const { obj } = await this.load(user, id, 'admin');
+    if (!obj.archived_at) throw new ConflictError('Archive the object before deleting it');
+    await this.repo.softDelete(id, new Date().toISOString());
+  }
+
   async markNfc(user: CurrentUser, id: string) {
     const { obj } = await this.load(user, id, 'admin');
     this.assertActive(obj);

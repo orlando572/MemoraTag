@@ -3,6 +3,8 @@ export const PG_POOL = Symbol('PG_POOL');
 
 export interface AppConfig {
   supabaseUrl: string;
+  /** Base URL of signed file links (opened by browsers and phones); defaults to supabaseUrl. */
+  supabasePublicUrl: string;
   databaseUrl: string;
   supabaseServiceRoleKey: string;
   persistence: 'memory' | 'postgres';
@@ -14,6 +16,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const persistence = env.PERSISTENCE === 'postgres' ? 'postgres' : 'memory';
   const config: AppConfig = {
     supabaseUrl: (env.SUPABASE_URL ?? '').replace(/\/$/, ''),
+    supabasePublicUrl: (env.SUPABASE_PUBLIC_URL || env.SUPABASE_URL || '').replace(/\/$/, ''),
     databaseUrl: env.DATABASE_URL ?? '',
     supabaseServiceRoleKey: env.SUPABASE_SERVICE_ROLE_KEY ?? '',
     persistence,

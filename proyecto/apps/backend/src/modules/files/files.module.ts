@@ -20,7 +20,7 @@ const logger = new Logger('Files');
   controllers: [FilesController],
   providers: [
     { provide: EVENT_FILE_REPOSITORY, inject: [CONFIG, PG_POOL], useFactory: (c: AppConfig, pool: Pool | null) => (c.persistence === 'postgres' && pool ? new PgEventFileRepository(pool) : new MemoryEventFileRepository()) },
-    { provide: FILE_STORAGE, inject: [CONFIG], useFactory: (c: AppConfig) => (c.persistence === 'postgres' ? new SupabaseFileStorage(c.supabaseUrl, c.supabaseServiceRoleKey) : new MemoryFileStorage()) },
+    { provide: FILE_STORAGE, inject: [CONFIG], useFactory: (c: AppConfig) => (c.persistence === 'postgres' ? new SupabaseFileStorage(c.supabaseUrl, c.supabaseServiceRoleKey, c.supabasePublicUrl) : new MemoryFileStorage()) },
     { provide: MEMBERSHIP_READER, useExisting: ORGANIZATION_REPOSITORY },
     {
       provide: FilesService,

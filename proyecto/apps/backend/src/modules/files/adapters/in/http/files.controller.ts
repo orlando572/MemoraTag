@@ -19,6 +19,23 @@ export class FilesController {
     return this.service.upload(user, eventId, { name: file.originalname, mime: file.mimetype, bytes: file.buffer });
   }
 
+  @Post('objects/:id/photo')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_FILE_BYTES, files: 1 } }))
+  uploadPhoto(@CurrentUser() user: User, @Param('id', new UuidParam()) id: string, @UploadedFile() file?: Express.Multer.File) {
+    if (!file) throw new BadRequestException('Missing "file" field');
+    return this.service.uploadObjectPhoto(user, id, { name: file.originalname, mime: file.mimetype, bytes: file.buffer });
+  }
+
+  @Get('objects/:id/photo/url')
+  photoUrl(@CurrentUser() user: User, @Param('id', new UuidParam()) id: string) {
+    return this.service.objectPhotoUrl(user, id);
+  }
+
+  @Delete('objects/:id/photo')
+  removePhoto(@CurrentUser() user: User, @Param('id', new UuidParam()) id: string) {
+    return this.service.removeObjectPhoto(user, id);
+  }
+
   @Get('files/:fileId/url')
   url(@CurrentUser() user: User, @Param('fileId', new UuidParam()) fileId: string) {
     return this.service.signedUrl(user, fileId);

@@ -31,7 +31,7 @@ La aplicación móvil permite trabajar localmente sin cuenta ni conexión. La we
 - **Identidad y acceso:** cuentas, autenticación y autorización.
 - **Memoria de objetos:** objetos, eventos, visibilidad e identificadores QR/NFC. Implementado para empresas: campos de inventario opcionales, pertenencia a una organización, filtros, resumen y exportación CSV.
 - **Organizaciones (implementado):** empresas, miembros y roles `admin`/`member`.
-- **Archivos:** metadatos y acceso al almacenamiento de fotografías y documentos. Implementado para eventos de empresa: Supabase Storage privado, validación de tipo y contenido, 5 MB, URLs firmadas de 5 minutos.
+- **Archivos:** metadatos y acceso al almacenamiento de fotografías y documentos. Implementado para eventos de empresa: Supabase Storage privado, validación de tipo y contenido, 5 MB, URLs firmadas de 5 minutos. También guarda la foto opcional de cada objeto de empresa (una por objeto; al reemplazarla se borra la anterior).
 
 La sincronización coordinará las operaciones entre el móvil y el backend. Su ubicación definitiva se definirá al diseñar el flujo offline, sin crear un módulo independiente si no aporta valor.
 

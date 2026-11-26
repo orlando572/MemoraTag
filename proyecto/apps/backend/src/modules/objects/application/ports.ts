@@ -25,8 +25,14 @@ export interface ObjectRepository {
   update(id: string, patch: ObjectPatch): Promise<InventoryObject>;
   setStatus(id: string, status: InventoryStatus): Promise<InventoryObject>;
   archive(id: string, at: string | null): Promise<InventoryObject>;
+  /** Logical deletion: the object disappears from every query (getById included). */
+  softDelete(id: string, at: string): Promise<void>;
   /** Records that an NFC tag was written for the object. */
   markNfc(id: string, at: string, userId: string): Promise<InventoryObject>;
+  /** Storage path of the object's photo, or null. */
+  getPhotoPath(id: string): Promise<string | null>;
+  /** Sets (or clears with nulls) the object's photo. */
+  setPhoto(id: string, path: string | null, at: string | null): Promise<InventoryObject>;
   listEvents(objectId: string): Promise<ObjectEvent[]>;
   getEventById(id: string): Promise<ObjectEvent | null>;
   addEvent(event: ObjectEvent): Promise<void>;
