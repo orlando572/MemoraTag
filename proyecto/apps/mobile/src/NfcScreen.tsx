@@ -5,6 +5,10 @@ import { router, useNavigation } from 'expo-router';
 import { AccessibilityInfo, ActivityIndicator, Animated, Easing, Platform, ScrollView, Text, View } from 'react-native';
 import { NfcSession, type NfcAdapter, type NfcPhase } from './nfc-session';
 import { objectLink } from './qr';
+import { lookupCompanyObject } from './company/api';
+import { needsReplaceConfirm } from './company/nfc';
+import { lookupMessages, scanTarget } from './company/scan';
+import { companyConfigured } from './company/supabase';
 import { findActiveObject, markNfcWritten, objectState, type MemoryObject } from './storage';
 import { useFeedback } from './ui/feedback/FeedbackProvider';
 import { haptic } from './ui/feedback/haptics';
@@ -43,7 +47,7 @@ const messages: Record<string, string> = {
   BUSY: 'Ya hay una operación NFC en curso.',
 };
 
-export function NfcScreen({ object, onFound, onWritten }: { object?: MemoryObject; onFound?: (object: MemoryObject) => void; onWritten?: (at: string) => void }) {
+export function NfcScreen({ object, company, onCompanyWritten, onFound, onCompanyFound, onWritten }: { object?: Pick<MemoryObject, 'id' | 'name'> & { nfc_written_at?: string | null }; /** Company object: the tag is written but nothing is stored locally. */ company?: boolean; /** Company only: called after the tag is verified (e.g. to tell the backend). */ onCompanyWritten?: (id: string) => Promise<unknown>; onFound?: (object: MemoryObject) => void; onCompanyFound?: (id: string) => void; onWritten?: (at: string) => void }) {
   const Alert = useFeedback();
   const { c } = useTheme();
   const styles = useStyles(makeStyles);
@@ -111,7 +115,9 @@ export function NfcScreen({ object, onFound, onWritten }: { object?: MemoryObjec
       const id = await current.run(object ? 'write' : 'read', object ? objectLink(object.id) : undefined);
       if (!alive.current) return;
       if (object) {
-        const at = await markNfcWritten(object.id).catch(() => null);
+        const at = company ? null : await markNfcWritten(object.id).catch(() => null);
+        // The tag is already written: a failed notice must not block the user.
+        if (company && onCompanyWritten) await onCompanyWritten(object.id).catch(() => { if (alive.current) Alert.toast('Etiqueta escrita. No se pudo registrar en la empresa.', { tone: 'info' }); });
         if (!alive.current) return;
         if (at) onWritten?.(at);
         haptic.success();
@@ -119,15 +125,23 @@ export function NfcScreen({ object, onFound, onWritten }: { object?: MemoryObjec
         announce('Etiqueta escrita y verificada. Acércala al teléfono, incluso con la app cerrada, para abrir este objeto.');
       }
       else {
+        // The phone is always checked first: it is instant and works offline.
         const found = await findActiveObject(id);
         if (!alive.current) return;
         if (found) { haptic.success(); onFound?.(found); }
         else {
+          const state = await objectState(id).catch(() => 'missing' as const);
+          if (!alive.current) return;
+          // Not stored here: ask the company (only with a company session) before reporting it missing.
+          const target = scanTarget(state === 'archived' ? 'archived' : 'missing', companyConfigured && !!onCompanyFound);
+          if (target === 'company-lookup') setStatus('Buscando en tu empresa…');
+          const outcome = target === 'company-lookup' ? await lookupCompanyObject(id) : 'missing';
+          if (!alive.current) return;
+          if (outcome === 'company') { haptic.success(); onCompanyFound?.(id); return; }
           haptic.warning();
           setResult('error');
-          const state = await objectState(id).catch(() => 'missing' as const);
-          if (alive.current) setArchivedFound(state === 'archived');
-          if (alive.current) announce(state === 'archived' ? 'Este objeto está archivado. Restáuralo desde «Objetos archivados» para ver su historia.' : 'Este objeto no está guardado en este teléfono. Puede haberse creado en otro dispositivo.');
+          setArchivedFound(state === 'archived');
+          announce(state === 'archived' ? 'Este objeto está archivado. Restáuralo desde «Objetos archivados» para ver su historia.' : outcome === 'missing' ? 'Este objeto no está guardado en este teléfono. Puede haberse creado en otro dispositivo.' : lookupMessages[outcome]);
         }
       }
     } catch (error) {
@@ -146,7 +160,7 @@ export function NfcScreen({ object, onFound, onWritten }: { object?: MemoryObjec
 
   function start() {
     if (!object) { void run(); return; }
-    Alert.alert('¿Escribir etiqueta NFC?', 'Se reemplazará el contenido de la etiqueta.', [
+    Alert.alert(company && needsReplaceConfirm(object.nfc_written_at) ? 'Este objeto ya tiene etiqueta. ¿Reemplazarla?' : '¿Escribir etiqueta NFC?', 'Se reemplazará el contenido de la etiqueta.', [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Continuar', style: 'destructive', onPress: () => void run() },
     ]);

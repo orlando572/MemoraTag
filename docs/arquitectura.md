@@ -29,8 +29,9 @@ La aplicación móvil permite trabajar localmente sin cuenta ni conexión. La we
 ## Módulos del backend
 
 - **Identidad y acceso:** cuentas, autenticación y autorización.
-- **Memoria de objetos:** objetos, eventos, visibilidad e identificadores QR/NFC.
-- **Archivos:** metadatos y acceso al almacenamiento de fotografías y documentos.
+- **Memoria de objetos:** objetos, eventos, visibilidad e identificadores QR/NFC. Implementado para empresas: campos de inventario opcionales, pertenencia a una organización, filtros, resumen y exportación CSV.
+- **Organizaciones (implementado):** empresas, miembros y roles `admin`/`member`.
+- **Archivos:** metadatos y acceso al almacenamiento de fotografías y documentos. Implementado para eventos de empresa: Supabase Storage privado, validación de tipo y contenido, 5 MB, URLs firmadas de 5 minutos.
 
 La sincronización coordinará las operaciones entre el móvil y el backend. Su ubicación definitiva se definirá al diseñar el flujo offline, sin crear un módulo independiente si no aporta valor.
 
@@ -82,8 +83,9 @@ proyecto/                  # Workspace independiente del prototipo
 │   ├── web/               # Plataforma Next.js
 │   └── backend/           # Backend NestJS
 ├── packages/              # Compartidos cuando sean necesarios
+│   └── contracts/         # Esquemas Zod compartidos (backend, web y móvil)
 ├── package.json
 └── pnpm-workspace.yaml
 ```
 
-El workspace es independiente y la nueva aplicación móvil cuenta con una base Expo y almacenamiento local SQLite para objetos y eventos. La web y el backend aún no están inicializados. El prototipo existente permanece intacto en la raíz y conserva su propio `package.json` y lockfile. El móvil y la web se organizarán por funcionalidades, separando interfaz, lógica y acceso a datos sin imponerles todas las capas del backend. La implementación debe priorizar el flujo principal y una web sencilla para conservar tiempo para la evaluación del artículo.
+El workspace es independiente y la nueva aplicación móvil cuenta con una base Expo y almacenamiento local SQLite para objetos y eventos. El backend (NestJS) y la web (Next.js) ya existen para el incremento empresarial y se ejecutan contra Supabase local; la sincronización de los datos personales del móvil sigue prevista. El prototipo existente permanece intacto en la raíz y conserva su propio `package.json` y lockfile. El móvil y la web se organizarán por funcionalidades, separando interfaz, lógica y acceso a datos sin imponerles todas las capas del backend. La implementación debe priorizar el flujo principal y una web sencilla para conservar tiempo para la evaluación del artículo.

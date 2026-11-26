@@ -2,6 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Redirect, router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { FlatList, Image, Pressable, Text, TextInput, View } from 'react-native';
+import { CompanyHome } from '../src/company/CompanyHome';
+import { useCompany } from '../src/company/CompanyProvider';
 import { useReload } from '../src/data/bus';
 import { useProfile } from '../src/data/profile';
 import { countWithOpenIssues, effectiveFilter, filterObjects, type ObjectFilter } from '../src/objects/filter';
@@ -13,7 +15,14 @@ import { formatDate, relativeDate } from '../src/ui/format';
 import { useStyles, useTheme } from '../src/ui/theme';
 import { fonts, radius, space, type, type Palette } from '../src/ui/tokens';
 
+/** «Modo empresa» replaces the home with the company inventory; otherwise the personal home is unchanged. */
 export default function Home() {
+  const profile = useProfile();
+  const { companyMode } = useCompany();
+  return companyMode && profile.onboardingDone ? <CompanyHome /> : <PersonalHome />;
+}
+
+function PersonalHome() {
   const profile = useProfile();
   const { c, dark } = useTheme();
   const s = useStyles(makeStyles);
@@ -99,23 +108,21 @@ function ObjectCard({ item }: { item: MemoryObject }) {
   const when = item.latest_event_date ? relativeDate(item.latest_event_date) : null;
   const label = [item.name,
     item.latest_event_title ? `Último evento: ${item.latest_event_title}${resolved ? ' (incidencia resuelta)' : ''}, ${formatDate(item.latest_event_date!)}` : 'Aún no tiene eventos',
-    item.open_issues ? `${item.open_issues} ${item.open_issues === 1 ? 'incidencia abierta' : 'incidencias abiertas'}` : null,
-    item.nfc_written_at ? 'Etiqueta NFC vinculada' : null].filter(Boolean).join('. ');
+    item.open_issues ? `${item.open_issues} ${item.open_issues === 1 ? 'incidencia abierta' : 'incidencias abiertas'}` : null].filter(Boolean).join('. ');
   return <Card onPress={() => router.push(`/object/${item.id}`)} accessibilityLabel={label} accessibilityHint="Abre su historia" style={{ padding: space.md, flexDirection: 'row', alignItems: 'center', gap: space.md }}>
     <ObjectCover object={item} size={68} />
     <View style={{ flex: 1, gap: 4 }}>
       <Text style={{ ...type.card, color: c.ink }} numberOfLines={2}>{item.name}</Text>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+      {!!when && <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
         {latest && <Ionicons name={latest.icon} size={15} color={latest.color} />}
-        {/* The date goes first so that, when the title is long, the title is what gets cut and never the date. */}
-        <Text numberOfLines={1} style={{ ...type.secondary, color: c.muted, flex: 1 }}>
-          {!!when && <Text style={{ fontFamily: fonts.strong, color: c.ink }}>{when} · </Text>}
-          {item.latest_event_title ?? 'Aún no tiene eventos'}
-        </Text>
-      </View>
-      {(!!item.open_issues || !!item.nfc_written_at) && <View style={{ flexDirection: 'row', gap: 6, marginTop: 2, flexWrap: 'wrap' }}>
-        {!!item.open_issues && <Badge tone="danger" icon="alert-circle" label={item.open_issues === 1 ? '1 abierta' : `${item.open_issues} abiertas`} />}
-        {!!item.nfc_written_at && <Badge tone="neutral" icon="radio-outline" label="NFC" />}
+        <Text numberOfLines={1} style={{ ...type.secondary, fontFamily: fonts.strong, color: c.ink, flex: 1 }}>{when}</Text>
+      </View>}
+      <Text numberOfLines={1} style={{ ...type.secondary, color: c.muted }}>
+        {item.latest_event_title ?? 'Aún no tiene eventos'}
+      </Text>
+      {/* The NFC tag is shown on the object screen, not here, to keep the list calm. */}
+      {!!item.open_issues && <View style={{ flexDirection: 'row', gap: 6, marginTop: 2, flexWrap: 'wrap' }}>
+        <Badge tone="danger" icon="alert-circle" label={item.open_issues === 1 ? '1 abierta' : `${item.open_issues} abiertas`} />
       </View>}
     </View>
     <Ionicons name="chevron-forward" size={20} color={c.muted} />

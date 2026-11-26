@@ -4,6 +4,9 @@ import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { useRef, useState } from 'react';
 import { Linking, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { lookupCompanyObject } from './company/api';
+import { lookupMessages, scanTarget } from './company/scan';
+import { companyConfigured } from './company/supabase';
 import { objectIdFromQr } from './qr';
 import { findActiveObject, objectState } from './storage';
 import { Button, NavBar, Screen } from './ui/components';
@@ -19,17 +22,28 @@ export function Scanner() {
   const [permission, requestPermission] = useCameraPermissions();
   const [problem, setProblem] = useState<Problem | null>(null);
   const [busy, setBusy] = useState(false);
+  const [searching, setSearching] = useState(false);
   const locked = useRef(false);
 
   async function resolveQr(data: string) {
     const id = objectIdFromQr(data);
     if (!id) { haptic.error(); setProblem({ text: 'Este código no es de MemoraTag.' }); return; }
     try {
+      // The phone is always checked first: it is instant and works offline. Ids never clash with company ones.
       const object = await findActiveObject(id);
       if (!object) {
         haptic.warning();
         const state = await objectState(id).catch(() => 'missing' as const);
-        setProblem(state === 'archived' ? { text: 'Este objeto está archivado. Restáuralo para ver su historia.', archived: true } : { text: 'Este objeto no está en este teléfono.' });
+        const target = scanTarget(state === 'archived' ? 'archived' : 'missing', companyConfigured);
+        if (target === 'archived') { setProblem({ text: 'Este objeto está archivado. Restáuralo para ver su historia.', archived: true }); return; }
+        // Not stored here: it may be a company object (needs a company session; without one this says «missing»).
+        let outcome: Awaited<ReturnType<typeof lookupCompanyObject>> = 'missing';
+        if (target === 'company-lookup') {
+          setSearching(true);
+          try { outcome = await lookupCompanyObject(id); } finally { setSearching(false); }
+        }
+        if (outcome === 'company') { haptic.success(); router.replace(`/empresa/objeto/${id}`); return; }
+        setProblem({ text: lookupMessages[outcome] });
         return;
       }
       haptic.success();
@@ -77,6 +91,7 @@ export function Scanner() {
         {problem.archived && <Button label="Ver objetos archivados" icon="archive-outline" onPress={() => router.replace('/archived')} />}
         <Button label="Escanear de nuevo" icon="scan-outline" variant="secondary" onPress={retry} />
       </View> : !cameraReady ? <Button label={permission && !permission.canAskAgain ? 'Abrir ajustes del teléfono' : 'Permitir la cámara'} icon="camera-outline" style={{ marginTop: space.xl }} onPress={() => { if (permission && !permission.canAskAgain) void Linking.openSettings(); else void requestPermission(); }} />
+        : searching ? <Text accessibilityLiveRegion="polite" style={s.hint}>Buscando en tu empresa…</Text>
         : <Text style={s.hint}>Encuadra el código QR del objeto.</Text>}
 
       {!problem && <View style={s.alternatives}>

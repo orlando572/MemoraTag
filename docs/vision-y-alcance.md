@@ -12,7 +12,7 @@ Diseñar y evaluar una interfaz móvil orientada a eventos que facilite el regis
 
 ## Usuario principal
 
-Personas que desean conservar información sobre objetos cotidianos, como notas, fotografías, incidencias, mantenimientos y documentos. La gestión empresarial se contempla como evolución futura, no como foco de la primera versión.
+Personas que desean conservar información sobre objetos cotidianos, como notas, fotografías, incidencias, mantenimientos y documentos. La gestión empresarial se describe en la sección «Incremento empresarial (previsto)» y no forma parte de la primera versión.
 
 ## Alcance inicial
 
@@ -46,8 +46,29 @@ Los archivos se guardan localmente cuando no hay conexión y se sincronizan post
 
 Cada archivo puede tener un tamaño máximo de 5 MB. Los formatos admitidos se definirán antes de la implementación. La interfaz debe advertir que hacer público un objeto puede exponer información sensible y sus archivos.
 
+## Incremento empresarial
+
+Evolución posterior a la primera versión. **Implementado en desarrollo local** (Supabase local); aún no desplegado ni evaluado con usuarios.
+
+**Implementado:**
+
+- **Empresa:** una organización con miembros que comparten el inventario de objetos.
+- **Roles:** `admin` gestiona objetos y miembros; `member` consulta objetos, registra eventos y cambia el estado.
+- **Inventario:** campos opcionales por objeto: código interno, categoría, ubicación, responsable y estado (en uso, en reparación o de baja).
+- **Web (centro de gestión):** inventario con búsqueda, filtros, contador de resultados, vista de archivados y exportación CSV; archivar y restaurar objetos (solo `admin`); historia filtrable por tipo, con autor y hora de cada evento; avisos de confirmación y pantallas de carga; ficha con línea de tiempo, QR descargable e impresión de etiqueta; gestión de miembros; resumen con indicadores simples; adjuntos de fotos y documentos (PDF y Excel, hasta 5 MB) en los eventos.
+- **Móvil (lo mínimo en campo):** un interruptor «Modo empresa» en Ajustes cambia el inicio al inventario de la empresa, con contadores por estado, búsqueda y filtros de ubicación y categoría. Desde la ficha se puede ver y compartir el QR, registrar eventos con una foto opcional, cambiar el estado y abrir los adjuntos. Solo `admin` puede escribir etiquetas NFC de objetos de empresa. La parte empresarial requiere conexión; con el modo activo, el escaneo consulta primero la empresa.
+- **Modo personal:** sin cambios; sigue sin conexión y sin cuenta.
+
+- **NFC vinculada:** al escribir una etiqueta de empresa desde el móvil se registra en el servidor; la web y el móvil muestran un icono (vinculada / sin etiqueta) y el inventario web filtra por NFC.
+- **Empresa y usuarios:** el `admin` puede renombrar la empresa en Ajustes. Tras registrarse, cada persona elige «Crear mi empresa» (queda como `admin`) o «Me van a añadir a una empresa» (muestra su correo para que el `admin` la añada en Miembros).
+
+**Previsto:** invitaciones por correo, compresión de fotos en el móvil, paginación para inventarios grandes.
+
 ## Fuera del alcance inicial
 
-- Dashboard empresarial con equipos, roles y múltiples organizaciones.
+- Invitaciones por correo.
+- Roles adicionales a `admin` y `member`.
+- Varias empresas por usuario en la interfaz.
+- Sincronización offline de datos de empresa.
 - Contabilidad y gestión avanzada de activos.
 - Integraciones empresariales e inteligencia artificial.

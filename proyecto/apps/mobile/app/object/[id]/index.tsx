@@ -4,6 +4,8 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState } from 'react';
 import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { lookupCompanyObject } from '../../../src/company/api';
+import { companyConfigured } from '../../../src/company/supabase';
 import { dataChanged, isPendingDeletion, useReload } from '../../../src/data/bus';
 import { openDocument } from '../../../src/event-document';
 import { photoUri } from '../../../src/object-photos';
@@ -35,7 +37,12 @@ export default function ObjectScreen() {
   const reload = useReload(async () => {
     try {
       const found = await findActiveObject(id);
-      if (!found) { setObject(null); setState(await objectState(id)); return; }
+      if (!found) {
+        const missing = await objectState(id);
+        // Not on this phone: it may be a company object (QR/NFC opened from outside the app).
+        if (missing === 'missing' && companyConfigured && await lookupCompanyObject(id) === 'company') { router.replace(`/empresa/objeto/${id}`); return; }
+        setObject(null); setState(missing); return;
+      }
       setObject(found);
       setEvents((await listEvents(id)).filter((event) => !isPendingDeletion(event.id)));
       setState('ready');
