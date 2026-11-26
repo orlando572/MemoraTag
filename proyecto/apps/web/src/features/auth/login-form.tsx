@@ -7,6 +7,7 @@ import { ErrorAlert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Field, RequiredNote, focusFirstError } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { createClient } from '@/lib/supabase/client';
 
 type Mode = 'login' | 'signup';
@@ -81,7 +82,7 @@ export function LoginForm() {
             {(p) => <Input {...p} type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@empresa.com" />}
           </Field>
           <Field id="password" label="Contraseña" required error={errors.password} hint={signup ? 'Mínimo 6 caracteres.' : undefined}>
-            {(p) => <Input {...p} type="password" autoComplete={signup ? 'new-password' : 'current-password'} value={password} onChange={(e) => setPassword(e.target.value)} />}
+            {(p) => <PasswordInput {...p} autoComplete={signup ? 'new-password' : 'current-password'} value={password} onChange={(e) => setPassword(e.target.value)} />}
           </Field>
           <RequiredNote />
           {error ? <ErrorAlert>{error}</ErrorAlert> : null}

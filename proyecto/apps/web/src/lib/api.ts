@@ -105,10 +105,18 @@ export function createApi(getToken: TokenGetter) {
       get: (id: string) => get(`/objects/${id}`, WebObjectSchema),
       update: (id: string, input: UpdateObjectInput) => send('PATCH', `/objects/${id}`, WebObjectSchema, input),
       restore: (id: string) => send('POST', `/objects/${id}/restore`, WebObjectSchema),
+      remove: (id: string) => request('DELETE', `/objects/${id}`, null),
       archive: (id: string) => send('POST', `/objects/${id}/archive`, WebObjectSchema),
       changeStatus: (id: string, input: ChangeStatusInput) => send('PATCH', `/objects/${id}/status`, WebObjectSchema, input),
       events: (id: string) => get(`/objects/${id}/events`, z.array(WebEventSchema)),
       addEvent: (id: string, input: CreateEventInput) => send('POST', `/objects/${id}/events`, WebEventSchema, input),
+      uploadPhoto: (id: string, file: File) => {
+        const form = new FormData();
+        form.append('file', file);
+        return send('POST', `/objects/${id}/photo`, WebObjectSchema, form);
+      },
+      photoUrl: (id: string) => get(`/objects/${id}/photo/url`, z.object({ url: z.string(), expires_in: z.number() })),
+      removePhoto: (id: string) => send('DELETE', `/objects/${id}/photo`, WebObjectSchema),
     },
     files: {
       upload: (eventId: string, file: File) => {

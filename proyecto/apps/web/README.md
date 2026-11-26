@@ -40,6 +40,9 @@ Scripts: `dev`, `build`, `start`, `lint`, `typecheck`. Necesita el backend (`app
 - Inventario: tabla con búsqueda, filtros por estado, ubicación y categoría (en la URL), orden por columna, exportación CSV, alta y edición (admin), ficha del objeto con cambio de estado, archivado (admin), QR compatible con la app y etiqueta imprimible.
 - Eventos: línea de tiempo y formulario con los 6 tipos.
 - Adjuntos de eventos: fotos (JPG, PNG, WEBP) y documentos (PDF, Excel) de hasta 5 MB. Subida múltiple con validación en cliente, estado por archivo y reintento; miniaturas con visor y URL firmada renovable; documentos con botón «Abrir»; «Quitar archivo» solo para admin.
+- Foto del objeto: al crear o editar un objeto se puede añadir, cambiar o quitar una foto (JPG, PNG o WEBP, hasta 5 MB) con vista previa; se muestra en la lista del inventario y en la ficha. Si el objeto se guarda pero la foto falla, se avisa sin deshacer el alta.
+- Eliminar objeto: en la ficha de un objeto archivado, el `admin` ve «Eliminar» junto a «Restaurar»; pide confirmación («No se puede deshacer») y vuelve a la lista de archivados. Solo se pueden eliminar objetos archivados.
+- Inicio de sesión y registro: botón con icono de ojo a la derecha del campo de contraseña para mostrarla u ocultarla.
 - Miembros (admin): alta por correo, cambio de rol y baja, con protección del último admin.
 - Resumen: indicadores, incidencias abiertas y actividad reciente.
 - Avisos (toasts) propios y accesibles tras las acciones de inventario, eventos, archivos y miembros; esqueletos de carga en las pantallas principales; páginas 404 con la marca (global y de objeto); título de pestaña con el nombre del objeto; redirección de `/favicon.ico` al icono SVG.
