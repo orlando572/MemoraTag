@@ -83,6 +83,21 @@ describe('Event attachments (memory adapters)', () => {
     expect(events[0].files).toHaveLength(1);
   });
 
+  it('lets an admin set the object photo, members read it, and exposes only the date', async () => {
+    const photo = (name: Name, data: Buffer, mime: string) =>
+      http.post(`/objects/${objectId}/photo`).set('Authorization', as(name)).attach('file', data, { filename: 'p', contentType: mime });
+    await photo('member', jpeg, 'image/jpeg').expect(403);
+    await photo('admin', pdf, 'application/pdf').expect(400);
+    const updated = (await photo('admin', jpeg, 'image/jpeg').expect(201)).body;
+    expect(updated.photo_updated_at).toBeTruthy();
+    expect(updated.photo_path).toBeUndefined();
+    expect((await http.get(`/objects/${objectId}`).set('Authorization', as('member')).expect(200)).body.photo_updated_at).toBe(updated.photo_updated_at);
+    expect((await http.get(`/objects/${objectId}/photo/url`).set('Authorization', as('member')).expect(200)).body.expires_in).toBe(300);
+    await http.get(`/objects/${objectId}/photo/url`).set('Authorization', as('outsider')).expect(404);
+    expect((await http.delete(`/objects/${objectId}/photo`).set('Authorization', as('admin')).expect(200)).body.photo_updated_at).toBeNull();
+    await http.get(`/objects/${objectId}/photo/url`).set('Authorization', as('member')).expect(404);
+  });
+
   it('rejects uploads on archived objects', async () => {
     await http.post(`/objects/${objectId}/archive`).set('Authorization', as('admin')).expect(200);
     await upload('member', eventId, jpeg, 'p.jpg', 'image/jpeg').expect(409);

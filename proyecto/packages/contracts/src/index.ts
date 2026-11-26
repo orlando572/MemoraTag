@@ -40,6 +40,8 @@ export const InventoryObjectSchema = z.object({
   created_at: iso,
   archived_at: iso.nullish(),
   nfc_written_at: z.string().nullable().optional(),
+  // Set when the object has a photo; also changes on every replacement (cache key).
+  photo_updated_at: z.string().nullable().optional(),
 });
 export type InventoryObject = z.infer<typeof InventoryObjectSchema>;
 

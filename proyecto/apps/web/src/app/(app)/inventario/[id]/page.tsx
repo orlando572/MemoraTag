@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardTitle } from '@/components/ui/card';
 import { EventComposer } from '@/features/events/event-composer';
 import { EventTimeline } from '@/features/events/event-timeline';
-import { ArchiveObjectButton, EditObjectButton, RestoreObjectButton, StatusControl } from '@/features/inventory/object-actions';
+import { ArchiveObjectButton, DeleteObjectButton, EditObjectButton, RestoreObjectButton, StatusControl } from '@/features/inventory/object-actions';
 import { NfcIndicator } from '@/features/inventory/nfc-indicator';
 import { ObjectAvatar } from '@/features/inventory/object-avatar';
 import { ObjectQr } from '@/features/inventory/object-qr';
@@ -63,12 +63,17 @@ export default async function ObjectPage({ params }: { params: Promise<{ id: str
             <Archive className="mt-0.5 size-5 shrink-0 text-muted-foreground" aria-hidden />
             <span>Este objeto está archivado: no se puede editar ni registrar eventos.</span>
           </p>
-          {isAdmin ? <RestoreObjectButton id={object.id} name={object.name} /> : null}
+          {isAdmin ? (
+            <div className="flex flex-wrap gap-3">
+              <RestoreObjectButton id={object.id} name={object.name} />
+              <DeleteObjectButton id={object.id} name={object.name} />
+            </div>
+          ) : null}
         </div>
       ) : null}
       <header className="mb-10 flex flex-wrap items-center justify-between gap-6 md:mb-14">
         <div className="flex min-w-0 items-center gap-5">
-          <ObjectAvatar color={object.color} className="size-16 rounded-lg" />
+          <ObjectAvatar color={object.color} objectId={object.id} photoUpdatedAt={object.photo_updated_at} className={object.photo_updated_at ? 'size-24 rounded-lg' : 'size-16 rounded-lg'} />
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="min-w-0 break-words font-heading text-4xl font-semibold tracking-[-0.03em] text-balance md:text-5xl">{object.name}</h1>

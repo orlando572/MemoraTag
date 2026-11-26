@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { MAX_FILE_BYTES } from '@memoratag/contracts';
-import type { EventFile } from '@memoratag/contracts';
+import type { EventFile, InventoryObject } from '@memoratag/contracts';
 import type { CurrentUser } from '../../identity/domain/current-user';
 import type { MembershipReader, ObjectRepository } from '../../objects/application/ports';
 import { ConflictError, ForbiddenError, InvalidInputError, NotFoundError, PayloadTooLargeError } from '../../../shared/errors';
-import { fileKind, matchesSignature, sanitizeName, storagePath } from '../domain/file-rules';
+import { fileKind, matchesSignature, objectPhotoPath, sanitizeName, storagePath } from '../domain/file-rules';
 import type { EventFileRepository, FileStorage, StoredEventFile } from './ports';
 
 export const SIGNED_URL_SECONDS = 300;
@@ -77,6 +77,64 @@ export class FilesService {
     } catch (e) {
       this.log(`Storage removal failed for file ${file.id}: ${e instanceof Error ? e.message : String(e)}`);
     }
+  }
+
+  /** Sets or replaces the object's photo (admins only). The previous blob is removed afterwards. */
+  async uploadObjectPhoto(user: CurrentUser, objectId: string, input: UploadInput): Promise<InventoryObject> {
+    const { object, role } = await this.loadObject(user, objectId);
+    if (role !== 'admin') throw new ForbiddenError('Admin role required');
+    if (object.archived_at) throw new ConflictError('Object is archived');
+
+    if (fileKind(input.mime) !== 'photo') throw new InvalidInputError('Only JPG, PNG or WEBP photos are allowed');
+    if (input.bytes.length === 0) throw new InvalidInputError('File is empty');
+    if (input.bytes.length > MAX_FILE_BYTES) throw new PayloadTooLargeError('File exceeds 5 MB');
+    if (!matchesSignature(input.mime, input.bytes)) throw new InvalidInputError('File content does not match its type');
+
+    const previous = await this.objects.getPhotoPath(object.id);
+    const path = objectPhotoPath(object.organization_id!, object.id, randomUUID());
+    await this.storage.put(path, input.bytes, input.mime);
+    let updated: InventoryObject;
+    try {
+      updated = await this.objects.setPhoto(object.id, path, new Date().toISOString());
+    } catch (e) {
+      await this.storage.remove(path).catch(() => undefined);
+      throw e;
+    }
+    if (previous) await this.removeBlob(previous, `photo of object ${object.id}`);
+    return updated;
+  }
+
+  async objectPhotoUrl(user: CurrentUser, objectId: string) {
+    const { object } = await this.loadObject(user, objectId);
+    const path = await this.objects.getPhotoPath(object.id);
+    if (!path) throw new NotFoundError('Object has no photo');
+    return { url: await this.storage.signedUrl(path, SIGNED_URL_SECONDS), expires_in: SIGNED_URL_SECONDS };
+  }
+
+  async removeObjectPhoto(user: CurrentUser, objectId: string): Promise<InventoryObject> {
+    const { object, role } = await this.loadObject(user, objectId);
+    if (role !== 'admin') throw new ForbiddenError('Admin role required');
+    if (object.archived_at) throw new ConflictError('Object is archived');
+    const path = await this.objects.getPhotoPath(object.id);
+    const updated = await this.objects.setPhoto(object.id, null, null);
+    if (path) await this.removeBlob(path, `photo of object ${object.id}`);
+    return updated;
+  }
+
+  private async removeBlob(path: string, what: string) {
+    try {
+      await this.storage.remove(path);
+    } catch (e) {
+      this.log(`Storage removal failed for ${what}: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
+  /** Non-members get 404 so existence is not leaked. */
+  private async loadObject(user: CurrentUser, objectId: string) {
+    const object = await this.objects.getById(objectId);
+    const role = object?.organization_id ? await this.memberships.getRole(object.organization_id, user.id) : null;
+    if (!object || !role) throw new NotFoundError('Object not found');
+    return { object, role };
   }
 
   /** Non-members get 404 so existence is not leaked. */

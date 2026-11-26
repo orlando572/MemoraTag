@@ -75,4 +75,33 @@ describe('file rules', () => {
     expect(sanitizeName('x'.repeat(300))).toHaveLength(200);
     expect(sanitizeName('/')).toBe('file');
   });
+
+  describe('object photo', () => {
+    it('lets admins set, replace and remove the photo, deleting the old blob', async () => {
+      const { service, storage } = await setup();
+      const first = await service.uploadObjectPhoto(admin, 'obj', { name: 'a.jpg', mime: 'image/jpeg', bytes: jpeg });
+      expect(first.photo_updated_at).toBeTruthy();
+      const [path] = [...storage.blobs.keys()];
+      expect(path).toMatch(/^org\/org\/object\/obj\/photo\//);
+      await service.uploadObjectPhoto(admin, 'obj', { name: 'b.jpg', mime: 'image/jpeg', bytes: jpeg });
+      expect(storage.blobs.size).toBe(1);
+      expect(storage.blobs.has(path)).toBe(false);
+      expect((await service.objectPhotoUrl(member, 'obj')).expires_in).toBe(300);
+      const cleared = await service.removeObjectPhoto(admin, 'obj');
+      expect(cleared.photo_updated_at).toBeNull();
+      expect(storage.blobs.size).toBe(0);
+      await expect(service.objectPhotoUrl(member, 'obj')).rejects.toThrow('no photo');
+    });
+
+    it('rejects members, outsiders, documents, fake images and archived objects', async () => {
+      const { service, objects } = await setup();
+      await expect(service.uploadObjectPhoto(member, 'obj', { name: 'a.jpg', mime: 'image/jpeg', bytes: jpeg })).rejects.toThrow('Admin');
+      await expect(service.uploadObjectPhoto(outsider, 'obj', { name: 'a.jpg', mime: 'image/jpeg', bytes: jpeg })).rejects.toThrow('not found');
+      await expect(service.objectPhotoUrl(outsider, 'obj')).rejects.toThrow('not found');
+      await expect(service.uploadObjectPhoto(admin, 'obj', { name: 'a.pdf', mime: 'application/pdf', bytes: pdf })).rejects.toThrow('Only JPG');
+      await expect(service.uploadObjectPhoto(admin, 'obj', { name: 'a.png', mime: 'image/png', bytes: jpeg })).rejects.toThrow('does not match');
+      await objects.archive('obj', 'now');
+      await expect(service.uploadObjectPhoto(admin, 'obj', { name: 'a.jpg', mime: 'image/jpeg', bytes: jpeg })).rejects.toThrow('archived');
+    });
+  });
 });

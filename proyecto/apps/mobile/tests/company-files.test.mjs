@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { canWriteNfc, documentIcon, formatSize, photoUpload, splitFiles } from '../src/company/files.ts';
+import { canCreateObjects, uploadResize, canWriteNfc, documentIcon, formatSize, photoKey, photoUpload, splitFiles } from '../src/company/files.ts';
 
 test('los adjuntos se separan en fotos y documentos', () => {
   const files = [{ id: '1', kind: 'photo' }, { id: '2', kind: 'document' }, { id: '3', kind: 'photo' }];
@@ -32,4 +32,28 @@ test('escribir NFC es solo para administradores', () => {
   assert.equal(canWriteNfc('admin'), true);
   assert.equal(canWriteNfc('member'), false);
   assert.equal(canWriteNfc(undefined), false);
+});
+
+test('solo el administrador puede crear objetos desde el móvil', () => {
+  assert.equal(canCreateObjects('admin'), true);
+  assert.equal(canCreateObjects('member'), false);
+  assert.equal(canCreateObjects(null), false);
+  assert.equal(canCreateObjects(undefined), false);
+});
+
+test('la clave de la foto cambia al reemplazarla y es nula sin foto', () => {
+  assert.equal(photoKey({ id: 'o1', photo_updated_at: null }), null);
+  assert.equal(photoKey({ id: 'o1' }), null);
+  const first = photoKey({ id: 'o1', photo_updated_at: '2026-11-26T10:00:00.000Z' });
+  const second = photoKey({ id: 'o1', photo_updated_at: '2026-11-26T11:00:00.000Z' });
+  assert.ok(first && second && first !== second);
+});
+
+test('las fotos grandes se reducen a 1600 px por el lado largo y las pequeñas no se tocan', () => {
+  assert.deepEqual(uploadResize(8160, 6120), { width: 1600 });
+  assert.deepEqual(uploadResize(3000, 4000), { height: 1600 });
+  assert.deepEqual(uploadResize(4000, 4000), { width: 1600 });
+  assert.equal(uploadResize(1200, 900), null);
+  assert.equal(uploadResize(1600, 1600), null);
+  assert.equal(uploadResize(undefined, 900), null);
 });

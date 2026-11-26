@@ -24,6 +24,19 @@ describe('ObjectsService', () => {
     expect(await s.list(admin, 'org', {})).toHaveLength(0);
   });
 
+  it('deletes only archived objects, only for admins, and hides them afterwards', async () => {
+    const s = setup();
+    const obj = await s.create(admin, 'org', input);
+    await expect(s.remove(admin, obj.id)).rejects.toThrow('Archive');
+    await s.archive(admin, obj.id);
+    await expect(s.remove(member, obj.id)).rejects.toThrow('Admin');
+    await expect(s.remove(outsider, obj.id)).rejects.toThrow('not found');
+    await s.remove(admin, obj.id);
+    await expect(s.get(admin, obj.id)).rejects.toThrow('not found');
+    expect(await s.list(admin, 'org', { archived: true })).toHaveLength(0);
+    await expect(s.remove(admin, obj.id)).rejects.toThrow('not found');
+  });
+
   it('lets members change status and record events', async () => {
     const s = setup();
     const obj = await s.create(admin, 'org', input);

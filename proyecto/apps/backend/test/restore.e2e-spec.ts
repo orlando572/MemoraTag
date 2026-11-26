@@ -60,4 +60,16 @@ describe('Archived list, restore and event authors', () => {
     expect((await list('').expect(200)).body).toHaveLength(1);
     expect((await list('?archived=true').expect(200)).body).toHaveLength(0);
   });
+
+  it('deletes an archived object for admins only (204), then answers 404', async () => {
+    const id = (await http.post(`/organizations/${orgId}/objects`).set('Authorization', as('admin')).send({ name: 'Old saw' }).expect(201)).body.id;
+    await http.delete(`/objects/${id}`).set('Authorization', as('admin')).expect(409);
+    await http.post(`/objects/${id}/archive`).set('Authorization', as('admin')).expect(200);
+    await http.delete(`/objects/${id}`).set('Authorization', as('member')).expect(403);
+    await http.delete(`/objects/${id}`).set('Authorization', as('outsider')).expect(404);
+    await http.delete(`/objects/${id}`).set('Authorization', as('admin')).expect(204);
+    await http.get(`/objects/${id}`).set('Authorization', as('admin')).expect(404);
+    const archived = (await http.get(`/organizations/${orgId}/objects?archived=true`).set('Authorization', as('admin')).expect(200)).body;
+    expect(archived.map((o: { id: string }) => o.id)).not.toContain(id);
+  });
 });

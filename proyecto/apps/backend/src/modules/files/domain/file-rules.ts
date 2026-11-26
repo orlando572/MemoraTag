@@ -33,3 +33,7 @@ export function sanitizeName(name: string): string {
 export function storagePath(orgId: string, objectId: string, eventId: string, fileId: string) {
   return `org/${orgId}/object/${objectId}/event/${eventId}/${fileId}`;
 }
+
+export function objectPhotoPath(orgId: string, objectId: string, photoId: string) {
+  return `org/${orgId}/object/${objectId}/photo/${photoId}`;
+}

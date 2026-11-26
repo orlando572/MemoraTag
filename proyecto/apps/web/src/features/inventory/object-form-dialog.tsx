@@ -2,8 +2,8 @@
 
 import type { InventoryObject, InventoryStatus } from '@memoratag/contracts';
 import { useRouter } from 'next/navigation';
-import { useState, type FormEvent } from 'react';
-import { Check, LoaderCircle } from 'lucide-react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { Check, ImagePlus, LoaderCircle, Trash2 } from 'lucide-react';
 import { ErrorAlert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
@@ -11,11 +11,13 @@ import { Field, RequiredNote } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { PHOTO_ACCEPT, formatBytes, validatePhoto } from '@/features/events/files';
 import { useToast } from '@/features/toast/toast';
 import { errorMessage } from '@/lib/api';
 import { browserApi } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
 import { objectColorIndex, objectColors } from './colors';
+import { ObjectAvatar } from './object-avatar';
 import { inventoryStatuses } from './status';
 
 type Props = { open: boolean; onOpenChange: (open: boolean) => void; orgId: string; object?: InventoryObject };
@@ -45,6 +47,10 @@ function ObjectForm({ orgId, object, onDone }: { orgId: string; object?: Invento
   const [location, setLocation] = useState(object?.location ?? '');
   const [assignee, setAssignee] = useState(object?.assignee ?? '');
   const [status, setStatus] = useState<InventoryStatus>('in_use');
+  // Photo: a new file to upload, or (when editing) a request to remove the current one.
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [removePhoto, setRemovePhoto] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
   const [nameError, setNameError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -67,20 +73,27 @@ function ObjectForm({ orgId, object, onDone }: { orgId: string; object?: Invento
       location: orNull(location),
       assignee: orNull(assignee),
     };
+    const api = browserApi();
+    let saved;
     try {
-      const api = browserApi();
-      if (object) await api.objects.update(object.id, fields);
-      else {
-        const created = await api.objects.create(orgId, { ...fields, status });
-        router.push(`/inventario/${created.id}`);
-      }
-      toast(object ? 'Cambios guardados' : 'Objeto creado');
-      router.refresh();
-      onDone();
+      saved = object ? await api.objects.update(object.id, fields) : await api.objects.create(orgId, { ...fields, status });
     } catch (failure) {
       setError(errorMessage(failure, { 409: 'Este objeto está archivado y ya no se puede modificar.' }));
-      setBusy(false);
+      return setBusy(false);
     }
+    // The object is saved; a photo failure is reported but does not undo it.
+    let photoFailed = false;
+    try {
+      if (photo) await api.objects.uploadPhoto(saved.id, photo);
+      else if (removePhoto) await api.objects.removePhoto(saved.id);
+    } catch {
+      photoFailed = true;
+    }
+    if (photoFailed) toast(object ? 'Cambios guardados, pero no se pudo actualizar la foto' : 'Objeto creado, pero no se pudo subir la foto', 'warning');
+    else toast(object ? 'Cambios guardados' : 'Objeto creado');
+    if (!object) router.push(`/inventario/${saved.id}`);
+    router.refresh();
+    onDone();
   }
 
   return (
@@ -95,6 +108,21 @@ function ObjectForm({ orgId, object, onDone }: { orgId: string; object?: Invento
       <Field id="obj-desc" label="Descripción">
         {(p) => <Textarea {...p} maxLength={2000} value={description} onChange={(e) => setDescription(e.target.value)} />}
       </Field>
+      <PhotoPicker
+        current={object && !removePhoto ? object : undefined}
+        file={photo}
+        error={photoError}
+        onPick={(file) => {
+          const problem = validatePhoto(file);
+          setPhotoError(problem ? `No se puede usar «${file.name}»: ${problem}.` : null);
+          if (!problem) setPhoto(file);
+        }}
+        onClear={() => {
+          setPhotoError(null);
+          if (photo) setPhoto(null);
+          else setRemovePhoto(true);
+        }}
+      />
       <div role="radiogroup" aria-labelledby="obj-color-label" className="space-y-2">
         <p id="obj-color-label" className="text-sm font-semibold">
           Color
@@ -161,5 +189,79 @@ function ObjectForm({ orgId, object, onDone }: { orgId: string; object?: Invento
         </Button>
       </div>
     </form>
+  );
+}
+
+type PickerProps = {
+  current?: InventoryObject;
+  file: File | null;
+  error: string | null;
+  onPick: (file: File) => void;
+  onClear: () => void;
+};
+
+// Optional photo: preview of the chosen file (or the current photo when editing), choose/replace and remove.
+function PhotoPicker({ current, file, error, onPick, onClear }: PickerProps) {
+  const input = useRef<HTMLInputElement>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  useEffect(() => {
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+  const hasCurrent = Boolean(current?.photo_updated_at);
+  const shown = file ? preview : null;
+
+  return (
+    <div className="space-y-2">
+      <p id="obj-photo-label" className="text-sm font-semibold">
+        Foto
+      </p>
+      <div className="flex flex-wrap items-center gap-4">
+        {shown ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={shown} alt="Vista previa de la foto elegida" className="size-20 rounded-lg border border-border object-cover" />
+        ) : hasCurrent && current ? (
+          <ObjectAvatar color={current.color} objectId={current.id} photoUpdatedAt={current.photo_updated_at} className="size-20 rounded-lg border border-border" />
+        ) : (
+          <span className="flex size-20 items-center justify-center rounded-lg border border-dashed border-input text-muted-foreground" aria-hidden>
+            <ImagePlus className="size-7" />
+          </span>
+        )}
+        <div className="flex flex-col items-start gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="secondary" size="sm" onClick={() => input.current?.click()} aria-describedby="obj-photo-hint">
+              <ImagePlus aria-hidden />
+              {file || hasCurrent ? 'Cambiar foto' : 'Añadir foto'}
+            </Button>
+            {file || hasCurrent ? (
+              <Button type="button" variant="ghost" size="sm" onClick={onClear}>
+                <Trash2 aria-hidden />
+                Quitar
+              </Button>
+            ) : null}
+          </div>
+          <p id="obj-photo-hint" className="text-sm text-muted-foreground">
+            {file ? `${file.name} · ${formatBytes(file.size)}` : 'Opcional. JPG, PNG o WEBP, hasta 5 MB.'}
+          </p>
+        </div>
+      </div>
+      <input
+        ref={input}
+        type="file"
+        accept={PHOTO_ACCEPT}
+        className="sr-only"
+        tabIndex={-1}
+        aria-labelledby="obj-photo-label"
+        onChange={(e) => {
+          const picked = e.target.files?.[0];
+          e.target.value = '';
+          if (picked) onPick(picked);
+        }}
+      />
+      {error ? <ErrorAlert>{error}</ErrorAlert> : null}
+    </div>
   );
 }

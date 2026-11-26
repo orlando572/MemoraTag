@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { forwardRef, type ReactNode } from 'react';
+import { forwardRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TextInput, View, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets, type Edge } from 'react-native-safe-area-context';
 import { photoUri } from '../object-photos';
@@ -123,15 +123,18 @@ export function EmptyState({ icon, title, text, action }: { icon: IconName; titl
   </View>;
 }
 
-type FieldProps = TextInputProps & { label: string; optional?: boolean; error?: string; hint?: string; /** No space below the field, for a field that is alone in its card. */ flush?: boolean };
+type FieldProps = TextInputProps & { label: string; optional?: boolean; error?: string; hint?: string; /** No space below the field, for a field that is alone in its card. */ flush?: boolean; /** Control shown inside the field, on the right (for example, show password). */ trailing?: ReactNode };
 
 /** Labelled input; errors are shown next to the field, in text, and announced. */
-export const TextField = forwardRef<TextInput, FieldProps>(function TextField({ label, optional, error, hint, flush, style, ...input }, ref) {
+export const TextField = forwardRef<TextInput, FieldProps>(function TextField({ label, optional, error, hint, flush, trailing, style, ...input }, ref) {
   const { c } = useTheme();
   return <View style={{ marginBottom: flush ? 0 : space.xl }}>
     <Text style={{ ...type.label, color: c.ink, marginBottom: space.sm }}>{label}{optional && <Text style={{ color: c.muted, fontFamily: fonts.body }}> · opcional</Text>}</Text>
-    <TextInput ref={ref} accessibilityLabel={label} accessibilityHint={error ?? hint} placeholderTextColor={c.muted}
-      style={[{ minHeight: 54, backgroundColor: c.surface, borderWidth: error ? 2 : 1, borderColor: error ? c.danger : c.inputBorder, borderRadius: radius.md, paddingHorizontal: space.lg, color: c.ink, ...type.body }, style]} {...input} />
+    <View style={{ justifyContent: 'center' }}>
+      <TextInput ref={ref} accessibilityLabel={label} accessibilityHint={error ?? hint} placeholderTextColor={c.muted}
+        style={[{ minHeight: 54, backgroundColor: c.surface, borderWidth: error ? 2 : 1, borderColor: error ? c.danger : c.inputBorder, borderRadius: radius.md, paddingHorizontal: space.lg, color: c.ink, ...type.body }, !!trailing && { paddingRight: 56 }, style]} {...input} />
+      {!!trailing && <View style={{ position: 'absolute', right: 4, top: 0, bottom: 0, justifyContent: 'center' }}>{trailing}</View>}
+    </View>
     {error ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}><Ionicons name="alert-circle" size={16} color={c.danger} /><Text accessibilityLiveRegion="polite" style={{ ...type.secondary, color: c.danger }}>{error}</Text></View>
       : hint ? <Text style={{ ...type.secondary, color: c.muted, marginTop: 6 }}>{hint}</Text> : null}
   </View>;
@@ -167,3 +170,16 @@ export function ErrorMessage({ text, onRetry }: { text: string; onRetry?: () => 
     {onRetry && <Button label="Reintentar" icon="refresh" variant="secondary" onPress={onRetry} />}
   </View>;
 }
+
+/** Password field with an eye button on the right that shows or hides what is typed. */
+export const PasswordField = forwardRef<TextInput, Omit<FieldProps, 'secureTextEntry' | 'trailing'>>(function PasswordField(props, ref) {
+  const { c } = useTheme();
+  const [visible, setVisible] = useState(false);
+  const label = visible ? 'Ocultar contraseña' : 'Mostrar contraseña';
+  return <TextField ref={ref} {...props} secureTextEntry={!visible} trailing={
+    <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ selected: visible }} hitSlop={8} onPress={() => setVisible((v) => !v)}
+      style={({ pressed }) => [{ width: 48, height: 48, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md }, pressed && { opacity: 0.6 }]}>
+      <Ionicons name={visible ? 'eye-off-outline' : 'eye-outline'} size={22} color={c.muted} />
+    </Pressable>
+  } />;
+});

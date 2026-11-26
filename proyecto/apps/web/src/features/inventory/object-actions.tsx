@@ -3,7 +3,7 @@
 import type { InventoryObject, InventoryStatus } from '@memoratag/contracts';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { Archive, ArchiveRestore, Pencil } from 'lucide-react';
+import { Archive, ArchiveRestore, Pencil, Trash2 } from 'lucide-react';
 import { ErrorAlert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -128,6 +128,35 @@ export function RestoreObjectButton({ id, name }: { id: string; name: string }) 
         onConfirm={async () => {
           await browserApi().objects.restore(id);
           toast('Objeto restaurado');
+          router.refresh();
+        }}
+      />
+    </>
+  );
+}
+
+// Only for archived objects (the backend answers 409 otherwise). It cannot be undone from the web.
+export function DeleteObjectButton({ id, name }: { id: string; name: string }) {
+  const router = useRouter();
+  const toast = useToast();
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button variant="destructive" onClick={() => setOpen(true)}>
+        <Trash2 aria-hidden />
+        Eliminar
+      </Button>
+      <ConfirmDialog
+        open={open}
+        onOpenChange={setOpen}
+        title="¿Eliminar este objeto?"
+        description={`«${name}» y su historia dejarán de estar disponibles para tu empresa. No se puede deshacer.`}
+        confirmLabel="Eliminar objeto"
+        errorOverrides={{ 409: 'Solo se pueden eliminar objetos archivados.' }}
+        onConfirm={async () => {
+          await browserApi().objects.remove(id);
+          toast('Objeto eliminado');
+          router.replace('/inventario?archived=1');
           router.refresh();
         }}
       />

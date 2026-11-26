@@ -5,13 +5,17 @@ const BUCKET = 'event-files';
 /** Supabase Storage (private bucket) through its REST API. The service key must stay in the backend. */
 export class SupabaseFileStorage implements FileStorage {
   private readonly base: string;
+  /** Base of the signed links handed to clients, which may not reach the backend's own Supabase URL (e.g. a phone on the LAN). */
+  private readonly publicBase: string;
 
   constructor(
     supabaseUrl: string,
     private readonly serviceKey: string,
+    publicUrl: string = supabaseUrl,
   ) {
     if (!supabaseUrl || !serviceKey) throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required for file storage');
     this.base = `${supabaseUrl}/storage/v1`;
+    this.publicBase = `${publicUrl || supabaseUrl}/storage/v1`;
   }
 
   private headers(extra: Record<string, string> = {}) {
@@ -27,7 +31,7 @@ export class SupabaseFileStorage implements FileStorage {
     const res = await fetch(`${this.base}/object/sign/${BUCKET}/${path}`, { method: 'POST', headers: this.headers({ 'Content-Type': 'application/json' }), body: JSON.stringify({ expiresIn: seconds }) });
     if (!res.ok) throw new Error(`Storage signing failed (${res.status})`);
     const { signedURL } = (await res.json()) as { signedURL: string };
-    return `${this.base}${signedURL}`;
+    return `${this.publicBase}${signedURL}`;
   }
 
   async remove(path: string) {

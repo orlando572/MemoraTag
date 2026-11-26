@@ -1,4 +1,5 @@
-import { EventFileSchema, InventoryObjectSchema, OrganizationSummarySchema, ObjectEventSchema, OrganizationSchema, type ChangeStatusInput, type CreateEventInput } from '@memoratag/contracts';
+import * as FileSystem from 'expo-file-system/legacy';
+import { EventFileSchema, InventoryObjectSchema, OrganizationSummarySchema, ObjectEventSchema, OrganizationSchema, type ChangeStatusInput, type CreateEventInput, type CreateObjectInput } from '@memoratag/contracts';
 import { CompanyError, kindFromStatus } from './errors';
 import { buildQuery, type CompanyFilters } from './filters';
 import { apiUrl, supabase } from './supabase';
@@ -69,25 +70,50 @@ export async function lookupCompanyObject(id: string, timeoutMs = LOOKUP_TIMEOUT
   }
 }
 
-/** Uploads one photo as multipart (field «file»). The event must already exist. */
-export async function uploadEventFile(eventId: string, file: { uri: string; name: string; type: string }) {
+type UploadFile = { uri: string; name: string; type: string };
+
+/**
+ * Sends one local file as multipart (field «file») and parses the answer.
+ * Uses the native uploader instead of fetch + FormData: since Expo 57 the global fetch is expo/fetch,
+ * which rejects React Native's { uri, name, type } file parts before sending anything.
+ */
+async function upload<T>(path: string, file: UploadFile, schema: Schema<T>): Promise<T> {
   const bearer = await token();
-  const form = new FormData();
-  // React Native accepts { uri, name, type } as a file part.
-  form.append('file', file as unknown as Blob);
-  let response: Response;
-  try { response = await fetch(`${apiUrl}/events/${eventId}/files`, { method: 'POST', headers: { Authorization: `Bearer ${bearer}`, Accept: 'application/json' }, body: form }); }
-  catch { throw new CompanyError('offline'); }
-  if (!response.ok) throw new CompanyError(kindFromStatus(response.status));
-  const parsed = EventFileSchema.safeParse(await response.json().catch(() => null));
+  let response: FileSystem.FileSystemUploadResult;
+  try {
+    response = await FileSystem.uploadAsync(`${apiUrl}${path}`, file.uri, {
+      httpMethod: 'POST',
+      uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+      fieldName: 'file',
+      mimeType: file.type,
+      headers: { Authorization: `Bearer ${bearer}`, Accept: 'application/json' },
+    });
+  } catch { throw new CompanyError('offline'); }
+  if (response.status < 200 || response.status >= 300) throw new CompanyError(kindFromStatus(response.status));
+  let body: unknown = null;
+  try { body = JSON.parse(response.body); } catch { /* handled below */ }
+  const parsed = schema.safeParse(body);
   if (!parsed.success) throw new CompanyError('server');
   return parsed.data;
 }
+
+/** Uploads one photo to an event. The event must already exist. */
+export const uploadEventFile = (eventId: string, file: UploadFile) => upload(`/events/${eventId}/files`, file, EventFileSchema);
+
+/** Creates a company object (admin only; the backend answers 403 to members). */
+export const createCompanyObject = (orgId: string, input: CreateObjectInput) =>
+  request(`/organizations/${orgId}/objects`, InventoryObjectSchema, { method: 'POST', body: input });
+
+/** Sets or replaces the object's photo (admin only). */
+export const uploadObjectPhoto = (id: string, file: UploadFile) => upload(`/objects/${id}/photo`, file, InventoryObjectSchema);
 
 const urlSchema = { safeParse: (v: unknown) => typeof (v as { url?: unknown } | null)?.url === 'string' ? { success: true as const, data: (v as { url: string }).url } : { success: false as const } };
 
 /** Signed URL of an attachment; it expires after about 5 minutes. */
 export const fileUrl = (fileId: string) => request<string>(`/files/${fileId}/url`, urlSchema);
+
+/** Signed URL of the object's photo (404 when it has none); it expires after about 5 minutes. */
+export const objectPhotoUrl = (id: string) => request<string>(`/objects/${id}/photo/url`, urlSchema);
 
 /** Tells the backend that an NFC tag was written for this object (admin only). */
 export const markCompanyNfcWritten = (id: string) => request(`/objects/${id}/nfc`, InventoryObjectSchema, { method: 'POST' });

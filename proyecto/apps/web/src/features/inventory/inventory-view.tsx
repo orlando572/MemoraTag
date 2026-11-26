@@ -300,7 +300,7 @@ export function InventoryView({ orgId, isAdmin, objects, allObjects, openNew, ar
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-3">
                         <Link href={`/inventario/${o.id}`} className="flex items-center gap-3 rounded-sm font-semibold hover:text-primary">
-                          <ObjectAvatar color={o.color} />
+                          <ObjectAvatar color={o.color} objectId={o.id} photoUpdatedAt={o.photo_updated_at} />
                           <span>{o.name}</span>
                         </Link>
                         <NfcIndicator writtenAt={o.nfc_written_at} />
@@ -324,7 +324,7 @@ export function InventoryView({ orgId, isAdmin, objects, allObjects, openNew, ar
               <li key={o.id}>
                 <Link href={`/inventario/${o.id}`} className="block rounded-xl border border-border bg-card p-4 hover:bg-muted/50">
                   <div className="flex items-start gap-3">
-                    <ObjectAvatar color={o.color} />
+                    <ObjectAvatar color={o.color} objectId={o.id} photoUpdatedAt={o.photo_updated_at} />
                     <div className="min-w-0 flex-1">
                       <p className="flex items-center gap-2 font-semibold">
                         <span className="min-w-0">{o.name}</span>

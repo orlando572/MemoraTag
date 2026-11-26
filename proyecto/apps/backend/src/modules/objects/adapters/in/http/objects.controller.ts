@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Header, HttpCode, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Header, HttpCode, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ChangeStatusSchema, CreateEventSchema, CreateObjectSchema, ObjectFiltersSchema, UpdateObjectSchema } from '@memoratag/contracts';
 import type { ChangeStatusInput, CreateEventInput, CreateObjectInput, ObjectFilters, UpdateObjectInput } from '@memoratag/contracts';
 import { AuthGuard, CurrentUser } from '../../../../identity/adapters/in/http/auth.guard';
@@ -47,6 +47,12 @@ export class ObjectsController {
   @HttpCode(200)
   archive(@CurrentUser() user: User, @Param('id', UuidParam) id: string) {
     return this.service.archive(user, id);
+  }
+
+  @Delete('objects/:id')
+  @HttpCode(204)
+  async remove(@CurrentUser() user: User, @Param('id', UuidParam) id: string) {
+    await this.service.remove(user, id);
   }
 
   @Post('objects/:id/nfc')

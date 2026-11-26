@@ -4,10 +4,10 @@ import type { ObjectPatch, ObjectRepository } from '../../../application/ports';
 
 const iso = (d: Date | string | null) => (d ? new Date(d).toISOString() : null);
 const like = (s: string) => `%${s.replace(/[\\%_]/g, '\\$&')}%`;
-const COLS = 'id, organization_id, name, description, color, internal_code, category, location, assignee, status, created_at, archived_at, nfc_written_at';
+const COLS = 'id, organization_id, name, description, color, internal_code, category, location, assignee, status, created_at, archived_at, nfc_written_at, photo_updated_at';
 const PATCHABLE = ['name', 'description', 'color', 'internal_code', 'category', 'location', 'assignee'] as const;
 
-const toObject = (r: any): InventoryObject => ({ ...r, created_at: iso(r.created_at)!, archived_at: iso(r.archived_at), nfc_written_at: iso(r.nfc_written_at) });
+const toObject = (r: any): InventoryObject => ({ ...r, created_at: iso(r.created_at)!, archived_at: iso(r.archived_at), nfc_written_at: iso(r.nfc_written_at), photo_updated_at: iso(r.photo_updated_at) });
 const toEvent = (r: any): ObjectEvent => ({ ...r, files: [], event_date: iso(r.event_date), created_at: iso(r.created_at)! });
 
 export class PgObjectRepository implements ObjectRepository {
@@ -47,6 +47,17 @@ export class PgObjectRepository implements ObjectRepository {
   }
   async markNfc(id: string, at: string, userId: string) {
     const r = await this.pool.query(`update objects set nfc_written_at = $2, nfc_written_by = $3, updated_at = now() where id = $1 returning ${COLS}`, [id, at, userId]);
+    return toObject(r.rows[0]);
+  }
+  async softDelete(id: string, at: string) {
+    await this.pool.query('update objects set deleted_at = $2, updated_at = now() where id = $1 and deleted_at is null', [id, at]);
+  }
+  async getPhotoPath(id: string) {
+    const r = await this.pool.query('select photo_path from objects where id = $1 and deleted_at is null', [id]);
+    return (r.rows[0]?.photo_path as string | null | undefined) ?? null;
+  }
+  async setPhoto(id: string, path: string | null, at: string | null) {
+    const r = await this.pool.query(`update objects set photo_path = $2, photo_updated_at = $3, updated_at = now() where id = $1 returning ${COLS}`, [id, path, at]);
     return toObject(r.rows[0]);
   }
   async setStatus(id: string, status: InventoryStatus) {

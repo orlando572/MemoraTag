@@ -30,6 +30,14 @@ const messages: Record<CompanyErrorKind, string> = {
   server: 'El servicio de la empresa no responde bien. Inténtalo más tarde.',
 };
 
+/** Message when the photo of an object or event could not be sent (the object or event itself was saved). */
+export function photoUploadMessage(kind: CompanyErrorKind) {
+  if (kind === 'offline') return 'No se pudo enviar la foto. Comprueba la conexión e inténtalo de nuevo.';
+  if (kind === 'too_large') return 'La foto pesa más de 5 MB incluso reducida. Prueba con otra foto.';
+  if (kind === 'invalid') return 'No se pudo leer la foto. Prueba con otra foto.';
+  return companyMessage(kind);
+}
+
 export function companyMessage(kind: CompanyErrorKind) {
   return messages[kind];
 }

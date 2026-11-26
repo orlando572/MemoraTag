@@ -14,9 +14,9 @@ import { formatDate, localDate, relativeDate } from '../ui/format';
 import { useStyles, useTheme } from '../ui/theme';
 import { radius, space, type, type Palette } from '../ui/tokens';
 import { addEvent, uploadEventFile } from './api';
-import { companyMessage, toCompanyError } from './errors';
+import { CompanyError, companyMessage, photoUploadMessage, toCompanyError } from './errors';
 import { companyEventLook, registrableTypes } from './events';
-import { photoUpload } from './files';
+import { preparePhotoForUpload } from './photo-upload';
 
 /** Small form to register an event on a company object (no photo or document in this phase). */
 export function CompanyEventForm({ objectId, objectName }: { objectId: string; objectName: string }) {
@@ -60,14 +60,10 @@ export function CompanyEventForm({ objectId, objectName }: { objectId: string; o
 
   /** Uploads the photo; on failure offers to retry or to keep the event without it. Returns true when done. */
   async function upload(eventId: string): Promise<boolean> {
-    const info = photo ? photoUpload(photo) : null;
-    if (!photo || !info) {
-      Alert.error('Evento guardado sin foto', 'La foto debe ser JPEG, PNG o WebP. Puedes adjuntarla desde la web.', [{ text: 'Entendido', onPress: finish }]);
-      return false;
-    }
-    try { await uploadEventFile(eventId, { uri: photo.uri, ...info }); return true; }
+    if (!photo) return true;
+    try { await uploadEventFile(eventId, await preparePhotoForUpload(photo)); return true; }
     catch (e) {
-      Alert.error('El evento se guardó, pero la foto no se subió', companyMessage(toCompanyError(e).kind), [
+      Alert.error('El evento se guardó, pero la foto no se subió', photoUploadMessage(e instanceof CompanyError ? e.kind : 'invalid'), [
         { text: 'Continuar sin foto', style: 'cancel', onPress: finish },
         { text: 'Reintentar', onPress: () => { void upload(eventId).then((done) => { if (done) finish(); }); } },
       ]);

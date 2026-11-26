@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { ActivityIndicator, Clipboard, Switch, Text, View } from 'react-native';
-import { Badge, Button, TextField } from '../ui/components';
+import { Badge, Button, PasswordField, TextField } from '../ui/components';
 import { useFeedback } from '../ui/feedback/FeedbackProvider';
 import { useStyles, useTheme } from '../ui/theme';
 import { space, type, type Palette } from '../ui/tokens';
@@ -68,7 +68,7 @@ export function AccountSection() {
   return <>
     <Text style={s.hint}>Con una cuenta de empresa consultas el inventario compartido. Tus objetos personales siguen funcionando sin cuenta.</Text>
     <TextField label="Correo" value={email} onChangeText={setEmail} autoCapitalize="none" autoCorrect={false} keyboardType="email-address" textContentType="emailAddress" autoComplete="email" editable={!busy} flush />
-    <TextField label="Contraseña" value={password} onChangeText={setPassword} secureTextEntry autoCapitalize="none" textContentType="password" autoComplete="password" editable={!busy} returnKeyType="done" onSubmitEditing={() => void submit()} error={error ?? undefined} flush />
+    <PasswordField label="Contraseña" value={password} onChangeText={setPassword} autoCapitalize="none" textContentType="password" autoComplete="password" editable={!busy} returnKeyType="done" onSubmitEditing={() => void submit()} error={error ?? undefined} flush />
     <Button label={busy ? 'Entrando…' : 'Iniciar sesión'} icon="log-in-outline" loading={busy} onPress={() => void submit()} />
     <Text style={s.hint}>Crea tu cuenta en la web.</Text>
   </>;

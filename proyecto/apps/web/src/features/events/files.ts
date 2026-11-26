@@ -17,3 +17,11 @@ export function validateFile(file: File): string | null {
 }
 
 export const isPhoto = (mime: string) => (PHOTO_MIME_TYPES as readonly string[]).includes(mime);
+
+export const PHOTO_ACCEPT = PHOTO_MIME_TYPES.join(',');
+
+/** Same as validateFile, but only photos (object picture). */
+export function validatePhoto(file: File): string | null {
+  if (!isPhoto(file.type)) return 'tipo no permitido (solo JPG, PNG y WEBP)';
+  return validateFile(file);
+}

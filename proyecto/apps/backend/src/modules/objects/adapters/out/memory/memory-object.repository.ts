@@ -6,6 +6,7 @@ const has = (value: string | null | undefined, needle: string) => (value ?? '').
 export class MemoryObjectRepository implements ObjectRepository {
   private readonly objects = new Map<string, InventoryObject>();
   private events: ObjectEvent[] = [];
+  private readonly photos = new Map<string, string>();
 
   async create(obj: InventoryObject) {
     this.objects.set(obj.id, { ...obj });
@@ -30,6 +31,18 @@ export class MemoryObjectRepository implements ObjectRepository {
   }
   async markNfc(id: string, at: string, _userId: string) {
     return this.mutate(id, { nfc_written_at: at });
+  }
+  async softDelete(id: string, _at: string) {
+    this.objects.delete(id);
+    this.photos.delete(id);
+  }
+  async getPhotoPath(id: string) {
+    return this.photos.get(id) ?? null;
+  }
+  async setPhoto(id: string, path: string | null, at: string | null) {
+    if (path) this.photos.set(id, path);
+    else this.photos.delete(id);
+    return this.mutate(id, { photo_updated_at: at });
   }
   async setStatus(id: string, status: InventoryStatus) {
     return this.mutate(id, { status });
