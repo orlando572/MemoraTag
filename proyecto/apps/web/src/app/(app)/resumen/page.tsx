@@ -16,13 +16,13 @@ import { cn } from '@/lib/utils';
 
 export const metadata: Metadata = { title: 'Resumen' };
 
-function Indicator({ icon: Icon, label, value, tone = 'neutral', href }: { icon: LucideIcon; label: string; value: number; tone?: Tone; href: string }) {
+function Indicator({ icon: Icon, label, value, tone = 'neutral', href, wide }: { icon: LucideIcon; label: string; value: number; tone?: Tone; href: string; wide?: boolean }) {
   return (
-    <Link href={href} className="block rounded-xl border border-border bg-card p-6 transition-colors hover:bg-muted/60">
+    <Link href={href} className={cn('block min-w-0 rounded-xl border border-border bg-card p-4 transition-colors hover:bg-muted/60 sm:p-6', wide && 'col-span-2 lg:col-span-1')}>
       <span className={cn('flex size-10 items-center justify-center rounded-md', toneClasses[tone])}>
         <Icon className="size-5" aria-hidden />
       </span>
-      <p className="mt-5 font-heading text-5xl font-semibold tracking-[-0.03em]">{value}</p>
+      <p className="mt-3 font-heading text-4xl font-semibold tracking-[-0.03em] sm:mt-5 sm:text-5xl">{value}</p>
       <p className="mt-1 text-sm font-semibold text-muted-foreground">{label}</p>
     </Link>
   );
@@ -63,8 +63,8 @@ export default async function ResumenPage() {
   return (
     <>
       <PageHeader title="Resumen" description={description} />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <Indicator icon={Boxes} label="Objetos en total" value={summary.total} href="/inventario" />
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
+        <Indicator icon={Boxes} label="Objetos en total" value={summary.total} href="/inventario" wide />
         <Indicator icon={inventoryStatuses.in_use.icon} label={inventoryStatuses.in_use.label} value={summary.by_status.in_use ?? 0} tone="success" href="/inventario?status=in_use" />
         <Indicator icon={inventoryStatuses.in_repair.icon} label={inventoryStatuses.in_repair.label} value={summary.by_status.in_repair ?? 0} tone="warning" href="/inventario?status=in_repair" />
         <Indicator icon={inventoryStatuses.retired.icon} label={inventoryStatuses.retired.label} value={summary.by_status.retired ?? 0} href="/inventario?status=retired" />
@@ -91,7 +91,7 @@ export default async function ResumenPage() {
                     <Link href={`/inventario/${event.object_id}`} className="rounded-sm font-semibold text-primary underline-offset-4 hover:underline">
                       {names.get(event.object_id) ?? 'Objeto archivado'}
                     </Link>{' '}
-                    · {formatDate(event.event_date ?? event.created_at)}
+                    · <span className="whitespace-nowrap">{formatDate(event.event_date ?? event.created_at)}</span>
                   </p>
                 </div>
               </li>

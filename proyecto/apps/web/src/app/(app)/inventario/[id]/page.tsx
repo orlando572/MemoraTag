@@ -71,7 +71,7 @@ export default async function ObjectPage({ params }: { params: Promise<{ id: str
           <ObjectAvatar color={object.color} className="size-16 rounded-lg" />
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-3">
-              <h1 className="font-heading text-4xl font-semibold tracking-[-0.03em] text-balance md:text-5xl">{object.name}</h1>
+              <h1 className="min-w-0 break-words font-heading text-4xl font-semibold tracking-[-0.03em] text-balance md:text-5xl">{object.name}</h1>
               <NfcIndicator writtenAt={object.nfc_written_at} size="md" />
             </div>
             {archived ? (
@@ -85,8 +85,8 @@ export default async function ObjectPage({ params }: { params: Promise<{ id: str
         {isAdmin && !archived ? <EditObjectButton orgId={ctx.organization.id} object={object} /> : null}
       </header>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="space-y-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="min-w-0 space-y-6">
           <Card>
             <CardTitle>Datos del objeto</CardTitle>
             {object.description ? <p className="mt-3 whitespace-pre-line text-muted-foreground">{object.description}</p> : null}
@@ -94,10 +94,16 @@ export default async function ObjectPage({ params }: { params: Promise<{ id: str
               {data.map(([label, value]) => (
                 <div key={label}>
                   <dt className="text-sm text-muted-foreground">{label}</dt>
-                  <dd className="mt-1 font-semibold">{value || '—'}</dd>
+                  <dd className="mt-1 break-words font-semibold">{value || '—'}</dd>
                 </div>
               ))}
             </dl>
+          </Card>
+
+          {/* Mobile only: the status card comes right after the data; on desktop it lives in the side column */}
+          <Card className="p-6 md:p-6 lg:hidden">
+            <CardTitle className="mb-4">Estado</CardTitle>
+            <StatusControl id={object.id} status={object.status} disabled={archived} />
           </Card>
 
           <Card>
@@ -109,8 +115,8 @@ export default async function ObjectPage({ params }: { params: Promise<{ id: str
           </Card>
         </div>
 
-        <div className="space-y-6">
-          <Card className="p-6 md:p-6">
+        <div className="min-w-0 space-y-6">
+          <Card className="hidden p-6 md:p-6 lg:block">
             <CardTitle className="mb-4">Estado</CardTitle>
             <StatusControl id={object.id} status={object.status} disabled={archived} />
           </Card>

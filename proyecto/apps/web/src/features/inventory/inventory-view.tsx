@@ -205,13 +205,13 @@ export function InventoryView({ orgId, isAdmin, objects, allObjects, openNew, ar
       ) : null}
       {exportError ? <ErrorAlert className="mb-6">{exportError}</ErrorAlert> : null}
 
-      <div className="mb-6 grid grid-cols-2 gap-3 xl:grid-cols-[minmax(0,1fr)_repeat(4,minmax(0,160px))]">
+      <div className="mb-6 grid grid-cols-2 gap-3 xl:grid-cols-[minmax(0,1fr)_repeat(4,minmax(0,180px))]">
         <div className="relative col-span-2 xl:col-span-1">
           <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
           <Input type="search" aria-label="Buscar objetos" placeholder="Buscar por nombre, código…" className="pl-11" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
         <Select aria-label="Filtrar por estado" value={status} onChange={(e) => update({ status: e.target.value })}>
-          <option value="">Estado: todos</option>
+          <option value="">Estado</option>
           {(Object.keys(inventoryStatuses) as InventoryStatus[]).map((key) => (
             <option key={key} value={key}>
               {inventoryStatuses[key].label}
@@ -219,18 +219,18 @@ export function InventoryView({ orgId, isAdmin, objects, allObjects, openNew, ar
           ))}
         </Select>
         <Select aria-label="Filtrar por ubicación" value={location} onChange={(e) => update({ location: e.target.value })}>
-          <option value="">Ubicación: todas</option>
+          <option value="">Ubicación</option>
           {locations.map((item) => (
             <option key={item}>{item}</option>
           ))}
         </Select>
         <Select aria-label="Filtrar por NFC" value={nfc} onChange={(e) => update({ nfc: e.target.value })}>
-          <option value="">NFC: todas</option>
-          <option value="with">NFC: con etiqueta</option>
-          <option value="without">NFC: sin etiqueta</option>
+          <option value="">NFC</option>
+          <option value="with">Con etiqueta</option>
+          <option value="without">Sin etiqueta</option>
         </Select>
         <Select aria-label="Filtrar por categoría" value={category} onChange={(e) => update({ category: e.target.value })}>
-          <option value="">Categoría: todas</option>
+          <option value="">Categoría</option>
           {categories.map((item) => (
             <option key={item}>{item}</option>
           ))}

@@ -49,6 +49,7 @@ Scripts: `dev`, `build`, `start`, `lint`, `typecheck`. Necesita el backend (`app
 - NFC: indicador con icono (vinculada o sin etiqueta, con tooltip accesible) en la ficha y en el inventario, y filtro «NFC: todas / con / sin» (`?nfc=with|without`). Usa `nfc_written_at` y el filtro `nfc` del backend.
 - Ajustes: tarjeta «Empresa» con edición del nombre para admin (`PATCH /organizations/:orgId`, 1 a 80 caracteres).
 - Bienvenida sin empresa: dos caminos («Crear mi empresa» o «Me van a añadir», con copia del correo y «Ya me añadieron»), guardados en la URL (`?paso=crear|unirme`).
+- Pulido de UX: formularios con `noValidate`, mensajes propios bajo el campo (con `aria-invalid`/`aria-describedby`, foco en el primer error y campos obligatorios marcados con «*»), enlace «Saltar al contenido», sin desbordamiento horizontal en móvil, ficha con orden Datos, Estado, Historia y QR, resumen compacto en móvil, icono propio para «De baja» y confirmación al quitar permisos de administrador.
 
 ## Previsto (no implementado)
 

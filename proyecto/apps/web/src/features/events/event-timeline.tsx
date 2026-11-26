@@ -74,16 +74,21 @@ export function EventTimeline({ events, isAdmin = false, currentUserId }: Props)
         {visible.map((event) => {
           const author = event.created_by === currentUserId ? 'Tú' : event.created_by_email;
           return (
-            <li key={event.id} className="flex gap-4">
+            <li key={event.id} className="flex min-w-0 gap-4">
               <EventIcon type={event.type} />
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-semibold text-muted-foreground">
-                  {eventTypes[event.type].label} · {formatDateTime(event.created_at)}
-                  {author ? ` · ${author}` : ''}
-                  {event.event_date ? ` · Fecha del suceso: ${formatDate(event.event_date)}` : ''}
+                  {eventTypes[event.type].label} · <span className="whitespace-nowrap">{formatDateTime(event.created_at)}</span>
+                  {author ? <span className="break-all">{` · ${author}`}</span> : null}
+                  {event.event_date ? (
+                    <>
+                      {' · Fecha del suceso: '}
+                      <span className="whitespace-nowrap">{formatDate(event.event_date)}</span>
+                    </>
+                  ) : null}
                 </p>
-                <p className="font-semibold">{event.title}</p>
-                {event.description ? <p className="mt-1 whitespace-pre-line text-muted-foreground">{event.description}</p> : null}
+                <p className="break-words font-semibold">{event.title}</p>
+                {event.description ? <p className="mt-1 whitespace-pre-line break-words text-muted-foreground">{event.description}</p> : null}
                 <EventAttachments files={event.files} isAdmin={isAdmin} />
               </div>
             </li>

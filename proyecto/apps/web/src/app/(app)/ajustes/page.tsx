@@ -16,7 +16,7 @@ export default async function AjustesPage() {
   return (
     <>
       <PageHeader title="Ajustes" description="Tu cuenta y cómo prefieres ver MemoraTag." />
-      <div className="grid max-w-3xl gap-6">
+      <div className="grid max-w-3xl grid-cols-1 gap-6">
         <Card>
           <CardTitle>Apariencia</CardTitle>
           <CardDescription>Elige un tema o deja que siga el de tu dispositivo.</CardDescription>
